@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 import '../../../../shared/widgets/common/supplier_card.dart';
@@ -28,13 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearch() {
-    // TODO: Implement search logic with Cubit
-    print('Searching...');
-    print('Part: ${_partNameController.text}');
-    print('Brand: $_selectedBrand');
-    print('Model: $_selectedModel');
-    print('Year: $_selectedYear');
-    print('Governorate: $_selectedGovernorate');
+    // Navigate to search results screen
+    Navigator.pushNamed(context, AppRoutes.searchResults);
   }
 
   Future<void> _showSelectionDialog({
@@ -297,6 +293,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       supportedBrands: ['تويوتا', 'هيونداي', 'ميتسوبيشي'],
                       location: 'حي الدقي، الجيزة',
                       distance: '3.2 كم',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.vendorProfile,
+                          arguments: {
+                            'vendorId': 'vendor_1',
+                            'vendorName': 'مصر لقطع الغيار',
+                          },
+                        );
+                      },
                     ),
                     SupplierCard(
                       name: 'مركز الأمل للصيانة',
@@ -306,6 +312,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       supportedBrands: ['بي إم دبليو', 'مرسيدس'],
                       location: 'مدينة نصر، القاهرة',
                       distance: '5.7 كم',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.vendorProfile,
+                          arguments: {
+                            'vendorId': 'vendor_2',
+                            'vendorName': 'مركز الأمل للصيانة',
+                          },
+                        );
+                      },
                     ),
                     SupplierCard(
                       name: 'المتحدة للاستيراد',
@@ -315,6 +331,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       supportedBrands: ['أوبل', 'سكودا'],
                       location: 'حي المعادي، القاهرة',
                       distance: '8.1 كم',
+                      onTap: () {
+                        Navigator.pushNamed(
+                          context,
+                          AppRoutes.vendorProfile,
+                          arguments: {
+                            'vendorId': 'vendor_3',
+                            'vendorName': 'المتحدة للاستيراد',
+                          },
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -329,7 +355,10 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _currentNavIndex = index;
           });
-          // TODO: Handle navigation
+          if (index == 3) {
+            // Navigate to profile
+            Navigator.pushNamed(context, AppRoutes.profile);
+          }
         },
         items: const [
           BottomNavItem(
@@ -350,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavItem(
             label: 'حسابي',
             icon: Icons.person,
-            route: '/profile',
+            route: AppRoutes.profile,
           ),
         ],
       ),
