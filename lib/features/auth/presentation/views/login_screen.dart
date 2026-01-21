@@ -1,3 +1,4 @@
+import 'package:cars_market/features/home/presentation/views/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -29,11 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: Implement login logic with Cubit
-      print('Phone: ${_phoneController.text}');
-      print('Password: ${_passwordController.text}');
+    // if (_formKey.currentState!.validate()) {
+    //   // TODO: Implement login logic with Cubit
+    //   print('Phone: ${_phoneController.text}');
+    //   print('Password: ${_passwordController.text}');
+    // }
+    context.navigateTo(const HomeScreen());
     }
+
+  void _handleRegister() {
+
   }
 
   @override
