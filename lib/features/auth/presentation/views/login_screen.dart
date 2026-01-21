@@ -1,8 +1,11 @@
-import 'package:cars_market/features/home/presentation/views/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../core/utils/extensions.dart';
@@ -29,14 +32,22 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
-    // if (_formKey.currentState!.validate()) {
-    //   // TODO: Implement login logic with Cubit
-    //   print('Phone: ${_phoneController.text}');
-    //   print('Password: ${_passwordController.text}');
-    // }
-    context.navigateTo(const HomeScreen());
+  void _handleLogin() async {
+    if (_formKey.currentState!.validate()) {
+      // TODO: Implement login logic with Cubit
+      // Get user type from controller (or default to customer)
+      final controller = UserTypeController();
+      final userType = controller.currentUserType ?? AppConstants.userTypeCustomer;
+      
+      // Save user type and token (simulate)
+      await controller.setUserType(userType);
+      
+      // Navigate based on user type
+      if (mounted) {
+        NavigationService.navigateAfterLogin(context, userType);
+      }
     }
+  }
 
   void _handleRegister() {
 

@@ -1,436 +1,454 @@
-# Application Routing Flow
+# Application Routing Flow - Complete Guide
 
-This document describes the complete navigation flow for all screens in the Cars Market application.
+This document describes the complete navigation flow for all screens, clearly distinguishing between **User (Customer)** and **Vendor** flows.
 
-## Navigation Map
+---
+
+## 🔐 Authentication Flow (Both User Types)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      SPLASH SCREEN                          │
-│                         (/splash)                           │
-│                                                             │
-│              ┌──────────────────────────┐                  │
-│              │   Auto Navigate After    │                  │
-│              │      3 seconds           │                  │
-│              └──────────────────────────┘                  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      LOGIN SCREEN                           │
-│                         (/login)                            │
-│                                                             │
-│  ┌────────────────┐            ┌────────────────────┐     │
-│  │ Register Link  │───────────▶│  REGISTER SCREEN   │     │
-│  └────────────────┘            │     (/register)    │     │
-│                                │                     │     │
-│                                │  ┌──────────────┐  │     │
-│                                │  │ After Reg    │  │     │
-│                                │  │ (Vendor) →   │  │     │
-│                                │  └──────────────┘  │     │
-│                                └────────────────────┘     │
-│                                      │                     │
-│                                      ▼                     │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   HOME SCREEN (USER)                        │
-│                        (/home)                              │
-│                                                             │
-│  ┌─────────────────────┐                                   │
-│  │  Search Button      │                                   │
-│  └─────────────────────┘                                   │
-│           │                                                 │
-│           ▼                                                 │
-│  ┌─────────────────────┐                                   │
-│  │ SEARCH RESULTS      │                                   │
-│  │   (/search-results) │                                   │
-│  │                     │                                   │
-│  │  ┌──────────────┐   │                                   │
-│  │  │ Contact Btn  │───┼────────────────────────────┐     │
-│  │  └──────────────┘   │                            │     │
-│  └─────────────────────┘                            │     │
-│                                                     │     │
-│  ┌─────────────────────┐                            │     │
-│  │ Supplier Cards      │                            │     │
-│  └─────────────────────┘                            │     │
-│           │                                           │     │
-│           └──────────────────────────────────────────┘     │
-│                                                             │
-│  ┌──────────────────────────────────────────────────┐     │
-│  │              BOTTOM NAVIGATION                   │     │
-│  │  Home | Orders | Garage | Profile               │     │
-│  └──────────────────────────────────────────────────┘     │
-│           │          │         │          │                │
-│           │          │         │          └─────────┐      │
-│           │          │         │                    │      │
-│           │          │         ▼                    │      │
-│           │          │  ┌─────────────┐            │      │
-│           │          │  │  GARAGE     │            │      │
-│           │          │  │   SCREEN    │            │      │
-│           │          │  └─────────────┘            │      │
-│           │          │                              │      │
-│           │          ▼                              │      │
-│           │  ┌─────────────┐                       │      │
-│           │  │   ORDERS    │                       │      │
-│           │  │   SCREEN    │                       │      │
-│           │  └─────────────┘                       │      │
-│           │                                         │      │
-│           └─────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│              VENDOR PROFILE SCREEN                          │
-│                  (/vendor-profile)                          │
-│                                                             │
-│  ┌──────────────────────┐                                  │
-│  │  Start Chat Button   │                                  │
-│  └──────────────────────┘                                  │
-│           │                                                 │
-│           ▼                                                 │
-│  ┌──────────────────────┐                                  │
-│  │  CHAT ROOM SCREEN    │                                  │
-│  │    (/chat-room)      │                                  │
-│  │                      │                                  │
-│  │  ┌──────────────┐    │                                  │
-│  │  │ Send Message │    │                                  │
-│  │  └──────────────┘    │                                  │
-│  └──────────────────────┘                                  │
-│                                                             │
-│  ┌──────────────────────┐                                  │
-│  │   Phone Button       │                                  │
-│  │   (Future: Call)     │                                  │
-│  └──────────────────────┘                                  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  CHAT LIST SCREEN                           │
-│                    (/chat-list)                             │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Filter: All | Unread | Archive                   │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌──────────────────────┐                                  │
-│  │  Chat Items          │                                  │
-│  └──────────────────────┘                                  │
-│           │                                                 │
-│           ▼                                                 │
-│  ┌──────────────────────┐                                  │
-│  │  CHAT ROOM SCREEN    │                                  │
-│  │    (/chat-room)      │                                  │
-│  │                      │                                  │
-│  │  ┌──────────────┐    │                                  │
-│  │  │ Message Input│    │                                  │
-│  │  │ Send Button  │    │                                  │
-│  │  └──────────────┘    │                                  │
-│  └──────────────────────┘                                  │
-│                                                             │
-│  ┌──────────────────────┐                                  │
-│  │   FAB (Add Chat)     │                                  │
-│  └──────────────────────┘                                  │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │              BOTTOM NAVIGATION                     │   │
-│  │  Home | My Cars | + | Chats | Account             │   │
-│  └────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 CHAT ROOM SCREEN                            │
-│                   (/chat-room)                              │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Header: Vendor Name | Phone Icon                  │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Messages (User/Business bubbles)                  │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Message Input: Text | Gallery | Send              │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  (For Vendors only)                                        │
-│  ┌──────────────────────┐                                  │
-│  │  Send Message Dialog │                                  │
-│  │  (Modal)             │                                  │
-│  └──────────────────────┘                                  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│            USER PROFILE SCREEN                              │
-│                  (/profile)                                 │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Profile Picture | Name | Phone                    │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Loyalty Program Card                              │   │
-│  │  - Points Display                                  │   │
-│  │  - Redeem Points Button                            │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Account Settings                                  │   │
-│  │  - Edit Profile                                    │   │
-│  │  - Language                                        │   │
-│  │  - Help & Support                                  │   │
-│  │  - Logout                                          │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  BOTTOM NAV: Home | Search | Orders | Account      │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Footer: App Version                               │   │
-│  └────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│          VENDOR DASHBOARD SCREEN                            │
-│              (/vendor-dashboard)                            │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Store Info | Online Status                        │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Performance Metrics                               │   │
-│  │  - Response Time                                   │   │
-│  │  - Total Chats                                     │   │
-│  │  - Rating                                          │   │
-│  │  - Weekly Activity Graph                           │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Subscription Section                              │   │
-│  │  ┌──────────────────────────────┐                  │   │
-│  │  │ Renew/Upgrade Button         │                  │   │
-│  │  └──────────────────────────────┘                  │   │
-│  │           │                                        │   │
-│  │           ▼                                        │   │
-│  │  ┌──────────────────────────────┐                  │   │
-│  │  │ SUBSCRIPTION PLANS SCREEN    │                  │   │
-│  │  │  (/subscription-plans)       │                  │   │
-│  │  │                              │                  │   │
-│  │  │  ┌────────────────────┐      │                  │   │
-│  │  │  │  Plan Cards        │      │                  │   │
-│  │  │  │  - Basic           │      │                  │   │
-│  │  │  │  - Golden          │      │                  │   │
-│  │  │  │  - Silver          │      │                  │   │
-│  │  │  └────────────────────┘      │                  │   │
-│  │  └──────────────────────────────┘                  │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  Quick Links                                       │   │
-│  │  - Manage Inventory                                │   │
-│  │  - Edit Store Profile                              │   │
-│  │  - Technical Support                               │   │
-│  └────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌────────────────────────────────────────────────────┐   │
-│  │  BOTTOM NAV: Home | Chats | Add | Reports | Activity│  │
-│  │                   | Account                         │  │
-│  └────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│         SPLASH SCREEN                   │
+│            (/splash)                    │
+│                                         │
+│  ┌──────────────────────────────┐      │
+│  │  Check: Auth Token exists?   │      │
+│  └──────────────────────────────┘      │
+│           │                             │
+│           ├─ YES ───────────────────────┼─┐
+│           │                              │ │
+│           └─ NO                          │ │
+│              │                           │ │
+│              ▼                           │ │
+│  ┌──────────────────────────────┐      │ │
+│  │      LOGIN SCREEN            │      │ │
+│  │        (/login)              │      │ │
+│  └──────────────────────────────┘      │ │
+│           │                             │ │
+│           ├─→ Register Link             │ │
+│           │   └─→ REGISTER SCREEN       │ │
+│           │       (/register)          │ │
+│           │                             │ │
+│           └─→ Login Button              │ │
+│               └─→ Check User Type ───────┘ │
+│                                           │
+└───────────────────────────────────────────┘
 ```
 
-## Complete Navigation Flow
+---
 
-### 1. **Authentication Flow**
-```
-Splash Screen
-    ↓ (3 seconds)
-Login Screen
-    ├─→ Register Screen
-    │   └─→ (After registration as Vendor)
-    │       └─→ Subscription Plans Screen
-    └─→ (After login)
-        └─→ Home Screen (User) OR Vendor Dashboard (Vendor)
-```
+## 👤 USER (CUSTOMER) FLOW
 
-### 2. **User Flow**
-
-#### **Home Screen Navigation:**
+### **After Login/Register (Customer):**
 ```
-Home Screen
-    ├─→ Search Button → Search Results Screen
-    │                       └─→ Vendor Profile → Chat Room
+Login/Register (Customer)
+    ↓
+HOME SCREEN (User)
     │
-    ├─→ Supplier Card → Vendor Profile Screen
-    │                       ├─→ Start Chat Button → Chat Room
-    │                       └─→ Phone Button → (Future: Call)
+    ├─→ Search Button
+    │   └─→ SEARCH RESULTS SCREEN
+    │       │
+    │       ├─→ Vendor Card
+    │       │   └─→ VENDOR PROFILE SCREEN
+    │       │       ├─→ Start Chat Button
+    │       │       │   └─→ CHAT ROOM SCREEN
+    │       │       └─→ Phone Button (Future)
+    │       │
+    │       └─→ Customer Reviews Section
+    │
+    ├─→ Supplier Card (from home list)
+    │   └─→ VENDOR PROFILE SCREEN
+    │       └─→ CHAT ROOM SCREEN
     │
     └─→ Bottom Navigation:
         ├─→ Home (stays on home)
         ├─→ Orders → Orders Screen (TODO)
         ├─→ Garage → Garage Screen (TODO)
-        └─→ Profile → User Profile Screen
+        └─→ Profile → USER PROFILE SCREEN
+            │
+            ├─→ Edit Profile (TODO)
+            ├─→ Language (TODO)
+            ├─→ Help & Support (TODO)
+            └─→ Logout → LOGIN SCREEN
 ```
 
-#### **Chat Flow:**
+### **Chat Flow (User):**
 ```
-Chat List Screen
-    ├─→ Chat Item → Chat Room Screen
+CHAT LIST SCREEN
     │
-    ├─→ Filter: All/Unread/Archive
+    ├─→ Chat Item
+    │   └─→ CHAT ROOM SCREEN
+    │       │
+    │       ├─→ Send Message (normal input)
+    │       └─→ Gallery Icon (Future: attach image)
+    │
+    ├─→ Filter: All | Unread | Archive
     │
     ├─→ FAB (+) → (Future: New Chat)
     │
     └─→ Bottom Navigation:
-        ├─→ Home → Home Screen
+        ├─→ Home → HOME SCREEN
         ├─→ My Cars → Garage Screen
         ├─→ Chats (current)
-        └─→ Account → Profile Screen
+        └─→ Account → USER PROFILE SCREEN
 ```
 
-#### **Search Results Flow:**
+---
+
+## 🏪 VENDOR FLOW
+
+### **After Login/Register (Vendor):**
 ```
-Search Results Screen
-    ├─→ Filter Chips (removable)
+Login/Register (Vendor)
+    ↓
+    ├─→ If No Subscription
+    │   └─→ SUBSCRIPTION PLANS SCREEN
+    │       │
+    │       ├─→ Select Plan
+    │       ├─→ Payment (Future: Paymob)
+    │       └─→ After Payment Success
+    │           └─→ VENDOR DASHBOARD
     │
-    ├─→ Vendor Card → Vendor Profile → Chat Room
-    │
-    ├─→ Customer Reviews Section
-    │
-    └─→ Bottom Navigation:
-        ├─→ Search (current)
-        ├─→ Orders → Orders Screen
-        ├─→ Chats → Chat List
-        └─→ Account → Profile Screen
+    └─→ If Has Subscription
+        └─→ VENDOR DASHBOARD SCREEN
 ```
 
-#### **Profile Flow:**
+### **Vendor Dashboard Navigation:**
 ```
-User Profile Screen
-    ├─→ Edit Profile → (Future: Edit Profile Screen)
-    ├─→ Language → (Future: Language Settings)
-    ├─→ Help & Support → (Future: Help Screen)
-    ├─→ Logout → Confirmation Dialog → Login Screen
+VENDOR DASHBOARD SCREEN
     │
-    └─→ Bottom Navigation:
-        ├─→ Home → Home Screen
-        ├─→ Search → Home Screen
-        ├─→ Orders → Orders Screen
-        └─→ Account (current)
-```
-
-### 3. **Vendor Flow**
-
-#### **Vendor Dashboard Navigation:**
-```
-Vendor Dashboard Screen
-    ├─→ Renew/Upgrade Button → Subscription Plans Screen
+    ├─→ Renew/Upgrade Button
+    │   └─→ SUBSCRIPTION PLANS SCREEN
     │
     ├─→ Quick Links:
-    │   ├─→ Manage Inventory → (Future: Inventory Screen)
-    │   ├─→ Edit Store Profile → (Future: Edit Profile)
-    │   └─→ Technical Support → (Future: Support Screen)
+    │   ├─→ Manage Inventory (TODO)
+    │   ├─→ Edit Store Profile (TODO)
+    │   └─→ Technical Support (TODO)
     │
     └─→ Bottom Navigation:
-        ├─→ Home → (Future: Vendor Home)
-        ├─→ Chats → Chat List Screen
-        ├─→ Add Item → (Future: Add Item Screen)
-        ├─→ Reports → (Future: Reports Screen)
-        ├─→ Activity → (Future: Activity Screen)
+        ├─→ Home → (stays on dashboard)
+        ├─→ Chats → CHAT LIST SCREEN (Vendor)
+        ├─→ Add Item → (TODO: Add Item Screen)
+        ├─→ Reports → (TODO: Reports Screen)
+        ├─→ Activity → (TODO: Activity Screen)
+        └─→ Account → (TODO: Vendor Account Screen)
+```
+
+### **Chat Flow (Vendor):**
+```
+CHAT LIST SCREEN (Vendor)
+    │
+    ├─→ Chat Item
+    │   └─→ CHAT ROOM SCREEN
+    │       │
+    │       ├─→ Send Message (normal input)
+    │       │
+    │       └─→ Gallery Icon
+    │           └─→ SEND MESSAGE DIALOG (Modal)
+    │               │
+    │               ├─→ Close (X) → Close dialog
+    │               └─→ Send Button → Send message
+    │
+    └─→ Bottom Navigation:
+        ├─→ Home → VENDOR DASHBOARD
+        ├─→ My Cars → (Future)
+        ├─→ Chats (current)
         └─→ Account → (Future: Vendor Account)
 ```
 
-#### **Vendor Chat Flow:**
-```
-Chat List Screen (Vendor)
-    └─→ Chat Item → Chat Room Screen
-                     └─→ (Can send messages to customers)
-```
+---
 
-### 4. **Modal Dialogs**
+## 📱 Screen-by-Screen Navigation Details
 
-#### **Send Message Dialog:**
-```
-Any Screen (Vendor context)
-    └─→ Show Send Message Dialog
-        ├─→ Close (X) → Close dialog
-        └─→ Send Button → Send message → Close dialog
-```
+### **1. Splash Screen** (`/`)
+- **Auto-navigates after 3 seconds**
+- **Checks:** Auth token in storage
+- **If logged in:** Navigate to home based on user type
+  - Customer → Home Screen
+  - Vendor → Vendor Dashboard
+- **If not logged in:** Navigate to Login Screen
 
-## Route Constants Reference
+### **2. Login Screen** (`/login`)
+- **Register Link** → Register Screen
+- **Login Button** → After successful login:
+  - Customer → Home Screen
+  - Vendor → Vendor Dashboard
+
+### **3. Register Screen** (`/register`)
+- **User Type Selection:** Customer or Vendor
+- **Register Button** → After successful registration:
+  - **Customer** → Home Screen
+  - **Vendor** → Subscription Plans Screen
+
+### **4. Home Screen (User)** (`/home`)
+- **Search Button** → Search Results Screen
+- **Supplier Card** → Vendor Profile Screen
+- **Bottom Nav:**
+  - Home (current)
+  - Orders → (TODO)
+  - Garage → (TODO)
+  - Profile → User Profile Screen
+
+### **5. Search Results Screen** (`/search-results`)
+- **Vendor Card** → Vendor Profile Screen
+- **Filter Chips** (removable)
+- **Bottom Nav:**
+  - Search (current)
+  - Orders → (TODO)
+  - Chats → Chat List Screen
+  - Account → User Profile Screen
+
+### **6. Vendor Profile Screen** (`/vendor-profile`)
+- **Start Chat Button** → Chat Room Screen
+- **Phone Button** → (Future: Call)
+- **Back Button** → Previous screen
+
+### **7. Chat List Screen** (`/chat-list`)
+- **Chat Item** → Chat Room Screen
+- **Filter:** All | Unread | Archive
+- **FAB (+)** → (Future: New Chat)
+- **Bottom Nav:**
+  - Home → Home Screen (User) OR Vendor Dashboard (Vendor)
+  - My Cars → (Future)
+  - Chats (current)
+  - Account → Profile Screen
+
+### **8. Chat Room Screen** (`/chat-room`)
+- **Send Message** → Normal text input
+- **Gallery Icon** → (Future: Image picker)
+  - **For Vendors:** Can show Send Message Dialog
+- **Back Button** → Chat List Screen
+
+### **9. User Profile Screen** (`/profile`)
+- **Edit Profile** → (Future: Edit Profile Screen)
+- **Language** → (Future: Language Settings)
+- **Help & Support** → (Future: Help Screen)
+- **Logout** → Confirmation Dialog → Login Screen
+- **Bottom Nav:**
+  - Home → Home Screen
+  - Search → Home Screen
+  - Orders → (TODO)
+  - Account (current)
+
+### **10. Vendor Dashboard Screen** (`/vendor-dashboard`)
+- **Renew/Upgrade Button** → Subscription Plans Screen
+- **Quick Links:**
+  - Manage Inventory → (Future)
+  - Edit Store Profile → (Future)
+  - Technical Support → (Future)
+- **Bottom Nav:**
+  - Home (current)
+  - Chats → Chat List Screen
+  - Add Item → (Future)
+  - Reports → (Future)
+  - Activity → (Future)
+  - Account → (Future)
+
+### **11. Subscription Plans Screen** (`/subscription-plans`)
+- **Duration Toggle:** Monthly | Annual
+- **Plan Cards:** Basic | Golden | Silver
+- **Subscribe Button** → After payment:
+  - Navigate to Vendor Dashboard
+- **Contact Sales** → (Future: Contact form)
+
+---
+
+## 🔄 Navigation Service Methods
+
+### **NavigationService.navigateToHome(context)**
+- Checks user type from storage
+- Navigates to:
+  - **Customer** → Home Screen
+  - **Vendor** → Vendor Dashboard
+
+### **NavigationService.navigateAfterLogin(context, userType)**
+- After successful login
+- Navigates based on userType:
+  - `customer` → Home Screen
+  - `vendor` → Vendor Dashboard
+
+### **NavigationService.navigateAfterRegister(context, userType)**
+- After successful registration
+- Navigates based on userType:
+  - `customer` → Home Screen
+  - `vendor` → Subscription Plans Screen
+
+### **NavigationService.navigateAfterSubscription(context)**
+- After successful subscription purchase
+- Navigates to: Vendor Dashboard
+
+### **NavigationService.navigateToLogout(context)**
+- Clears all storage
+- Navigates to: Login Screen
+
+---
+
+## 📋 Route Constants
 
 ```dart
 // Authentication
-AppRoutes.splash          → '/'               → SplashScreen
-AppRoutes.login           → '/login'          → LoginScreen
-AppRoutes.register        → '/register'       → RegisterScreen
+AppRoutes.splash          → '/'                  → SplashScreen
+AppRoutes.login           → '/login'             → LoginScreen
+AppRoutes.register        → '/register'          → RegisterScreen
 
-// Home & Search
-AppRoutes.home            → '/home'           → HomeScreen
-AppRoutes.searchResults   → '/search-results' → SearchResultsScreen
+// User Routes
+AppRoutes.home            → '/home'             → HomeScreen (User)
+AppRoutes.searchResults   → '/search-results'   → SearchResultsScreen
+AppRoutes.profile         → '/profile'          → UserProfileScreen
 
-// Vendor
-AppRoutes.vendorProfile   → '/vendor-profile' → VendorProfileScreen
+// Vendor Routes
 AppRoutes.vendorDashboard → '/vendor-dashboard' → VendorDashboardScreen
-
-// Chat
-AppRoutes.chatList        → '/chat-list'      → ChatListScreen
-AppRoutes.chatRoom        → '/chat-room'      → ChatRoomScreen
-
-// Subscription
 AppRoutes.subscriptionPlans → '/subscription-plans' → SubscriptionPlansScreen
 
-// Profile
-AppRoutes.profile         → '/profile'        → UserProfileScreen
+// Shared Routes
+AppRoutes.vendorProfile   → '/vendor-profile'  → VendorProfileScreen
+AppRoutes.chatList        → '/chat-list'        → ChatListScreen
+AppRoutes.chatRoom        → '/chat-room'        → ChatRoomScreen
 
-// Future Routes (not yet implemented)
-AppRoutes.orders          → '/orders'         → OrdersScreen
-AppRoutes.garage          → '/garage'         → GarageScreen
+// Future Routes
+AppRoutes.orders          → '/orders'           → OrdersScreen (TODO)
+AppRoutes.garage          → '/garage'           → GarageScreen (TODO)
 ```
 
-## Navigation Patterns
+---
 
-### Push Navigation (Forward)
-- Used for: Opening new screens on top
-- Example: `Navigator.pushNamed(context, AppRoutes.vendorProfile)`
+## 🎯 Key Navigation Patterns
 
-### Push and Remove Until (Clear Stack)
-- Used for: Authentication flow, major navigation changes
-- Example: `Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (route) => false)`
+### **1. Authentication Check**
+```dart
+// In Splash Screen
+final authToken = StorageService.getAuthToken();
+final userType = StorageService.getUserType();
 
-### Pop (Go Back)
-- Used for: Closing current screen
-- Example: `Navigator.pop(context)`
+if (authToken != null && userType != null) {
+  NavigationService.navigateToHome(context);
+} else {
+  Navigator.pushNamed(context, AppRoutes.login);
+}
+```
 
-### Pop with Result
-- Used for: Dialogs and modals
-- Example: `SendMessageDialog.show(context)` returns `Future<bool?>`
+### **2. User Type-Based Navigation**
+```dart
+// After Login
+NavigationService.navigateAfterLogin(context, userType);
 
-## Key Navigation Points
+// After Register
+NavigationService.navigateAfterRegister(context, userType);
+```
 
-1. **Splash → Login** (Auto after 3 seconds)
-2. **Login → Register** (Register link)
-3. **Register → Subscription Plans** (If vendor selected)
-4. **Home → Search Results** (Search button)
-5. **Search Results → Vendor Profile** (Contact button)
-6. **Vendor Profile → Chat Room** (Start chat button)
-7. **Home → Vendor Profile** (Supplier card tap)
-8. **Chat List → Chat Room** (Chat item tap)
-9. **Home → Profile** (Bottom nav - Account)
-10. **Profile → Logout** (After confirmation) → Login
-11. **Vendor Dashboard → Subscription Plans** (Renew/Upgrade button)
+### **3. Push Navigation (Forward)**
+```dart
+// Navigate to new screen
+Navigator.pushNamed(
+  context,
+  AppRoutes.vendorProfile,
+  arguments: {
+    'vendorId': 'vendor_1',
+    'vendorName': 'Vendor Name',
+  },
+);
+```
 
-## Notes
+### **4. Push and Remove Until (Clear Stack)**
+```dart
+// After login/register - clear navigation stack
+Navigator.pushNamedAndRemoveUntil(
+  context,
+  AppRoutes.home,
+  (route) => false,
+);
+```
 
-- All navigation uses named routes for consistency
-- Arguments can be passed via `arguments` parameter
-- Bottom navigation bars maintain state per screen
-- Modals/dialogs use `showDialog` for overlay behavior
+### **5. Modal Dialog**
+```dart
+// Show send message dialog
+SendMessageDialog.show(
+  context,
+  customerName: 'Customer Name',
+);
+```
 
+---
+
+## 🔀 Complete User Flow Examples
+
+### **Example 1: Customer Searching for Parts**
+```
+1. Splash → Login
+2. Login → Home Screen
+3. Home → Enter search criteria → Search Results
+4. Search Results → Tap vendor card → Vendor Profile
+5. Vendor Profile → Start Chat → Chat Room
+6. Chat Room → Send messages
+7. Back → Chat List → See all conversations
+```
+
+### **Example 2: Vendor Registration Flow**
+```
+1. Splash → Login
+2. Login → Register
+3. Register → Select "Vendor" → Fill form → Register
+4. Register → Subscription Plans Screen
+5. Subscription Plans → Select plan → Subscribe
+6. After payment → Vendor Dashboard
+7. Dashboard → Chats → Chat with customers
+```
+
+### **Example 3: Vendor Managing Business**
+```
+1. Vendor Dashboard → View performance metrics
+2. Dashboard → Renew Subscription → Subscription Plans
+3. Dashboard → Chats → Chat List
+4. Chat List → Chat Room → Send messages to customers
+5. Dashboard → Quick Links → Manage Inventory (Future)
+```
+
+---
+
+## ⚠️ Important Notes
+
+1. **User Type Detection:**
+   - Stored in `StorageService` with key `userTypeKey`
+   - Values: `customer` or `vendor`
+   - Checked on app start and after login
+
+2. **Subscription Check:**
+   - Vendors must have active subscription
+   - If no subscription → Redirect to Subscription Plans
+   - After subscription → Access to Vendor Dashboard
+
+3. **Bottom Navigation:**
+   - Different for User vs Vendor
+   - User: Home | Orders | Garage | Profile
+   - Vendor: Home | Chats | Add | Reports | Activity | Account
+
+4. **Chat Access:**
+   - Users can chat with vendors
+   - Vendors can chat with users
+   - No User-User or Vendor-Vendor chat
+
+5. **Navigation Stack:**
+   - Use `pushNamedAndRemoveUntil` for authentication flows
+   - Use `pushNamed` for normal navigation
+   - Use `pop` to go back
+
+---
+
+## 🚀 Quick Reference
+
+| Action | User Type | Destination |
+|--------|-----------|-------------|
+| After Login | Customer | Home Screen |
+| After Login | Vendor | Vendor Dashboard |
+| After Register | Customer | Home Screen |
+| After Register | Vendor | Subscription Plans |
+| After Subscription | Vendor | Vendor Dashboard |
+| Logout | Both | Login Screen |
+| Search | Customer | Search Results |
+| View Vendor | Customer | Vendor Profile |
+| Start Chat | Customer | Chat Room |
+| Manage Business | Vendor | Vendor Dashboard |
+
+---
+
+This routing flow ensures proper navigation based on user type and maintains a clear separation between customer and vendor experiences.

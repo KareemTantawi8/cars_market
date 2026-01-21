@@ -355,8 +355,15 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() {
             _currentNavIndex = index;
           });
-          if (index == 3) {
-            // Navigate to profile
+          // Handle navigation based on index
+          if (index == 0) {
+            // Home - stay on current screen
+          } else if (index == 1) {
+            // Orders - TODO: Navigate to orders screen
+          } else if (index == 2) {
+            // Garage - TODO: Navigate to garage screen
+          } else if (index == 3) {
+            // Profile
             Navigator.pushNamed(context, AppRoutes.profile);
           }
         },

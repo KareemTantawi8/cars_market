@@ -5,9 +5,14 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/constants.dart';
 import 'core/routes/app_routes.dart';
 import 'core/routes/app_router.dart';
+import 'core/controllers/user_type_controller.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize storage and user type controller
+  await UserTypeController().initialize();
+  
   runApp(const MyApp());
 }
 

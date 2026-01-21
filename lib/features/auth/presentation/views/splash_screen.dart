@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/utils/extensions.dart';
 import 'login_screen.dart';
 
@@ -30,6 +33,13 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
+    _initializeAndNavigate();
+  }
+
+  Future<void> _initializeAndNavigate() async {
+    // Initialize storage service and user type controller
+    await StorageService.init();
+    await UserTypeController().initialize();
     _navigateToNext();
   }
 
@@ -40,9 +50,19 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _navigateToNext() {
-    // TODO: Check authentication status and navigate accordingly
     Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+      if (!mounted) return;
+      
+      // Check if user is logged in
+      final controller = UserTypeController();
+      final authToken = StorageService.getAuthToken();
+      final userType = controller.currentUserType ?? StorageService.getUserType();
+      
+      if (authToken != null && userType != null) {
+        // User is logged in, navigate to appropriate home
+        NavigationService.navigateToHome(context);
+      } else {
+        // User is not logged in, navigate to login
         context.navigateToAndRemoveUntil(const LoginScreen());
       }
     });

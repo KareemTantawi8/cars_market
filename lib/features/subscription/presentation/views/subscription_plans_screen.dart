@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/services/navigation_service.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
 
@@ -420,8 +421,18 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   }
 
   void _handleSubscribe(SubscriptionPlan plan) {
-    // TODO: Implement subscription logic
+    // TODO: Implement subscription logic with payment
+    // After successful subscription:
+    // 1. Save subscription data
+    // 2. Navigate to vendor dashboard
     print('Subscribing to ${plan.name} - ${_selectedDuration}');
+    
+    // Simulate subscription success
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        NavigationService.navigateAfterSubscription(context);
+      }
+    });
   }
 }
 

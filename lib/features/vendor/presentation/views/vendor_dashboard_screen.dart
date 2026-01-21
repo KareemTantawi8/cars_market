@@ -3,6 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -547,7 +549,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home, 'الرئيسية', 0, () {}),
+              _buildNavItem(Icons.home, 'الرئيسية', 0, () {
+                // Stay on dashboard (home for vendor)
+                setState(() => _selectedNavIndex = 0);
+              }),
               _buildNavItem(Icons.chat_bubble, 'المحادثات', 1, () {
                 Navigator.pushNamed(context, AppRoutes.chatList);
               }),

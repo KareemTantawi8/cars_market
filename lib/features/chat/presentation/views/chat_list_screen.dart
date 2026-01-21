@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/chat_item.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 
@@ -231,11 +234,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 label: 'الرئيسية',
                 isSelected: false,
                 onTap: () {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.home,
-                    (route) => false,
-                  );
+                  // Navigate based on user type
+                  final userType = StorageService.getUserType();
+                  if (userType == AppConstants.userTypeVendor) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.vendorDashboard,
+                      (route) => false,
+                    );
+                  } else {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.home,
+                      (route) => false,
+                    );
+                  }
                 },
               ),
               _buildNavItem(
@@ -259,7 +272,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 label: 'حسابي',
                 isSelected: false,
                 onTap: () {
-                  // TODO: Navigate to profile
+                  Navigator.pushNamed(context, AppRoutes.profile);
                 },
               ),
             ],

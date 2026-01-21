@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
@@ -32,13 +35,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _handleRegister() {
+  void _handleRegister() async {
     if (_formKey.currentState!.validate()) {
       // TODO: Implement register logic with Cubit
-      print('User Type: $_selectedUserType');
-      print('Name: ${_nameController.text}');
-      print('Phone: ${_phoneController.text}');
-      print('Password: ${_passwordController.text}');
+      // Save user type and token (simulate)
+      final controller = UserTypeController();
+      await controller.setUserType(_selectedUserType);
+      
+      // Navigate based on user type
+      NavigationService.navigateAfterRegister(context, _selectedUserType);
     }
   }
 

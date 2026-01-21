@@ -33,6 +33,9 @@ class AppColors {
   // Rating
   static const Color ratingStar = Color(0xFFFFD700); // Gold
 
+  // Accent Color (for vendor/golden elements)
+  static const Color accentColor = Color(0xFFFFD700); // Gold
+
   // Borders
   static const Color borderColor = Color(0xFF3A3A3A);
   static const Color dividerColor = Color(0xFF2A2A2A);

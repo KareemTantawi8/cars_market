@@ -3,8 +3,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/services/navigation_service.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
+import '../../../../shared/widgets/debug/user_type_switcher.dart';
 
 /// User Profile Screen
 class UserProfileScreen extends StatefulWidget {
@@ -235,6 +238,88 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           style: AppTextStyles.headingSmall,
         ),
         const SizedBox(height: 16),
+        // Debug: User Type Switcher
+        InkWell(
+          onTap: () {
+            UserTypeSwitcher.showBottomSheet(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.swap_horiz,
+                    color: AppColors.primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'تبديل نوع المستخدم',
+                            style: AppTextStyles.bodyMedium,
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.accentColor.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'DEBUG',
+                              style: AppTextStyles.captionSmall.copyWith(
+                                color: AppColors.accentColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      ListenableBuilder(
+                        listenable: UserTypeController(),
+                        builder: (context, child) {
+                          final controller = UserTypeController();
+                          return Text(
+                            'النوع الحالي: ${controller.userTypeDisplayName}',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         _buildSettingItem(
           icon: Icons.logout,
           title: 'تسجيل الخروج',
@@ -427,12 +512,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           TextButton(
             onPressed: () {
-              // TODO: Implement logout logic
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.login,
-                (route) => false,
-              );
+              NavigationService.navigateToLogout(context);
             },
             child: Text(
               'تسجيل الخروج',
