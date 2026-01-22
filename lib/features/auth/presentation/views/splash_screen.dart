@@ -85,7 +85,7 @@ class _SplashScreenState extends State<SplashScreen>
               // App Name
               Text(
                 AppConstants.appName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
@@ -116,7 +116,7 @@ class _SplashScreenState extends State<SplashScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'جاري التحميل...',
                               style: TextStyle(
                                 fontSize: 14,
@@ -125,7 +125,7 @@ class _SplashScreenState extends State<SplashScreen>
                             ),
                             Text(
                               '%$percentage',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textPrimary,
                               ),
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                       ),
                       const SizedBox(height: 24),
                       // Premium Text
-                      const Text(
+                      Text(
                         'PREMIUM AUTOMOTIVE MARKETPLACE',
                         style: TextStyle(
                           fontSize: 12,
@@ -161,7 +161,7 @@ class _SplashScreenState extends State<SplashScreen>
                       // Version
                       Text(
                         'الإصدار ${AppConstants.appVersion}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textHint,
                         ),

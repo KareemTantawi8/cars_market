@@ -176,8 +176,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   decoration: InputDecoration(
                     hintText: '01X XXXX XXXX',
                     hintStyle: AppTextStyles.inputHint,
-                    suffixIcon: const Padding(
-                      padding: EdgeInsets.all(12.0),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.all(12.0),
                       child: Icon(
                         Icons.phone,
                         color: AppColors.textSecondary,

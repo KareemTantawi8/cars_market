@@ -8,6 +8,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
+import '../../../../shared/widgets/common/segment_control.dart';
 import '../../../../core/utils/extensions.dart';
 import '../views/register_screen.dart';
 
@@ -24,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  String _selectedUserType = AppConstants.userTypeCustomer;
 
   @override
   void dispose() {
@@ -35,16 +37,13 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       // TODO: Implement login logic with Cubit
-      // Get user type from controller (or default to customer)
-      final controller = UserTypeController();
-      final userType = controller.currentUserType ?? AppConstants.userTypeCustomer;
-      
       // Save user type and token (simulate)
-      await controller.setUserType(userType);
+      final controller = UserTypeController();
+      await controller.setUserType(_selectedUserType);
       
-      // Navigate based on user type
+      // Navigate based on selected user type
       if (mounted) {
-        NavigationService.navigateAfterLogin(context, userType);
+        NavigationService.navigateAfterLogin(context, _selectedUserType);
       }
     }
   }
@@ -99,6 +98,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 40),
+                // User Type Selection
+                SegmentControl<String>(
+                  segments: const [
+                    SegmentItem(
+                      value: AppConstants.userTypeCustomer,
+                      label: 'عميل',
+                    ),
+                    SegmentItem(
+                      value: AppConstants.userTypeVendor,
+                      label: 'تاجر',
+                    ),
+                  ],
+                  selectedValue: _selectedUserType,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedUserType = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 32),
                 // Phone Number Field
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,

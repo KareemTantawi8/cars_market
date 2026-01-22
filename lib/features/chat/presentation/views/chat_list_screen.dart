@@ -3,10 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
-import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/chat_item.dart';
-import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 
 /// Chat List Screen
 class ChatListScreen extends StatefulWidget {
@@ -212,7 +210,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         boxShadow: [
           BoxShadow(

@@ -60,4 +60,3 @@ class AppColors {
   static const Color badgeColor = primaryColor;
   static const Color notificationDot = error;
 }
-
