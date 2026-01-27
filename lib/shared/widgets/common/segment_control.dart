@@ -18,10 +18,14 @@ class SegmentControl<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 48,
+      height: 52,
       decoration: BoxDecoration(
         color: AppColors.surfaceColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.inputBorder,
+          width: 1,
+        ),
       ),
       child: Row(
         children: segments.asMap().entries.map((entry) {
@@ -32,12 +36,24 @@ class SegmentControl<T> extends StatelessWidget {
           return Expanded(
             child: GestureDetector(
               onTap: () => onChanged(segment.value),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? AppColors.backgroundColor
+                      ? AppColors.buttonPrimary
                       : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppColors.buttonPrimary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: Text(
@@ -46,7 +62,8 @@ class SegmentControl<T> extends StatelessWidget {
                       color: isSelected
                           ? AppColors.textPrimary
                           : AppColors.textSecondary,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                      fontSize: isSelected ? 15 : 14,
                     ),
                   ),
                 ),

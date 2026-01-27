@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
-import '../../../../core/services/navigation_service.dart';
-import '../../../../core/services/storage_service.dart';
-import '../../../../core/controllers/user_type_controller.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
+import '../cubit/register_cubit.dart';
 import 'login_screen.dart';
 
 /// Register Screen
@@ -24,7 +25,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _passwordConfirmationController = TextEditingController();
+  final _companyNameController = TextEditingController();
+  final _governorateController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscurePasswordConfirmation = true;
   String _selectedUserType = AppConstants.userTypeCustomer;
 
   @override
@@ -32,34 +37,80 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _passwordConfirmationController.dispose();
+    _companyNameController.dispose();
+    _governorateController.dispose();
     super.dispose();
   }
 
-  void _handleRegister() async {
+  void _handleRegister(BuildContext context) {
     if (_formKey.currentState!.validate()) {
-      // TODO: Implement register logic with Cubit
-      // Save user type and token (simulate)
-      final controller = UserTypeController();
-      await controller.setUserType(_selectedUserType);
+      final cubit = context.read<RegisterCubit>();
       
-      // Navigate based on user type
-      NavigationService.navigateAfterRegister(context, _selectedUserType);
+      if (_selectedUserType == AppConstants.userTypeCustomer) {
+        cubit.registerAsUser(
+          name: _nameController.text,
+          phone: _phoneController.text,
+          password: _passwordController.text,
+          passwordConfirmation: _passwordConfirmationController.text,
+        );
+      } else {
+        cubit.registerAsVendor(
+          name: _nameController.text,
+          phone: _phoneController.text,
+          password: _passwordController.text,
+          passwordConfirmation: _passwordConfirmationController.text,
+          companyName: _companyNameController.text,
+          governorate: _governorateController.text,
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => RegisterCubit(),
+      child: BlocListener<RegisterCubit, RegisterState>(
+        listener: (context, state) {
+          if (state is RegisterSuccess) {
+            // Show success toast
+            CustomToast.showSuccess(
+              context,
+              state.response.message,
+              duration: const Duration(seconds: 2),
+            );
+            // Navigate to login screen after successful registration
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.login,
+                  (route) => false,
+                );
+              }
+            });
+          } else if (state is RegisterError) {
+            // Show error toast
+            CustomToast.showError(
+              context,
+              state.message,
+              duration: const Duration(seconds: 4),
+            );
+          }
+        },
+        child: BlocBuilder<RegisterCubit, RegisterState>(
+          builder: (context, state) {
+            final isLoading = state is RegisterLoading;
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
         ),
-      ),
-      body: SafeArea(
+              body: Stack(
+                children: [
+                  SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Form(
@@ -75,7 +126,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: AppTextStyles.headingMedium,
                   ),
                 ),
-                const SizedBox(height: 32),
+                            const SizedBox(height: 20),
                 // Main Title
                 Text(
                   'سجل معنا الآن',
@@ -91,7 +142,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                            const SizedBox(height: 20),
                 // User Type Selection
                 SegmentControl<String>(
                   segments: const [
@@ -111,7 +162,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     });
                   },
                 ),
-                const SizedBox(height: 32),
+                            const SizedBox(height: 12),
+                            // Selected Type Indicator
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _selectedUserType == AppConstants.userTypeCustomer
+                                    ? AppColors.primaryColor.withOpacity(0.1)
+                                    : AppColors.buttonPrimary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _selectedUserType == AppConstants.userTypeCustomer
+                                      ? AppColors.primaryColor.withOpacity(0.3)
+                                      : AppColors.buttonPrimary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _selectedUserType == AppConstants.userTypeCustomer
+                                        ? Icons.person
+                                        : Icons.store,
+                                    size: 20,
+                                    color: _selectedUserType == AppConstants.userTypeCustomer
+                                        ? AppColors.primaryColor
+                                        : AppColors.buttonPrimary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _selectedUserType == AppConstants.userTypeCustomer
+                                        ? 'أنت تقوم بإنشاء حساب كعميل'
+                                        : 'أنت تقوم بإنشاء حساب كتاجر',
+                                    style: AppTextStyles.bodySmall.copyWith(
+                                      color: _selectedUserType == AppConstants.userTypeCustomer
+                                          ? AppColors.primaryColor
+                                          : AppColors.buttonPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
                 // Full Name Field
                 Text(
                   'الاسم الكامل',
@@ -158,7 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                 // Mobile Number Field
                 Text(
                   'رقم الموبايل',
@@ -215,7 +312,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                 // Password Field
                 Text(
                   'كلمة المرور',
@@ -225,8 +322,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _handleRegister(),
+                            textInputAction: TextInputAction.next,
                   style: AppTextStyles.input,
                   decoration: InputDecoration(
                     hintText: '••••••••',
@@ -276,46 +372,172 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
-                // Create Account Button
-                PrimaryButton(
-                  text: 'إنشاء الحساب',
-                  onPressed: _handleRegister,
-                ),
-                const SizedBox(height: 24),
-                // Terms and Conditions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: RichText(
-                        textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                          const SizedBox(height: 16),
+                          // Password Confirmation Field
+                          Text(
+                            'تأكيد كلمة المرور',
+                            style: AppTextStyles.inputLabel,
                           ),
-                          children: [
-                            const TextSpan(
-                              text: 'بإنشاء حساب، أنت توافق على ',
-                            ),
-                            WidgetSpan(
-                              child: GestureDetector(
-                                onTap: () {
-                                  // TODO: Navigate to terms and conditions
+                          const SizedBox(height: 8),
+                          TextFormField(
+                            controller: _passwordConfirmationController,
+                            obscureText: _obscurePasswordConfirmation,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _handleRegister(context),
+                            style: AppTextStyles.input,
+                            decoration: InputDecoration(
+                              hintText: '••••••••',
+                              hintStyle: AppTextStyles.inputHint,
+                              prefixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePasswordConfirmation
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                            color: AppColors.textSecondary,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePasswordConfirmation = !_obscurePasswordConfirmation;
+                                  });
                                 },
-                                child: Text(
-                                  'الشروط والأحكام',
-                                  style: AppTextStyles.link.copyWith(
-                                    fontSize: 14,
-                                  ),
+                              ),
+                              filled: true,
+                              fillColor: AppColors.inputBackground,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.inputBorder,
+                                ),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.inputBorder,
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                  color: AppColors.inputBorderFocused,
+                                  width: 2,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'الرجاء تأكيد كلمة المرور';
+                              }
+                              if (value != _passwordController.text) {
+                                return 'كلمة المرور وتأكيد كلمة المرور غير متطابقين';
+                              }
+                              return null;
+                            },
+                          ),
+                          // Vendor-specific fields
+                          if (_selectedUserType == AppConstants.userTypeVendor) ...[
+                            const SizedBox(height: 16),
+                            // Company Name Field
+                            Text(
+                              'اسم الشركة',
+                              style: AppTextStyles.inputLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _companyNameController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.next,
+                              style: AppTextStyles.input,
+                              decoration: InputDecoration(
+                                hintText: 'أدخل اسم الشركة',
+                                hintStyle: AppTextStyles.inputHint,
+                                filled: true,
+                                fillColor: AppColors.inputBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorder,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorder,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorderFocused,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (_selectedUserType == AppConstants.userTypeVendor) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'الرجاء إدخال اسم الشركة';
+                                  }
+                                  if (value.length < 2) {
+                                    return 'اسم الشركة يجب أن يكون حرفين على الأقل';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 16),
+                            // Governorate Field
+                            Text(
+                              'المحافظة',
+                              style: AppTextStyles.inputLabel,
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _governorateController,
+                              keyboardType: TextInputType.text,
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _handleRegister(context),
+                              style: AppTextStyles.input,
+                              decoration: InputDecoration(
+                                hintText: 'أدخل المحافظة',
+                                hintStyle: AppTextStyles.inputHint,
+                                filled: true,
+                                fillColor: AppColors.inputBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorder,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorder,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.inputBorderFocused,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (_selectedUserType == AppConstants.userTypeVendor) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'الرجاء إدخال المحافظة';
+                                  }
+                                }
+                                return null;
+                              },
+                            ),
+                        ],
+                        const SizedBox(height: 24),
+                        // Create Account Button
+                        PrimaryButton(
+                          text: 'إنشاء الحساب',
+                          onPressed: isLoading ? null : () => _handleRegister(context),
+                          isLoading: isLoading,
                 ),
                 const SizedBox(height: 16),
                 // Login Link
@@ -330,7 +552,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(width: 8),
                     TextButton(
-                      onPressed: () {
+                              onPressed: isLoading
+                                  ? null
+                                  : () {
                         context.pop();
                       },
                       child: Text(
@@ -340,10 +564,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+                // Loading Overlay
+                  ), if (isLoading)
+                  Container(
+                    color: Colors.black.withOpacity(0.3),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
               ],
             ),
-          ),
+            );
+          },
         ),
       ),
     );

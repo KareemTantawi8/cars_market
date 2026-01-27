@@ -53,3 +53,7 @@ flutter run -d HYLZLVWONNKNDY7H
 
 **Download iOS 26.2 Simulator Runtime** from Xcode Settings → Platforms. This is the cleanest solution and will allow you to use the iPhone 16e simulator.
 
+
+
+
+

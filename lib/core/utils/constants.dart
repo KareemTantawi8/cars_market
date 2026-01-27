@@ -8,7 +8,7 @@ class AppConstants {
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
   // API Configuration
-  static const String baseUrl = 'https://api.example.com'; // TODO: Replace with actual API URL
+  static const String baseUrl = 'http://3.88.167.66';
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 
