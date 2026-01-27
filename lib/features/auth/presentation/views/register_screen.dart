@@ -104,10 +104,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             final isLoading = state is RegisterLoading;
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        ),
+      // appBar: AppBar(
+      //   backgroundColor: Colors.transparent,
+      //   elevation: 0,
+      //   ),
               body: Stack(
                 children: [
                   SafeArea(

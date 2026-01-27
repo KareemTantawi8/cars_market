@@ -72,7 +72,7 @@ class CustomToast {
       ),
     );
 
-    overlay.insert(overlayEntry);
+    overlay.insert(overlayEntry!);
 
     // Remove overlay entry after duration
     Future.delayed(duration, () {

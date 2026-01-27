@@ -4,6 +4,8 @@ import '../../../../core/network/api_endpoints.dart';
 import '../models/register_request_model.dart';
 import '../models/vendor_register_request_model.dart';
 import '../models/register_response_model.dart';
+import '../models/login_request_model.dart';
+import '../models/login_response_model.dart';
 
 /// Auth Repository - Handles authentication API calls
 class AuthRepository {
@@ -65,6 +67,37 @@ class AuthRepository {
         final errorMessage = errorData is Map<String, dynamic>
             ? errorData['message'] ?? errorData['error'] ?? 'Registration failed'
             : 'Registration failed';
+        throw Exception(errorMessage);
+      } else {
+        throw Exception('Network error: ${e.message}');
+      }
+    } catch (e) {
+      throw Exception('Unexpected error: $e');
+    }
+  }
+
+  /// Login
+  Future<LoginResponseModel> login(
+    LoginRequestModel request,
+  ) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.login,
+        data: request.toJson(),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return LoginResponseModel.fromJson(response.data);
+      } else {
+        throw Exception('Login failed: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      // Handle API errors
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        final errorMessage = errorData is Map<String, dynamic>
+            ? errorData['message'] ?? errorData['error'] ?? 'Login failed'
+            : 'Login failed';
         throw Exception(errorMessage);
       } else {
         throw Exception('Network error: ${e.message}');
