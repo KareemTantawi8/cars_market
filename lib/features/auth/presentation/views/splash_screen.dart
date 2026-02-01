@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/constants.dart';
-import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../shared/widgets/common/app_logo.dart';
 import 'login_screen.dart';
 
 /// Splash Screen
@@ -53,18 +53,8 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
       
-      // Check if user is logged in
-      final controller = UserTypeController();
-      final authToken = StorageService.getAuthToken();
-      final userType = controller.currentUserType ?? StorageService.getUserType();
-      
-      if (authToken != null && userType != null) {
-        // User is logged in, navigate to appropriate home
-        NavigationService.navigateToHome(context);
-      } else {
-        // User is not logged in, navigate to login
+      // Always navigate to login screen - user must login every time
         context.navigateToAndRemoveUntil(const LoginScreen());
-      }
     });
   }
 
@@ -73,15 +63,22 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       body: SafeArea(
+        child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height - 
+                    MediaQuery.of(context).padding.top - 
+                    MediaQuery.of(context).padding.bottom,
+              ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Spacer(flex: 2),
+                  const SizedBox(height: 40),
               // App Logo with Blue Glow
-              _buildLogo(),
-              const SizedBox(height: 32),
+                  const AppLogo(size: 140, withGlow: true),
+                  const SizedBox(height: 24),
               // App Name
               Text(
                 AppConstants.appName,
@@ -89,6 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
+                      letterSpacing: 1.2,
                 ),
               ),
               const SizedBox(height: 8),
@@ -101,7 +99,7 @@ class _SplashScreenState extends State<SplashScreen>
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const Spacer(flex: 3),
+                  const SizedBox(height: 60),
               // Loading Section
               AnimatedBuilder(
                 animation: _progressAnimation,
@@ -151,64 +149,19 @@ class _SplashScreenState extends State<SplashScreen>
                       Text(
                         'PREMIUM AUTOMOTIVE MARKETPLACE',
                         style: TextStyle(
-                          fontSize: 12,
+                              fontSize: 11,
                           color: AppColors.textSecondary,
                           letterSpacing: 1.2,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Version
-                      Text(
-                        'الإصدار ${AppConstants.appVersion}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textHint,
+                              fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build Logo with Spark Plug Icons
-  Widget _buildLogo() {
-    return Container(
-      width: 140,
-      height: 140,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.black,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.5),
-            blurRadius: 30,
-            spreadRadius: 5,
-          ),
+                  const SizedBox(height: 20),
         ],
       ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18 , vertical: 36),
-          child: Center(
-            child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: 6,
-              itemBuilder: (context, index) {
-                return _buildSparkPlugIcon(index);
-              },
             ),
           ),
         ),
@@ -216,120 +169,5 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  /// Build Individual Spark Plug Icon
-  Widget _buildSparkPlugIcon(int index) {
-    // Top row: prongs pointing down (0, 1, 2)
-    // Bottom row: prongs pointing up (3, 4, 5)
-    final bool isTopRow = index < 3;
-    
-    return CustomPaint(
-      painter: SparkPlugPainter(isTopRow: isTopRow),
-    );
-  }
-}
-
-/// Custom Painter for Spark Plug Icon
-class SparkPlugPainter extends CustomPainter {
-  final bool isTopRow;
-
-  SparkPlugPainter({required this.isTopRow});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.primaryColor
-      ..style = PaintingStyle.fill;
-
-    final width = size.width;
-    final height = size.height;
-    final centerX = width / 2;
-    final centerY = height / 2;
-
-    if (isTopRow) {
-      // Prongs pointing down
-      // Top connector (wider)
-      canvas.drawRect(
-        Rect.fromLTWH(centerX - width * 0.25, 0, width * 0.5, height * 0.4),
-        paint,
-      );
-      // Stem (narrower)
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - width * 0.15,
-          height * 0.4,
-          width * 0.3,
-          height * 0.6,
-        ),
-        paint,
-      );
-      // Prongs (two at bottom)
-      final prongWidth = width * 0.08;
-      final prongGap = width * 0.1;
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - prongGap - prongWidth,
-          height * 0.85,
-          prongWidth,
-          height * 0.15,
-        ),
-        paint,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX + prongGap,
-          height * 0.85,
-          prongWidth,
-          height * 0.15,
-        ),
-        paint,
-      );
-    } else {
-      // Prongs pointing up
-      // Bottom connector (wider)
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - width * 0.25,
-          height * 0.6,
-          width * 0.5,
-          height * 0.4,
-        ),
-        paint,
-      );
-      // Stem (narrower)
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - width * 0.15,
-          0,
-          width * 0.3,
-          height * 0.6,
-        ),
-        paint,
-      );
-      // Prongs (two at top)
-      final prongWidth = width * 0.08;
-      final prongGap = width * 0.1;
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX - prongGap - prongWidth,
-          0,
-          prongWidth,
-          height * 0.15,
-        ),
-        paint,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH(
-          centerX + prongGap,
-          0,
-          prongWidth,
-          height * 0.15,
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 

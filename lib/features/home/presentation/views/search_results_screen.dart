@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
@@ -6,18 +7,55 @@ import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
+import '../../data/models/search_request_model.dart';
+import '../../data/models/search_response_model.dart';
+import '../../data/models/supplier_model.dart';
+import '../cubit/search_cubit.dart';
 
 /// Search Results Screen
 class SearchResultsScreen extends StatefulWidget {
-  const SearchResultsScreen({super.key});
+  final SearchRequestModel? searchRequest;
+  final SearchResponseModel? searchResponse;
+
+  const SearchResultsScreen({
+    super.key,
+    this.searchRequest,
+    this.searchResponse,
+  });
 
   @override
   State<SearchResultsScreen> createState() => _SearchResultsScreenState();
 }
 
 class _SearchResultsScreenState extends State<SearchResultsScreen> {
-  final List<String> _activeFilters = ['2022', 'مساعدين', 'تويوتا كورولا'];
   int _currentNavIndex = 1; // Search is at index 1
+
+  List<String> get _activeFilters {
+    final request = widget.searchRequest;
+    if (request == null) return [];
+    
+    final filters = <String>[];
+    if (request.partName != null && request.partName!.isNotEmpty) {
+      filters.add(request.partName!);
+    }
+    if (request.brandName != null && request.brandName!.isNotEmpty) {
+      filters.add(request.brandName!);
+    }
+    if (request.modelName != null && request.modelName!.isNotEmpty) {
+      filters.add(request.modelName!);
+    }
+    if (request.yearName != null && request.yearName!.isNotEmpty) {
+      filters.add(request.yearName!);
+    }
+    if (request.governorateName != null && request.governorateName!.isNotEmpty) {
+      filters.add(request.governorateName!);
+    }
+    return filters;
+  }
+
+  List<SupplierModel> get _suppliers {
+    return widget.searchResponse?.suppliers ?? [];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,80 +82,166 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Filter Chips
-            if (_activeFilters.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                color: AppColors.surfaceColor,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: _activeFilters.map((filter) {
-                            return Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: Chip(
-                                label: Text(filter),
-                                backgroundColor: AppColors.cardColor,
-                                labelStyle: AppTextStyles.bodySmall,
-                                deleteIcon: const Icon(
-                                  Icons.close,
-                                  size: 16,
-                                  color: AppColors.textSecondary,
-                                ),
-                                onDeleted: () {
-                                  setState(() {
-                                    _activeFilters.remove(filter);
-                                  });
-                                },
+      body: Column(
+        children: [
+          // Filter Chips
+          if (_activeFilters.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: AppColors.surfaceColor,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: _activeFilters.map((filter) {
+                          return Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Chip(
+                              label: Text(filter),
+                              backgroundColor: AppColors.cardColor,
+                              labelStyle: AppTextStyles.bodySmall,
+                              deleteIcon: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: AppColors.textSecondary,
                               ),
-                            );
-                          }).toList(),
-                        ),
+                              onDeleted: () {
+                                setState(() {
+                                  // Note: This won't actually remove from search, just UI
+                                  // In a real app, you'd trigger a new search
+                                });
+                              },
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            // Search Results
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildSearchResultCard(
-                    imageUrl:
-                        'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800',
-                    name: 'الشركة الهندسية لقطع الغيار',
-                    isOnline: true,
-                    rating: 4.5,
-                    reviewCount: 120,
-                    location: 'القاهرة - ش دمشق',
-                    supportedBrands: ['تويوتا', 'نيسان', 'ميتسوبيشي'],
                   ),
-                  const SizedBox(height: 16),
-                  _buildSearchResultCard(
-                    imageUrl:
-                        'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800',
-                    name: 'مركز الفرسان لقطع الغيار',
-                    isOnline: true,
-                    rating: 4.5,
-                    reviewCount: 85,
-                    location: 'القاهرة',
-                    supportedBrands: [],
-                  ),
-                  const SizedBox(height: 24),
-                  // Customer Reviews Section
-                  _buildCustomerReviewsSection(),
                 ],
               ),
             ),
-          ],
-        ),
+          // Search Results
+          Expanded(
+            child: BlocBuilder<SearchCubit, SearchState>(
+              builder: (context, state) {
+                // Use widget data if available, otherwise use state
+                final suppliers = widget.searchResponse?.suppliers ?? 
+                    (state is SearchSuccess ? state.response.suppliers : <SupplierModel>[]);
+
+                if (state is SearchLoading && suppliers.isEmpty) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
+
+                if (state is SearchError && suppliers.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            state.message,
+                            style: AppTextStyles.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        PrimaryButton(
+                          text: 'إعادة المحاولة',
+                          onPressed: () {
+                            // Retry search if we have the request
+                            if (widget.searchRequest != null) {
+                              context.read<SearchCubit>().searchSuppliers(
+                                    partName: widget.searchRequest!.partName,
+                                    brandId: widget.searchRequest!.brandId,
+                                    modelId: widget.searchRequest!.modelId,
+                                    yearId: widget.searchRequest!.yearId,
+                                    governorateId: widget.searchRequest!.governorateId,
+                                    brandName: widget.searchRequest!.brandName,
+                                    modelName: widget.searchRequest!.modelName,
+                                    yearName: widget.searchRequest!.yearName,
+                                    governorateName: widget.searchRequest!.governorateName,
+                                  );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                // Display results
+                if (suppliers.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'لا توجد نتائج',
+                          style: AppTextStyles.headingSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            'لم نجد موردين يطابقون معايير البحث',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      ...suppliers.map((supplier) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: _buildSearchResultCard(
+                            imageUrl: supplier.imageUrl,
+                            name: supplier.name,
+                            isOnline: supplier.isOnline,
+                            rating: supplier.rating,
+                            reviewCount: supplier.reviewCount,
+                            location: supplier.location,
+                            supportedBrands: supplier.supportedBrands,
+                            distance: supplier.distance,
+                            supplierId: supplier.id.toString(),
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 24),
+                      // Customer Reviews Section
+                      _buildCustomerReviewsSection(),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: _buildBottomNavBar(),
     );
@@ -131,6 +255,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     required int reviewCount,
     required String location,
     required List<String> supportedBrands,
+    String? distance,
+    String? supplierId,
   }) {
     return Card(
       color: AppColors.cardColor,
@@ -221,9 +347,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         color: AppColors.textSecondary,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        location,
-                        style: AppTextStyles.bodySmall,
+                      Expanded(
+                        child: Text(
+                          distance != null ? '$location ($distance)' : location,
+                          style: AppTextStyles.bodySmall,
+                        ),
                       ),
                     ],
                   ),
@@ -255,7 +383,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                       context,
                       AppRoutes.vendorProfile,
                       arguments: {
-                        'vendorId': 'vendor_search_1',
+                        'vendorId': supplierId ?? 'vendor_search_1',
                         'vendorName': name,
                       },
                     );

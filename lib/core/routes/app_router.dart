@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../routes/app_routes.dart';
 import '../../features/auth/presentation/views/splash_screen.dart';
 import '../../features/auth/presentation/views/login_screen.dart';
 import '../../features/auth/presentation/views/register_screen.dart';
 import '../../features/home/presentation/views/home_screen.dart';
 import '../../features/home/presentation/views/search_results_screen.dart';
+import '../../features/home/presentation/cubit/search_cubit.dart';
+import '../../features/home/presentation/cubit/category_cubit.dart';
 import '../../features/vendor/presentation/views/vendor_profile_screen.dart';
 import '../../features/vendor/presentation/views/vendor_dashboard_screen.dart';
 import '../../features/chat/presentation/views/chat_list_screen.dart';
@@ -33,12 +36,25 @@ class AppRouter {
 
       case AppRoutes.home:
         return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => SearchCubit()),
+              BlocProvider(create: (_) => CategoryCubit()),
+            ],
+            child: const HomeScreen(),
+          ),
         );
 
       case AppRoutes.searchResults:
+        final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => const SearchResultsScreen(),
+          builder: (_) => BlocProvider(
+            create: (_) => SearchCubit(),
+            child: SearchResultsScreen(
+              searchRequest: args?['searchRequest'],
+              searchResponse: args?['searchResponse'],
+            ),
+          ),
         );
 
       case AppRoutes.vendorProfile:

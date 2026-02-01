@@ -7,10 +7,10 @@ import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../cubit/register_cubit.dart';
-import 'login_screen.dart';
 
 /// Register Screen
 class RegisterScreen extends StatefulWidget {
@@ -126,12 +126,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     style: AppTextStyles.headingMedium,
                   ),
                 ),
-                            const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                // App Logo
+                const Center(
+                  child: AppLogo(size: 70, withGlow: false),
+                ),
+                const SizedBox(height: 16),
                 // Main Title
-                Text(
+                Center(
+                  child: Text(
                   'سجل معنا الآن',
                   style: AppTextStyles.headingLarge,
                   textAlign: TextAlign.center,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Subtitle
