@@ -10,10 +10,13 @@ import '../../features/home/presentation/cubit/search_cubit.dart';
 import '../../features/home/presentation/cubit/category_cubit.dart';
 import '../../features/vendor/presentation/views/vendor_profile_screen.dart';
 import '../../features/vendor/presentation/views/vendor_dashboard_screen.dart';
+import '../../features/vendor/presentation/cubit/vendor_profile_cubit.dart';
 import '../../features/chat/presentation/views/chat_list_screen.dart';
 import '../../features/chat/presentation/views/chat_room_screen.dart';
 import '../../features/subscription/presentation/views/subscription_plans_screen.dart';
+import '../../features/subscription/presentation/views/plan_details_screen.dart';
 import '../../features/profile/presentation/views/user_profile_screen.dart';
+import '../../features/profile/presentation/cubit/user_profile_cubit.dart';
 
 /// Application Router
 class AppRouter {
@@ -60,9 +63,12 @@ class AppRouter {
       case AppRoutes.vendorProfile:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => VendorProfileScreen(
-            vendorId: args?['vendorId'] ?? '',
-            vendorName: args?['vendorName'] ?? 'المهندس لقطع الغيار',
+          builder: (_) => BlocProvider(
+            create: (_) => VendorProfileCubit(),
+            child: VendorProfileScreen(
+              vendorId: args?['vendorId'] ?? '',
+              vendorName: args?['vendorName'],
+            ),
           ),
         );
 
@@ -85,6 +91,14 @@ class AppRouter {
           builder: (_) => const SubscriptionPlansScreen(),
         );
 
+      case AppRoutes.planDetails:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => PlanDetailsScreen(
+            planId: args?['planId'] ?? 0,
+          ),
+        );
+
       case AppRoutes.vendorDashboard:
         return MaterialPageRoute(
           builder: (_) => const VendorDashboardScreen(),
@@ -92,7 +106,10 @@ class AppRouter {
 
       case AppRoutes.profile:
         return MaterialPageRoute(
-          builder: (_) => const UserProfileScreen(),
+          builder: (_) => BlocProvider(
+            create: (_) => UserProfileCubit(),
+            child: const UserProfileScreen(),
+          ),
         );
 
       default:

@@ -1,99 +1,82 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/services/navigation_service.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
-import '../../../../shared/widgets/common/segment_control.dart';
+import '../../../../shared/widgets/loading/loading_indicator.dart';
+import '../../../../shared/widgets/common/error_state.dart';
+import '../cubit/subscription_cubit.dart';
+import '../../data/models/plan_model.dart';
 
 /// Subscription Plans Screen
-class SubscriptionPlansScreen extends StatefulWidget {
+class SubscriptionPlansScreen extends StatelessWidget {
   const SubscriptionPlansScreen({super.key});
 
   @override
-  State<SubscriptionPlansScreen> createState() => _SubscriptionPlansScreenState();
-}
-
-class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
-  String _selectedDuration = 'monthly'; // 'monthly' or 'annual'
-
-  final List<SubscriptionPlan> _plans = [
-    SubscriptionPlan(
-      name: 'الأساسية',
-      nameEn: 'Basic',
-      monthlyPrice: 299,
-      annualPrice: 2392, // 299 * 12 * 0.8 (20% discount)
-      features: [
-        '١٠ قطع غيار معروضة',
-        'دردشة محدودة مع العملاء',
-        'دعم فني عبر البريد',
-      ],
-      isPopular: false,
-    ),
-    SubscriptionPlan(
-      name: 'الذهبية',
-      nameEn: 'Golden',
-      monthlyPrice: 999,
-      annualPrice: 7992, // 999 * 12 * 0.8
-      features: [
-        'قطع غيار غير محدودة',
-        'ظهور في مقدمة نتائج البحث',
-        'شارة "بائع معتمد" فضية',
-        'تحليلات المبيعات الأسبوعية',
-        'دعم فني VIP ٢٤/٧',
-      ],
-      isPopular: true,
-    ),
-    SubscriptionPlan(
-      name: 'الفضية',
-      nameEn: 'Silver',
-      monthlyPrice: 599,
-      annualPrice: 4792, // 599 * 12 * 0.8
-      features: [
-        '٥٠ قطعة غيار معروضة',
-        'دردشة غير محدودة',
-        'دعم فني سريع',
-      ],
-      isPopular: false,
-    ),
-  ];
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
+    return BlocProvider(
+      create: (context) => SubscriptionCubit()..fetchPlans(),
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: BlocBuilder<SubscriptionCubit, SubscriptionState>(
+          builder: (context, state) {
+            if (state is SubscriptionLoading) {
+              return const Center(child: LoadingIndicator());
+            }
+
+            if (state is SubscriptionError) {
+              return Center(
+                child: ErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    context.read<SubscriptionCubit>().fetchPlans();
+                  },
+                ),
+              );
+            }
+
+            if (state is PlansLoaded) {
+              return _buildPlansList(context, state.plans);
+            }
+
+            return const SizedBox.shrink();
+          },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            _buildHeader(),
-            const SizedBox(height: 32),
-            // Duration Toggle
-            _buildDurationToggle(),
-            const SizedBox(height: 32),
-            // Subscription Plans
-            ..._plans.map((plan) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildPlanCard(plan),
-                )),
-            const SizedBox(height: 32),
-            // Why Choose Our Platform Section
-            _buildBenefitsSection(),
-            const SizedBox(height: 32),
-            // Footer
-            _buildFooter(),
-            const SizedBox(height: 32),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildPlansList(BuildContext context, List<PlanModel> plans) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Section
+          _buildHeader(),
+          const SizedBox(height: 32),
+          // Subscription Plans
+          ...plans.map((plan) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildPlanCard(context, plan),
+              )),
+          const SizedBox(height: 32),
+          // Why Choose Our Platform Section
+          _buildBenefitsSection(),
+          const SizedBox(height: 32),
+          // Footer
+          _buildFooter(),
+          const SizedBox(height: 32),
+        ],
       ),
     );
   }
@@ -122,85 +105,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  Widget _buildDurationToggle() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildToggleButton(
-            'شهري',
-            _selectedDuration == 'monthly',
-            () => setState(() => _selectedDuration = 'monthly'),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Stack(
-            children: [
-              _buildToggleButton(
-                'سنوي',
-                _selectedDuration == 'annual',
-                () => setState(() => _selectedDuration = 'annual'),
-              ),
-              Positioned(
-                top: -4,
-                left: 0,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'وفر 20%',
-                    style: AppTextStyles.captionSmall.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToggleButton(String text, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryColor : AppColors.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.primaryColor
-                : AppColors.inputBorder,
-          ),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: isSelected
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlanCard(SubscriptionPlan plan) {
-    final price = _selectedDuration == 'monthly'
-        ? plan.monthlyPrice
-        : plan.annualPrice;
-    final priceText = _selectedDuration == 'monthly' ? 'شهر' : 'سنة';
-
+  Widget _buildPlanCard(BuildContext context, PlanModel plan) {
     return Stack(
       children: [
         Container(
@@ -251,7 +156,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '$price ج.م',
+                    '${plan.monthlyPrice.toInt()} ج.م',
                     style: AppTextStyles.headingLarge.copyWith(
                       fontSize: 28,
                     ),
@@ -260,7 +165,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
-                      '/ $priceText',
+                      '/ شهر',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -292,8 +197,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
               PrimaryButton(
                 text: 'اشترك الآن',
                 onPressed: () {
-                  // TODO: Handle subscription
-                  _handleSubscribe(plan);
+                  _handleSubscribe(context, plan);
                 },
                 backgroundColor: plan.isPopular
                     ? AppColors.primaryColor
@@ -420,38 +324,11 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
     );
   }
 
-  void _handleSubscribe(SubscriptionPlan plan) {
-    // TODO: Implement subscription logic with payment
-    // After successful subscription:
-    // 1. Save subscription data
-    // 2. Navigate to vendor dashboard
-    print('Subscribing to ${plan.name} - ${_selectedDuration}');
-    
-    // Simulate subscription success
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        NavigationService.navigateAfterSubscription(context);
-      }
-    });
+  void _handleSubscribe(BuildContext context, PlanModel plan) {
+    // Navigate to plan details screen
+    Navigator.of(context).pushNamed(
+      AppRoutes.planDetails,
+      arguments: {'planId': plan.id},
+    );
   }
 }
-
-/// Subscription Plan Model
-class SubscriptionPlan {
-  final String name;
-  final String nameEn;
-  final int monthlyPrice;
-  final int annualPrice;
-  final List<String> features;
-  final bool isPopular;
-
-  SubscriptionPlan({
-    required this.name,
-    required this.nameEn,
-    required this.monthlyPrice,
-    required this.annualPrice,
-    required this.features,
-    this.isPopular = false,
-  });
-}
-

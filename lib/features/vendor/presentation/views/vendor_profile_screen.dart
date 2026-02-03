@@ -1,124 +1,170 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/routes/app_routes.dart';
-import '../../../../shared/widgets/common/rating_stars.dart';
-import '../../../../shared/widgets/common/online_indicator.dart';
+import '../../../../shared/widgets/loading/loading_indicator.dart';
+import '../../../../shared/widgets/common/error_state.dart';
+import '../cubit/vendor_profile_cubit.dart';
+import '../../data/models/vendor_profile_model.dart';
 
 /// Vendor Profile Screen
 class VendorProfileScreen extends StatelessWidget {
   final String vendorId;
-  final String vendorName;
+  final String? vendorName;
 
   const VendorProfileScreen({
     super.key,
     required this.vendorId,
-    this.vendorName = 'المهندس لقطع الغيار',
+    this.vendorName,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          // App Bar with Background Image
-          SliverAppBar(
-            expandedHeight: 250,
-            pinned: true,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.favorite_border, color: AppColors.textPrimary),
-                onPressed: () {
-                  // TODO: Add to favorites
-                },
-              ),
-              IconButton(
-                icon: const Icon(Icons.share, color: AppColors.textPrimary),
-                onPressed: () {
-                  // TODO: Share vendor
-                },
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withOpacity(0.8),
-                      Colors.black.withOpacity(0.9),
-                    ],
-                  ),
+    final userId = int.tryParse(vendorId) ?? 0;
+    
+    return BlocProvider(
+      create: (context) => VendorProfileCubit()..fetchVendorProfile(userId),
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundColor,
+        body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
+          builder: (context, state) {
+            if (state is VendorProfileLoading) {
+              return const Center(child: LoadingIndicator());
+            }
+
+            if (state is VendorProfileError) {
+              return Center(
+                child: ErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    context.read<VendorProfileCubit>().fetchVendorProfile(userId);
+                  },
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage(
-                        'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800',
-                      ),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withOpacity(0.7),
-                        BlendMode.darken,
-                      ),
-                    ),
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.4),
-                          Colors.black.withOpacity(0.8),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Vendor Info Card
-                  _buildVendorInfoCard(),
-                  const SizedBox(height: 24),
-                  // Supported Brands Section
-                  _buildSupportedBrandsSection(),
-                  const SizedBox(height: 24),
-                  // Available Services Section
-                  _buildAvailableServicesSection(),
-                  const SizedBox(height: 24),
-                  // Action Buttons
-                  _buildActionButtons(context),
-                  const SizedBox(height: 24),
-                  // Location Section
-                  _buildLocationSection(),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-        ],
+              );
+            }
+
+            if (state is VendorProfileLoaded) {
+              return _buildProfileContent(context, state.profile);
+            }
+
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildVendorInfoCard() {
+  Widget _buildProfileContent(BuildContext context, VendorProfileModel profile) {
+    return CustomScrollView(
+      slivers: [
+        // App Bar with Background Image
+        SliverAppBar(
+          expandedHeight: 250,
+          pinned: true,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.favorite_border, color: AppColors.textPrimary),
+              onPressed: () {
+                // TODO: Add to favorites
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.share, color: AppColors.textPrimary),
+              onPressed: () {
+                // TODO: Share vendor
+              },
+            ),
+          ],
+          flexibleSpace: FlexibleSpaceBar(
+            background: _buildBackgroundImage(profile.backgroundImageUrl),
+          ),
+        ),
+        // Content
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Vendor Info Card
+                _buildVendorInfoCard(profile),
+                const SizedBox(height: 24),
+                // Supported Brands Section
+                if (profile.supportedBrands.isNotEmpty)
+                  _buildSupportedBrandsSection(profile.supportedBrands),
+                if (profile.supportedBrands.isNotEmpty) const SizedBox(height: 24),
+                // Available Services Section
+                if (profile.availableServices.isNotEmpty)
+                  _buildAvailableServicesSection(profile.availableServices),
+                if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
+                // Action Buttons (WhatsApp only)
+                _buildActionButtons(context, profile),
+                const SizedBox(height: 24),
+                // Location Section
+                if (profile.address != null || profile.latitude != null)
+                  _buildLocationSection(profile),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBackgroundImage(String? imageUrl) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withOpacity(0.8),
+            Colors.black.withOpacity(0.9),
+          ],
+        ),
+      ),
+      child: imageUrl != null && imageUrl.isNotEmpty
+          ? CachedNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.cover,
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.7),
+                BlendMode.darken,
+              ),
+              placeholder: (context, url) => Container(
+                color: Colors.black.withOpacity(0.8),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.black.withOpacity(0.8),
+              ),
+            )
+          : Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: NetworkImage(
+                    'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800',
+                  ),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.7),
+                    BlendMode.darken,
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildVendorInfoCard(VendorProfileModel profile) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -133,25 +179,27 @@ class VendorProfileScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  vendorName,
+                  profile.name,
                   style: AppTextStyles.headingMedium,
                 ),
               ),
-              const Icon(
-                Icons.verified,
-                color: AppColors.primaryColor,
-                size: 24,
-              ),
+              if (profile.isVerified)
+                const Icon(
+                  Icons.verified,
+                  color: AppColors.primaryColor,
+                  size: 24,
+                ),
             ],
           ),
-          const SizedBox(height: 8),
-          // Description
-          Text(
-            'مركز معتمد . قطع غيار أصلية واستيراد',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+          if (profile.description != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              profile.description!,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 20),
           // Key Metrics
           Row(
@@ -159,26 +207,28 @@ class VendorProfileScreen extends StatelessWidget {
               Expanded(
                 child: _buildMetricCard(
                   icon: Icons.access_time,
-                  value: 'مفتوح',
-                  subtitle: 'حتى ١٠ م',
-                  color: AppColors.success,
+                  value: profile.isOpen ? 'مفتوح' : 'مغلق',
+                  subtitle: profile.openUntil ?? '',
+                  color: profile.isOpen ? AppColors.success : AppColors.error,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildMetricCard(
-                  icon: Icons.speed,
-                  value: '٥ دقائق',
-                  subtitle: 'سرعة الرد',
-                  color: AppColors.primaryColor,
+              if (profile.responseTimeMinutes != null) ...[
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildMetricCard(
+                    icon: Icons.speed,
+                    value: '${profile.responseTimeMinutes} دقائق',
+                    subtitle: 'سرعة الرد',
+                    color: AppColors.primaryColor,
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(width: 12),
               Expanded(
                 child: _buildMetricCard(
                   icon: Icons.star,
-                  value: '٤.٩',
-                  subtitle: '٢٠٠ تقييم',
+                  value: profile.rating.toStringAsFixed(1),
+                  subtitle: '${profile.ratingCount} تقييم',
                   color: AppColors.ratingStar,
                 ),
               ),
@@ -211,19 +261,22 @@ class VendorProfileScreen extends StatelessWidget {
               color: color,
               fontWeight: FontWeight.bold,
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: AppTextStyles.caption,
             textAlign: TextAlign.center,
           ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTextStyles.caption,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSupportedBrandsSection() {
+  Widget _buildSupportedBrandsSection(List<String> brands) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -233,45 +286,45 @@ class VendorProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Row(
-          children: [
-            _buildBrandCard('مرسيدس', Icons.star),
-            const SizedBox(width: 12),
-            _buildBrandCard('بي ام دبليو', Icons.star),
-            const SizedBox(width: 12),
-            _buildBrandCard('هيونداي', Icons.star),
-            const SizedBox(width: 12),
-            _buildBrandCard('تويوتا', Icons.star),
-          ],
+          children: brands.take(4).map((brand) {
+            final index = brands.indexOf(brand);
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(right: index < brands.length - 1 ? 12 : 0),
+                child: _buildBrandCard(brand),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildBrandCard(String brandName, IconData icon) {
-    return Expanded(
-      child: Container(
-        height: 80,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: AppColors.primaryColor, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              brandName,
-              style: AppTextStyles.caption,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+  Widget _buildBrandCard(String brandName) {
+    return Container(
+      height: 80,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.directions_car, color: AppColors.primaryColor, size: 28),
+          const SizedBox(height: 8),
+          Text(
+            brandName,
+            style: AppTextStyles.caption,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildAvailableServicesSection() {
+  Widget _buildAvailableServicesSection(List<String> services) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -283,13 +336,7 @@ class VendorProfileScreen extends StatelessWidget {
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: [
-            _buildServiceChip('تغيير زيت'),
-            _buildServiceChip('تيل فرامل'),
-            _buildServiceChip('صيانة موتور'),
-            _buildServiceChip('عفشة'),
-            _buildServiceChip('فحص كمبيوتر'),
-          ],
+          children: services.map((service) => _buildServiceChip(service)).toList(),
         ),
       ],
     );
@@ -310,56 +357,40 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Handle phone call
-            },
-            icon: const Icon(Icons.phone),
-            label: const Text('اتصال'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: AppColors.textPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+  Widget _buildActionButtons(BuildContext context, VendorProfileModel profile) {
+    // Only show WhatsApp button (green square button)
+    // Remove the blue chat button as per requirements
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.success,
+          foregroundColor: AppColors.textPrimary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.chatRoom,
-                arguments: {
-                  'chatId': vendorId,
-                  'vendorName': vendorName,
-                },
-              );
-            },
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: const Text('بدء محادثة'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryColor,
-              foregroundColor: AppColors.textPrimary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.phone, size: 24),
+            const SizedBox(width: 8),
+            const Text(
+              'واتساب',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildLocationSection() {
+  Widget _buildLocationSection(VendorProfileModel profile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -368,68 +399,130 @@ class VendorProfileScreen extends StatelessWidget {
           style: AppTextStyles.headingSmall,
         ),
         const SizedBox(height: 16),
-        // Map Placeholder
-        Container(
-          height: 150,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.inputBorder),
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.map,
-              size: 48,
-              color: AppColors.textSecondary,
+        // Map Placeholder (can be replaced with Google Maps widget)
+        GestureDetector(
+          onTap: () => _openGoogleMaps(profile.latitude, profile.longitude, profile.address),
+          child: Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.inputBorder),
             ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Address
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.arrow_forward,
-                  color: AppColors.primaryColor,
+            child: Stack(
+              children: [
+                const Center(
+                  child: Icon(
+                    Icons.map,
+                    size: 48,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                onPressed: () {
-                  // TODO: Open map/directions
-                },
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'الدقي، الجيزة',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
+                if (profile.latitude != null && profile.longitude != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '١٢ شارع التحرير، أمام بنك مصر',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
+        if (profile.address != null) ...[
+          const SizedBox(height: 16),
+          // Address
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_forward,
+                    color: AppColors.primaryColor,
+                  ),
+                  onPressed: () => _openGoogleMaps(
+                    profile.latitude,
+                    profile.longitude,
+                    profile.address,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (profile.governorate != null)
+                      Text(
+                        profile.governorate!,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Text(
+                      profile.address!,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
-}
 
+  Future<void> _openWhatsApp(String? phoneNumber) async {
+    if (phoneNumber == null || phoneNumber.isEmpty) {
+      return;
+    }
+
+    // Remove any non-digit characters and ensure it starts with country code
+    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    if (!cleanNumber.startsWith('20')) {
+      cleanNumber = '20$cleanNumber';
+    }
+
+    final url = Uri.parse('https://wa.me/$cleanNumber');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _openGoogleMaps(double? lat, double? lng, String? address) async {
+    if (lat != null && lng != null) {
+      // Open Google Maps with coordinates
+      final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else if (address != null && address.isNotEmpty) {
+      // Open Google Maps with address search
+      final encodedAddress = Uri.encodeComponent(address);
+      final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedAddress');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+}

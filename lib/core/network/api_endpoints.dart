@@ -17,10 +17,14 @@ class ApiEndpoints {
   static const String logout = '$basePath/auth/logout';
   // POST /api/v1/auth/refresh
   static const String refreshToken = '$basePath/auth/refresh';
+  // GET /api/v1/auth/me - Get current user profile
+  static const String currentUser = '$basePath/auth/me';
 
   // User
   // GET /api/v1/user/profile
   static const String userProfile = '$basePath/user/profile';
+  // GET /api/v1/users/:id - Get user/vendor profile by ID
+  static String userProfileById(int userId) => '$basePath/users/$userId';
   // PUT /api/v1/user/profile
   static const String updateProfile = '$basePath/user/profile';
 
@@ -40,9 +44,11 @@ class ApiEndpoints {
   // POST /api/v1/chats/messages
   static const String sendMessage = '$basePath/chats/messages';
 
-  // Subscription
-  // GET /api/v1/subscriptions
-  static const String subscriptions = '$basePath/subscriptions';
+  // Subscription / Plans
+  // GET /api/v1/plans - Get all subscription plans
+  static const String plans = '$basePath/plans';
+  // GET /api/v1/plans/:id - Get plan details
+  static String planDetails(int planId) => '$basePath/plans/$planId';
   // POST /api/v1/subscriptions/subscribe
   static const String subscribe = '$basePath/subscriptions/subscribe';
 

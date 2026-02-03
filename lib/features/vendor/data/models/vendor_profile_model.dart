@@ -1,0 +1,190 @@
+/// Vendor Profile Model
+class VendorProfileModel {
+  final int id;
+  final String name;
+  final String? description;
+  final bool isVerified;
+  final bool isOpen;
+  final String? openUntil;
+  final int? responseTimeMinutes;
+  final double rating;
+  final int ratingCount;
+  final List<String> supportedBrands;
+  final List<String> availableServices;
+  final String? phone;
+  final String? whatsapp;
+  final String? address;
+  final String? governorate;
+  final double? latitude;
+  final double? longitude;
+  final String? imageUrl;
+  final String? backgroundImageUrl;
+
+  VendorProfileModel({
+    required this.id,
+    required this.name,
+    this.description,
+    this.isVerified = false,
+    this.isOpen = false,
+    this.openUntil,
+    this.responseTimeMinutes,
+    this.rating = 0.0,
+    this.ratingCount = 0,
+    required this.supportedBrands,
+    required this.availableServices,
+    this.phone,
+    this.whatsapp,
+    this.address,
+    this.governorate,
+    this.latitude,
+    this.longitude,
+    this.imageUrl,
+    this.backgroundImageUrl,
+  });
+
+  /// Create from JSON
+  factory VendorProfileModel.fromJson(Map<String, dynamic> json) {
+    // Handle supported brands
+    List<String> brands = [];
+    final brandsData = json['supported_brands'] ?? 
+                       json['brands'] ?? 
+                       json['brand_names'] ?? 
+                       json['car_brands'];
+    if (brandsData is List) {
+      brands = brandsData.map((e) {
+        if (e is String) return e;
+        if (e is Map) return e['name']?.toString() ?? 
+                         e['name_ar']?.toString() ?? 
+                         e['brand_name']?.toString() ?? '';
+        return e.toString();
+      }).toList();
+    }
+
+    // Handle available services
+    List<String> services = [];
+    final servicesData = json['available_services'] ?? 
+                         json['services'] ?? 
+                         json['service_names'];
+    if (servicesData is List) {
+      services = servicesData.map((e) {
+        if (e is String) return e;
+        if (e is Map) return e['name']?.toString() ?? 
+                         e['name_ar']?.toString() ?? 
+                         e['service_name']?.toString() ?? '';
+        return e.toString();
+      }).toList();
+    }
+
+    // Handle location coordinates
+    double? lat, lng;
+    final locationData = json['location'] ?? json['coordinates'];
+    if (locationData is Map) {
+      lat = (locationData['latitude'] as num?)?.toDouble() ?? 
+            (locationData['lat'] as num?)?.toDouble();
+      lng = (locationData['longitude'] as num?)?.toDouble() ?? 
+            (locationData['lng'] as num?)?.toDouble() ?? 
+            (locationData['lon'] as num?)?.toDouble();
+    } else {
+      lat = (json['latitude'] as num?)?.toDouble() ?? 
+            (json['lat'] as num?)?.toDouble();
+      lng = (json['longitude'] as num?)?.toDouble() ?? 
+            (json['lng'] as num?)?.toDouble() ?? 
+            (json['lon'] as num?)?.toDouble();
+    }
+
+    // Handle address
+    String? addressStr;
+    final addressData = json['address'] ?? json['full_address'];
+    if (addressData is String) {
+      addressStr = addressData;
+    } else if (addressData is Map) {
+      addressStr = addressData['full_address']?.toString() ?? 
+                   addressData['address']?.toString();
+    }
+
+    // Handle response time
+    int? responseTime;
+    final responseTimeData = json['response_time'] ?? 
+                             json['response_time_minutes'] ?? 
+                             json['avg_response_time'];
+    if (responseTimeData is int) {
+      responseTime = responseTimeData;
+    } else if (responseTimeData is String) {
+      responseTime = int.tryParse(responseTimeData);
+    }
+
+    return VendorProfileModel(
+      id: json['id'] as int? ?? 
+          json['user_id'] as int? ?? 
+          json['vendor_id'] as int? ?? 0,
+      name: json['name'] as String? ?? 
+            json['vendor_name'] as String? ?? 
+            json['company_name'] as String? ?? '',
+      description: json['description'] as String? ?? 
+                   json['bio'] as String? ?? 
+                   json['about'] as String?,
+      isVerified: json['is_verified'] as bool? ?? 
+                  json['verified'] as bool? ?? 
+                  json['is_certified'] as bool? ?? false,
+      isOpen: json['is_open'] as bool? ?? 
+              json['open'] as bool? ?? 
+              json['status'] == 'open' ?? false,
+      openUntil: json['open_until'] as String? ?? 
+                 json['closing_time'] as String?,
+      responseTimeMinutes: responseTime,
+      rating: (json['rating'] as num?)?.toDouble() ?? 
+             (json['average_rating'] as num?)?.toDouble() ?? 
+             (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: json['rating_count'] as int? ?? 
+                   json['reviews_count'] as int? ?? 
+                   json['total_reviews'] as int? ?? 
+                   json['review_count'] as int? ?? 0,
+      supportedBrands: brands,
+      availableServices: services,
+      phone: json['phone'] as String? ?? 
+             json['mobile'] as String? ?? 
+             json['phone_number'] as String?,
+      whatsapp: json['whatsapp'] as String? ?? 
+                json['whatsapp_number'] as String? ?? 
+                json['phone'], // Fallback to phone if whatsapp not available
+      address: addressStr,
+      governorate: json['governorate'] as String? ?? 
+                   json['governorate_name'] as String?,
+      latitude: lat,
+      longitude: lng,
+      imageUrl: json['image_url'] as String? ?? 
+                json['image'] as String? ?? 
+                json['logo'] as String? ?? 
+                json['avatar'] as String?,
+      backgroundImageUrl: json['background_image_url'] as String? ?? 
+                          json['background_image'] as String? ?? 
+                          json['cover_image'] as String?,
+    );
+  }
+
+  /// Convert to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      if (description != null) 'description': description,
+      'is_verified': isVerified,
+      'is_open': isOpen,
+      if (openUntil != null) 'open_until': openUntil,
+      if (responseTimeMinutes != null) 'response_time_minutes': responseTimeMinutes,
+      'rating': rating,
+      'rating_count': ratingCount,
+      'supported_brands': supportedBrands,
+      'available_services': availableServices,
+      if (phone != null) 'phone': phone,
+      if (whatsapp != null) 'whatsapp': whatsapp,
+      if (address != null) 'address': address,
+      if (governorate != null) 'governorate': governorate,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (imageUrl != null) 'image_url': imageUrl,
+      if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
+    };
+  }
+}
+

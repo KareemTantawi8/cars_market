@@ -27,6 +27,7 @@ class AppRoutes {
 
   // Subscription Routes
   static const String subscriptionPlans = '/subscription-plans';
+  static const String planDetails = '/plan-details';
 
   // Vendor Routes
   static const String vendorDashboard = '/vendor-dashboard';
