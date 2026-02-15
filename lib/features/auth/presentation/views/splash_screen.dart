@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/utils/extensions.dart';
-import '../../../../shared/widgets/common/app_logo.dart';
 import 'login_screen.dart';
 
 /// Splash Screen
@@ -15,156 +15,104 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _progressAnimation;
+class _SplashScreenState extends State<SplashScreen> {
+  late VideoPlayerController _videoController;
+  bool _isInitialized = false;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    );
-
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
-    _controller.forward();
+    _initializeVideo();
     _initializeAndNavigate();
+  }
+
+  Future<void> _initializeVideo() async {
+    _videoController = VideoPlayerController.asset(
+      'assets/images/splash_video.mp4',
+    );
+
+    try {
+      await _videoController.initialize();
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+        _videoController.setLooping(false);
+        _videoController.setVolume(1.0);
+        _videoController.play();
+
+        // Listen for video completion
+        _videoController.addListener(_videoListener);
+      }
+    } catch (e) {
+      // If video fails to load, navigate after a delay
+      debugPrint('Video initialization error: $e');
+      if (mounted) {
+        // Wait a bit for initialization to complete, then navigate
+        Future.delayed(const Duration(seconds: 2), () {
+          if (!_hasNavigated && mounted) {
+            _navigateToNext();
+          }
+        });
+      }
+    }
+  }
+
+  void _videoListener() {
+    if (_videoController.value.isCompleted && !_hasNavigated) {
+      _navigateToNext();
+    }
   }
 
   Future<void> _initializeAndNavigate() async {
     // Initialize storage service and user type controller
     await StorageService.init();
     await UserTypeController().initialize();
-    _navigateToNext();
+    
+    // Don't navigate automatically - wait for video to complete
+    // Only navigate if video fails to load (handled in catch block)
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _videoController.removeListener(_videoListener);
+    _videoController.dispose();
     super.dispose();
   }
 
   void _navigateToNext() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      
-      // Always navigate to login screen - user must login every time
-        context.navigateToAndRemoveUntil(const LoginScreen());
-    });
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
+    
+    // Always navigate to login screen - user must login every time
+    context.navigateToAndRemoveUntil(const LoginScreen());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: MediaQuery.of(context).size.height - 
-                    MediaQuery.of(context).padding.top - 
-                    MediaQuery.of(context).padding.bottom,
-              ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-                  const SizedBox(height: 40),
-              // App Logo with Blue Glow
-                  const AppLogo(size: 140, withGlow: true),
-                  const SizedBox(height: 24),
-              // App Name
-              Text(
-                AppConstants.appName,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                      letterSpacing: 1.2,
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          // Video Player - fills the screen
+          if (_isInitialized && _videoController.value.isInitialized)
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _videoController.value.size.width,
+                  height: _videoController.value.size.height,
+                  child: VideoPlayer(_videoController),
                 ),
               ),
-              const SizedBox(height: 8),
-              // App Tagline
-              Text(
-                AppConstants.appTagline,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: AppColors.primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-                  const SizedBox(height: 60),
-              // Loading Section
-              AnimatedBuilder(
-                animation: _progressAnimation,
-                builder: (context, child) {
-                  final progress = _progressAnimation.value;
-                  final percentage = (progress * 100).toInt();
-                  return Column(
-                    children: [
-                      // Loading Text and Percentage
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'جاري التحميل...',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            Text(
-                              '%$percentage',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Loading Bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: AppColors.surfaceColor,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryColor,
-                          ),
-                          minHeight: 8,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      // Premium Text
-                      Text(
-                        'PREMIUM AUTOMOTIVE MARKETPLACE',
-                        style: TextStyle(
-                              fontSize: 11,
-                          color: AppColors.textSecondary,
-                          letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-                  const SizedBox(height: 20),
-        ],
-      ),
+            )
+          else
+            // Black screen while video initializes (no loading indicator)
+            Container(
+              color: Colors.black,
             ),
-          ),
-        ),
+        ],
       ),
     );
   }

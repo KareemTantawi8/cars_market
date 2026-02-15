@@ -17,11 +17,23 @@ class VendorDashboardScreen extends StatefulWidget {
   State<VendorDashboardScreen> createState() => _VendorDashboardScreenState();
 }
 
-class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
-  int _selectedNavIndex = 0;
-
+class _VendorDashboardScreenState extends State<VendorDashboardScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   // Sample data for the graph
   final List<double> weeklyData = [120, 80, 150, 90, 140, 100, 130];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,30 +61,289 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             },
           ),
         ],
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Store Information Section
-              _buildStoreInfoSection(),
-              const SizedBox(height: 24),
-              // Store Performance Section
-              _buildPerformanceSection(),
-              const SizedBox(height: 24),
-              // Subscription Section
-              _buildSubscriptionSection(),
-              const SizedBox(height: 24),
-              // Quick Links Section
-              _buildQuickLinksSection(),
-              const SizedBox(height: 24),
-            ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.primaryColor,
+          labelColor: AppColors.primaryColor,
+          unselectedLabelColor: AppColors.textSecondary,
+          labelStyle: AppTextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.bold,
           ),
+          tabs: const [
+            Tab(text: 'لوحة التحكم'),
+            Tab(text: 'الملف الشخصي'),
+          ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavBar(),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // Dashboard Tab
+          _buildDashboardTab(),
+          // Profile Tab
+          _buildProfileTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardTab() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Store Information Section
+            _buildStoreInfoSection(),
+            const SizedBox(height: 24),
+            // Store Performance Section
+            _buildPerformanceSection(),
+            const SizedBox(height: 24),
+            // Subscription Section
+            _buildSubscriptionSection(),
+            const SizedBox(height: 24),
+            // Quick Links Section
+            _buildQuickLinksSection(),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileTab() {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Profile Picture and Info
+            _buildProfileHeader(),
+            const SizedBox(height: 24),
+            // Store Information
+            _buildProfileStoreInfo(),
+            const SizedBox(height: 24),
+            // Account Settings
+            _buildProfileSettings(),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // Profile Picture
+          Stack(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceColor,
+                ),
+                child: const Icon(
+                  Icons.store,
+                  color: AppColors.textSecondary,
+                  size: 50,
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'قطع غيار الأهرام',
+            style: AppTextStyles.headingMedium,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'بائع معتمد - القاهرة، مصر',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.success.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OnlineIndicator(isOnline: true, size: 8),
+                const SizedBox(width: 6),
+                Text(
+                  'متصل الآن',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.success,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileStoreInfo() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'معلومات المتجر',
+            style: AppTextStyles.headingSmall,
+          ),
+          const SizedBox(height: 16),
+          _buildInfoRow(Icons.phone, 'رقم الهاتف', '01012345678'),
+          const SizedBox(height: 12),
+          _buildInfoRow(Icons.location_on, 'العنوان', 'القاهرة، مصر'),
+          const SizedBox(height: 12),
+          _buildInfoRow(Icons.star, 'التقييم', '4.8/5'),
+          const SizedBox(height: 12),
+          _buildInfoRow(Icons.access_time, 'سرعة الرد', '15 دقيقة'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.primaryColor, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileSettings() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'الإعدادات',
+            style: AppTextStyles.headingSmall,
+          ),
+          const SizedBox(height: 16),
+          _buildSettingItem(
+            icon: Icons.edit,
+            title: 'تعديل الملف الشخصي',
+            onTap: () {
+              // TODO: Navigate to edit profile
+            },
+          ),
+          const Divider(height: 24),
+          _buildSettingItem(
+            icon: Icons.notifications,
+            title: 'الإشعارات',
+            onTap: () {
+              // TODO: Navigate to notifications settings
+            },
+          ),
+          const Divider(height: 24),
+          _buildSettingItem(
+            icon: Icons.lock,
+            title: 'تغيير كلمة المرور',
+            onTap: () {
+              // TODO: Navigate to change password
+            },
+          ),
+          const Divider(height: 24),
+          _buildSettingItem(
+            icon: Icons.logout,
+            title: 'تسجيل الخروج',
+            titleColor: AppColors.error,
+            onTap: () {
+              NavigationService.navigateToLogout(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingItem({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? titleColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Icon(icon, color: titleColor ?? AppColors.textPrimary, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: titleColor ?? AppColors.textPrimary,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: AppColors.textSecondary,
+          ),
+        ],
+      ),
     );
   }
 
@@ -530,76 +801,5 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _buildBottomNavBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Container(
-          height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home, 'الرئيسية', 0, () {
-                // Stay on dashboard (home for vendor)
-                setState(() => _selectedNavIndex = 0);
-              }),
-              _buildNavItem(Icons.chat_bubble, 'المحادثات', 1, () {
-                Navigator.pushNamed(context, AppRoutes.chatList);
-              }),
-              _buildNavItem(Icons.add, 'أضف قطعة', 2, () {}),
-              _buildNavItem(Icons.bar_chart, 'التقارير', 3, () {}),
-              _buildNavItem(Icons.person, 'نشاط', 4, () {}),
-              _buildNavItem(Icons.account_circle, 'الحساب', 5, () {}),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(IconData icon, String label, int index, VoidCallback onTap) {
-    final isSelected = index == _selectedNavIndex;
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() => _selectedNavIndex = index);
-          onTap();
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryColor.withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
-                size: 22,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: AppTextStyles.captionSmall.copyWith(
-                  color: isSelected ? AppColors.primaryColor : AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 

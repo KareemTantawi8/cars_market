@@ -133,18 +133,20 @@ class VendorProfileScreen extends StatelessWidget {
         ),
       ),
       child: imageUrl != null && imageUrl.isNotEmpty
-          ? CachedNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.cover,
+          ? ColorFiltered(
               colorFilter: ColorFilter.mode(
                 Colors.black.withOpacity(0.7),
                 BlendMode.darken,
               ),
-              placeholder: (context, url) => Container(
-                color: Colors.black.withOpacity(0.8),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.black.withOpacity(0.8),
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  color: Colors.black.withOpacity(0.8),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  color: Colors.black.withOpacity(0.8),
+                ),
               ),
             )
           : Container(
