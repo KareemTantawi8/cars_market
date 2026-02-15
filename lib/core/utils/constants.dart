@@ -3,7 +3,7 @@ class AppConstants {
   AppConstants._();
 
   // App Info
-  static const String appName = 'سوق السيارات';
+  static const String appName = 'وش سلندر';
   static const String appVersion = '2.4.0';
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
