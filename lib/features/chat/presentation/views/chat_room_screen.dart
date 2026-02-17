@@ -67,25 +67,44 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final chatId = int.tryParse(widget.chatId);
     if (chatId == null) return;
 
-    final message = _messageController.text.trim();
+    final messageText = _messageController.text.trim();
     _messageController.clear();
 
-    // Send message via Cubit
-    context.read<ChatCubit>().sendMessage(
-      chatId: chatId,
-      body: message,
-    );
+    // Optimistic UI update - add message immediately to show it right away
+    final optimisticMessage = {
+      'id': DateTime.now().millisecondsSinceEpoch, // Temporary ID
+      'chat_id': chatId,
+      'sender_id': _currentUserId,
+      'body': messageText,
+      'is_system': false,
+      'is_read': 0,
+      'read_at': null,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+      'sender': {'id': _currentUserId, 'name': 'You'},
+    };
 
-    // Scroll to bottom
+    setState(() {
+      // Add new message at the beginning (newest first, ListView reverse will show at bottom)
+      _messages.insert(0, optimisticMessage);
+    });
+
+    // Scroll to bottom immediately
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 100),
           curve: Curves.easeOut,
         );
       }
     });
+
+    // Send message via Cubit (will reload messages and replace optimistic one)
+    context.read<ChatCubit>().sendMessage(
+      chatId: chatId,
+      body: messageText,
+    );
   }
 
   String _formatTimestamp(String? timestamp) {
@@ -117,7 +136,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return BlocConsumer<ChatCubit, ChatState>(
       listener: (context, state) {
         if (state is ChatError) {
-          CustomToast.showError(context, state.message);
+          // Only show error if it's not about server logging issues
+          // (in that case, message might have been sent successfully)
+          if (!state.message.contains('تم إرسال الرسالة ولكن حدث خطأ في السيرفر')) {
+            CustomToast.showError(context, state.message);
+          } else {
+            // Show info message instead of error
+            CustomToast.showInfo(context, 'جاري التحقق من الرسالة...');
+          }
+        } else if (state is MessageSent) {
+          // Message sent successfully - messages will be reloaded automatically
+          // Scroll to bottom
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                0.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
         } else if (state is ChatDetailsLoaded) {
           final userType = StorageService.getUserType();
           if (userType == AppConstants.userTypeVendor) {
@@ -129,9 +167,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           }
         } else if (state is MessagesLoaded) {
           setState(() {
-            _messages = state.messages.reversed.toList(); // Reverse for display
+            // API returns messages newest first, ListView with reverse:true will show newest at bottom
+            _messages = List<Map<String, dynamic>>.from(state.messages);
           });
-          // Scroll to bottom when new messages arrive
+          // Scroll to bottom when new messages arrive (reverse:true means 0.0 is bottom)
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_scrollController.hasClients) {
               _scrollController.animateTo(
@@ -144,78 +183,78 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         }
       },
       builder: (context, state) {
-        return Scaffold(
-          backgroundColor: AppColors.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: AppColors.surfaceColor,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.phone, color: AppColors.textPrimary),
-                onPressed: () {
-                  // TODO: Handle phone call
-                },
-              ),
-            ],
-            title: Row(
+    return Scaffold(
+      backgroundColor: AppColors.backgroundColor,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfaceColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.phone, color: AppColors.textPrimary),
+            onPressed: () {
+              // TODO: Handle phone call
+            },
+          ),
+        ],
+        title: Row(
+          children: [
+            // Profile Picture
+            Stack(
               children: [
-                // Profile Picture
-                Stack(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.surfaceColor,
-                      ),
-                      child: const Icon(
-                        Icons.store,
-                        color: AppColors.textSecondary,
-                        size: 24,
-                      ),
-                    ),
-                    if (_isOnline)
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: OnlineIndicator(isOnline: true, size: 12),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _displayName.isNotEmpty ? _displayName : widget.chatName,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _isOnline ? 'متصل الآن' : 'غير متصل',
-                        style: AppTextStyles.caption.copyWith(
-                          color: _isOnline ? AppColors.online : AppColors.offline,
-                        ),
-                      ),
-                    ],
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.surfaceColor,
+                  ),
+                  child: const Icon(
+                    Icons.store,
+                    color: AppColors.textSecondary,
+                    size: 24,
                   ),
                 ),
+                if (_isOnline)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: OnlineIndicator(isOnline: true, size: 12),
+                  ),
               ],
             ),
-          ),
-          body: Column(
-            children: [
-              // Chat Messages
-              Expanded(
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                        _displayName.isNotEmpty ? _displayName : widget.chatName,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                        _isOnline ? 'متصل الآن' : 'غير متصل',
+                    style: AppTextStyles.caption.copyWith(
+                      color: _isOnline ? AppColors.online : AppColors.offline,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          // Chat Messages
+          Expanded(
                 child: state is ChatLoading && _messages.isEmpty
                     ? const Center(child: CircularProgressIndicator())
                     : _messages.isEmpty
@@ -228,9 +267,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             ),
                           )
                         : ListView.builder(
-                            controller: _scrollController,
-                            reverse: true,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
+              controller: _scrollController,
+              reverse: true,
+              padding: const EdgeInsets.symmetric(vertical: 16),
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
@@ -249,7 +288,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                       style: AppTextStyles.caption.copyWith(
                                         color: AppColors.textSecondary,
                                         fontStyle: FontStyle.italic,
-                                      ),
+                ),
                                     ),
                                   ),
                                 );
@@ -262,82 +301,82 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 imageUrl: message['image_url']?.toString(),
                               );
                             },
-                          ),
-              ),
-              // Message Input Field
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: SafeArea(
-                  child: Row(
-                    children: [
-                      // Gallery Icon
-                      IconButton(
-                        icon: const Icon(
-                          Icons.image,
-                          color: AppColors.textSecondary,
-                        ),
-                        onPressed: () {
-                          // TODO: Pick image from gallery
-                        },
-                      ),
-                      // Message Input
-                      Expanded(
-                        child: TextField(
-                          controller: _messageController,
-                          style: AppTextStyles.input,
-                          decoration: InputDecoration(
-                            hintText: 'أكتب رسالة...',
-                            hintStyle: AppTextStyles.inputHint,
-                            filled: true,
-                            fillColor: AppColors.inputBackground,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                          ),
-                          maxLines: null,
-                          textInputAction: TextInputAction.send,
-                          onSubmitted: (_) => _sendMessage(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Send Button
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: IconButton(
-                          icon: const Icon(
-                            Icons.send,
-                            color: AppColors.textPrimary,
-                            size: 20,
-                          ),
-                          onPressed: _sendMessage,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
+          // Message Input Field
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  // Gallery Icon
+                  IconButton(
+                    icon: const Icon(
+                      Icons.image,
+                      color: AppColors.textSecondary,
+                    ),
+                    onPressed: () {
+                      // TODO: Pick image from gallery
+                    },
+                  ),
+                  // Message Input
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      style: AppTextStyles.input,
+                      decoration: InputDecoration(
+                        hintText: 'أكتب رسالة...',
+                        hintStyle: AppTextStyles.inputHint,
+                        filled: true,
+                        fillColor: AppColors.inputBackground,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Send Button
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.send,
+                        color: AppColors.textPrimary,
+                        size: 20,
+                      ),
+                      onPressed: _sendMessage,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
         );
       },
     );

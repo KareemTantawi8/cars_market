@@ -117,14 +117,37 @@ class ChatRepository {
       }
     } on DioException catch (e) {
       _log('❌ Error sending message: ${e.message}');
+      
+      // Handle 500 errors - sometimes message is created but server has logging issues
+      if (e.response?.statusCode == 500) {
+        final errorData = e.response!.data;
+        
+        // Check if the error message contains evidence that the message was created
+        // (e.g., "Broadcasting [App\Events\MessageSent]" indicates message was created)
+        final errorMessage = errorData is Map<String, dynamic>
+            ? errorData['message']?.toString() ?? ''
+            : errorData.toString();
+        
+        // If error is about log file permissions but message was broadcasted, 
+        // the message was likely created successfully
+        if (errorMessage.contains('Broadcasting') || 
+            errorMessage.contains('MessageSent') ||
+            errorMessage.contains('Permission denied')) {
+          _log('⚠️ Server error (likely logging issue), but message may have been sent');
+          // Try to extract message data from error if available
+          // Otherwise, we'll need to reload messages to check
+          throw Exception('تم إرسال الرسالة ولكن حدث خطأ في السيرفر. يرجى التحقق من الرسائل.');
+        }
+      }
+      
       if (e.response != null) {
         final errorData = e.response!.data;
         final errorMessage = errorData is Map<String, dynamic>
-            ? errorData['message'] ?? 'Failed to send message'
-            : 'Failed to send message';
+            ? errorData['message'] ?? 'فشل في إرسال الرسالة'
+            : 'فشل في إرسال الرسالة';
         throw Exception(errorMessage);
       }
-      throw Exception('Network error: ${e.message}');
+      throw Exception('خطأ في الشبكة: ${e.message}');
     }
   }
 

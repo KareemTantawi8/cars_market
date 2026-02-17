@@ -91,7 +91,7 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (_) => ChatCubit(),
             child: ChatRoomScreen(
-              chatId: args?['chatId'] ?? '',
+              chatId: args?['chatId'] ?? '1',
               chatName: args?['chatName'] ?? args?['vendorName'] ?? 'مركز النصر لقطع الغيار',
             ),
           ),

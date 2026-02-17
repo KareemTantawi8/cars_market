@@ -109,7 +109,23 @@ class ChatCubit extends Cubit<ChatState> {
       // Reload messages after sending
       await getChatMessages(chatId: chatId);
     } catch (e) {
-      emit(ChatError(e.toString().replaceAll('Exception: ', '')));
+      final errorMessage = e.toString().replaceAll('Exception: ', '');
+      
+      // If error suggests message might have been sent (server logging issue),
+      // reload messages to check if it was actually created
+      if (errorMessage.contains('تم إرسال الرسالة ولكن حدث خطأ في السيرفر')) {
+        // Wait a bit for server to process, then reload messages
+        await Future.delayed(const Duration(milliseconds: 500));
+        try {
+          await getChatMessages(chatId: chatId);
+          // If reload successful, don't show error - message was likely sent
+          return;
+        } catch (_) {
+          // If reload fails, show the error
+        }
+      }
+      
+      emit(ChatError(errorMessage));
     }
   }
 

@@ -154,7 +154,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
+              children: [
                           Icon(
                             Icons.chat_bubble_outline,
                             size: 64,
@@ -203,17 +203,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           isOnline: isOnline,
                           unreadCount: unreadCount > 0 ? unreadCount : null,
                           isRead: unreadCount == 0,
-                          imageUrl: null,
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.chatRoom,
-                              arguments: {
-                                'chatId': chatId,
+                  imageUrl: null,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.chatRoom,
+                      arguments: {
+                                'chatId': chatId, // Use actual chat ID from API
                                 'chatName': chatName,
-                              },
-                            );
-                          },
+                      },
+                    );
+                  },
                         );
                       },
                     ),
@@ -230,7 +230,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.error,
                           ),
-                        ),
+                ),
                         const SizedBox(height: 16),
                         PrimaryButton(
                           text: 'إعادة المحاولة',
@@ -240,7 +240,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         ),
                       ],
                     ),
-                  );
+                    );
                 }
 
                 return const SizedBox.shrink();

@@ -102,69 +102,69 @@ class UserProfileScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
-        children: [
-          // Profile Picture
-          Stack(
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.surfaceColor,
-                ),
-                child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-                    ? ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: profile.imageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: AppColors.surfaceColor,
-                            child: const Icon(
-                              Icons.person,
-                              size: 60,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => const Icon(
+      children: [
+        // Profile Picture
+        Stack(
+          children: [
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.surfaceColor,
+              ),
+              child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                  ? ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: profile.imageUrl!,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Container(
+                          color: AppColors.surfaceColor,
+                          child: const Icon(
                             Icons.person,
                             size: 60,
                             color: AppColors.textSecondary,
                           ),
                         ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: AppColors.textSecondary,
+                        errorWidget: (context, url, error) => const Icon(
+                          Icons.person,
+                          size: 60,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
-              ),
-              if (profile.isVerified)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryColor,
-                      shape: BoxShape.circle,
+                    )
+                  : const Icon(
+                      Icons.person,
+                      size: 60,
+                      color: AppColors.textSecondary,
                     ),
-                    child: const Icon(
-                      Icons.check,
-                      color: AppColors.textPrimary,
-                      size: 18,
-                    ),
+            ),
+            if (profile.isVerified)
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check,
+                    color: AppColors.textPrimary,
+                    size: 18,
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Name
-          Text(
-            profile.name,
-            style: AppTextStyles.headingMedium,
-          ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Name
+        Text(
+          profile.name,
+          style: AppTextStyles.headingMedium,
+        ),
           const SizedBox(height: 8),
           // User Type Badge
           Container(
@@ -244,10 +244,10 @@ class UserProfileScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+        Text(
                 label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+          style: AppTextStyles.bodySmall.copyWith(
+            color: AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 2),

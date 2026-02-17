@@ -606,11 +606,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     return Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          'المحافظة',
-                                          style: AppTextStyles.inputLabel,
-                                        ),
-                                        const SizedBox(height: 8),
+                            Text(
+                              'المحافظة',
+                              style: AppTextStyles.inputLabel,
+                            ),
+                            const SizedBox(height: 8),
                                         InkWell(
                                           onTap: () => _showGovernorateSelectionDialog(categoryState),
                                           borderRadius: BorderRadius.circular(12),
@@ -618,14 +618,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                             decoration: BoxDecoration(
                                               color: AppColors.inputBackground,
-                                              borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                                               border: Border.all(
                                                 color: _selectedGovernorate == null
                                                     ? AppColors.inputBorder
                                                     : AppColors.inputBorderFocused,
                                                 width: _selectedGovernorate == null ? 1 : 2,
-                                              ),
-                                            ),
+                                  ),
+                                ),
                                             child: Row(
                                               children: [
                                                 Expanded(
@@ -639,7 +639,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                 const Icon(
                                                   Icons.arrow_drop_down,
                                                   color: AppColors.textSecondary,
-                                                ),
+                                  ),
                                               ],
                                             ),
                                           ),
@@ -651,16 +651,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                               'الرجاء اختيار المحافظة',
                                               style: AppTextStyles.bodySmall.copyWith(
                                                 color: AppColors.error,
-                                              ),
-                                            ),
-                                          ),
+                                  ),
+                                ),
+                              ),
                                       ],
                                     );
                                   }
 
                                   return const SizedBox.shrink();
-                                },
-                              ),
+                              },
+                            ),
                         ],
                         const SizedBox(height: 24),
                         // Create Account Button

@@ -330,11 +330,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pushNamed(context, AppRoutes.profile).then((_) {
                   // When returning, reset to home
                   if (mounted && _currentNavIndex != 0) {
-                    setState(() {
+            setState(() {
                       _currentNavIndex = 0;
                     });
                   }
-                });
+            });
                 // Don't change index here - profile screen doesn't have bottom nav
                 break;
             }
@@ -410,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: AppColors.primaryColor,
               borderRadius: BorderRadius.circular(8),
-            ),
+          ),
             child: const Icon(
               Icons.directions_car,
               color: AppColors.textPrimary,
@@ -762,8 +762,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icons.search_off,
                     size: 64,
                     color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
                   Text(
                     'لا توجد نتائج',
                     style: AppTextStyles.headingSmall,
@@ -837,7 +837,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Colors.white,
                           shape: BoxShape.circle,
                         ),
-                      ),
+        ),
                       const SizedBox(width: 6),
                       Text(
                         supplier.isOnline ? 'أونلاين' : 'أوفلاين',
@@ -894,7 +894,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ],
-                  ),
+        ),
                 ],
                 if (supplier.supportedBrands.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -921,17 +921,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 PrimaryButton(
                   text: 'تواصل مع التاجر',
                   onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.vendorProfile,
-                      arguments: {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.vendorProfile,
+              arguments: {
                         'vendorId': supplier.id.toString(),
                         'vendorName': supplier.name,
-                      },
-                    );
-                  },
-                ),
-              ],
+              },
+            );
+          },
+        ),
+      ],
             ),
           ),
         ],
