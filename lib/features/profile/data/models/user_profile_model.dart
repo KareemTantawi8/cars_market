@@ -50,10 +50,16 @@ class UserProfileModel {
                (json['loyalty']['balance'] as num?)?.toInt() ?? 0;
     }
 
-    // Handle user type
+    // Handle user type - from API: "type": "customer" or "vendor"
     String type = json['type'] as String? ?? 
                   json['user_type'] as String? ?? 
                   json['role'] as String? ?? 'customer';
+
+    // Handle status - from API: "status": "active"
+    String? status = json['status'] as String?;
+
+    // Handle is_protected - from API
+    bool isProtected = json['is_protected'] as bool? ?? false;
 
     // Handle dates
     DateTime? createdAt, updatedAt;
@@ -72,6 +78,12 @@ class UserProfileModel {
       }
     }
 
+    // Check if user has vendor data
+    final vendor = json['vendor'] as Map<String, dynamic>?;
+    final isVerified = vendor != null || 
+                      (json['is_verified'] as bool? ?? false) ||
+                      (json['verified'] as bool? ?? false);
+
     return UserProfileModel(
       id: id,
       name: name,
@@ -83,12 +95,10 @@ class UserProfileModel {
                 json['image'] as String? ?? 
                 json['avatar'] as String? ?? 
                 json['profile_picture'] as String?,
-      isVerified: json['is_verified'] as bool? ?? 
-                  json['verified'] as bool? ?? 
-                  json['is_certified'] as bool? ?? false,
+      isVerified: isVerified,
       userType: type,
       loyaltyPoints: points,
-      status: json['status'] as String?,
+      status: status,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

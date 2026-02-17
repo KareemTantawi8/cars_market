@@ -276,28 +276,28 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHeader(),
               // Content
               Expanded(
-                child: BlocBuilder<SearchCubit, SearchState>(
-                  builder: (context, searchState) {
-                    // Show search results if search was successful
-                    if (searchState is SearchSuccess) {
-                      return _buildSearchResultsView(searchState);
-                    }
-                    
-                    // Otherwise show the search form and available suppliers
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Search Section
-                          _buildSearchSection(),
-                          const SizedBox(height: 32),
-                          // Available Suppliers Section
-                          _buildSuppliersSection(),
-                        ],
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search Section
+                      _buildSearchSection(),
+                      const SizedBox(height: 32),
+                      // Results Section (Search Results or Available Suppliers)
+                      BlocBuilder<SearchCubit, SearchState>(
+                        builder: (context, searchState) {
+                          // Show search results if search was successful
+                          if (searchState is SearchSuccess) {
+                            return _buildSearchResultsSection(searchState);
+                          }
+                          
+                          // Otherwise show available suppliers
+                          return _buildSuppliersSection();
+                        },
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -306,23 +306,36 @@ class _HomeScreenState extends State<HomeScreen> {
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _currentNavIndex,
           onTap: (index) {
-            setState(() {
-              _currentNavIndex = index;
-            });
+            // Don't update index if navigating away - let the destination screen handle its own nav
             switch (index) {
               case 0:
-                // Home - stay on current screen
+                // Home - already on home, just ensure index is correct
+                if (_currentNavIndex != 0) {
+                  setState(() {
+                    _currentNavIndex = 0;
+                  });
+                }
                 break;
               case 1:
                 // My Ads - TODO: Navigate to My Ads screen
+                // Keep current index for now
                 break;
               case 2:
-                // Chat - Navigate to Chat List
+                // Chat - Navigate to Chat List (chat screen has its own bottom nav)
                 Navigator.pushNamed(context, AppRoutes.chatList);
+                // Don't change index here - chat screen will handle its own nav
                 break;
               case 3:
-                // Profile
-                Navigator.pushNamed(context, AppRoutes.profile);
+                // Profile - Navigate to Profile
+                Navigator.pushNamed(context, AppRoutes.profile).then((_) {
+                  // When returning, reset to home
+                  if (mounted && _currentNavIndex != 0) {
+                    setState(() {
+                      _currentNavIndex = 0;
+                    });
+                  }
+                });
+                // Don't change index here - profile screen doesn't have bottom nav
                 break;
             }
           },
@@ -669,90 +682,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSuppliersSection() {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'الموردين المتاحين',
-              style: AppTextStyles.headingSmall,
-            ),
-            TextButton(
-              onPressed: () {
-                // Navigate to all suppliers
-              },
-              child: Text(
-                'عرض الكل',
-                style: AppTextStyles.link,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Suppliers List (sample data - will be replaced with real data)
-        SupplierCard(
-          name: 'مصر لقطع الغيار',
-          isOnline: true,
-          rating: 4.8,
-          reviewCount: 120,
-          supportedBrands: ['تويوتا', 'هيونداي', 'ميتسوبيشي'],
-          location: 'حي الدقي، الجيزة',
-          distance: '3.2 كم',
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.vendorProfile,
-              arguments: {
-                'vendorId': 'vendor_1',
-                'vendorName': 'مصر لقطع الغيار',
-              },
-            );
-          },
-        ),
-        SupplierCard(
-          name: 'مركز الأمل للصيانة',
-          isOnline: false,
-          rating: 4.5,
-          reviewCount: 85,
-          supportedBrands: ['بي إم دبليو', 'مرسيدس'],
-          location: 'مدينة نصر، القاهرة',
-          distance: '5.7 كم',
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.vendorProfile,
-              arguments: {
-                'vendorId': 'vendor_2',
-                'vendorName': 'مركز الأمل للصيانة',
-              },
-            );
-          },
-        ),
-        SupplierCard(
-          name: 'المتحدة للاستيراد',
-          isOnline: true,
-          rating: 4.2,
-          reviewCount: 42,
-          supportedBrands: ['أوبل', 'سكودا'],
-          location: 'حي المعادي، القاهرة',
-          distance: '8.1 كم',
-          onTap: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.vendorProfile,
-              arguments: {
-                'vendorId': 'vendor_3',
-                'vendorName': 'المتحدة للاستيراد',
-              },
-            );
-          },
-        ),
-      ],
-    );
+    // Show empty state - no data until user makes a search
+    return const SizedBox.shrink();
   }
 
-  Widget _buildSearchResultsView(SearchSuccess state) {
+  Widget _buildSearchResultsSection(SearchSuccess state) {
     final suppliers = state.response.suppliers;
     final request = state.request;
     
@@ -775,104 +709,84 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Search Form (Collapsed/Summary)
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: AppColors.surfaceColor,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        // Results Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'نتائج البحث',
+              style: AppTextStyles.headingSmall,
+            ),
+            TextButton.icon(
+              onPressed: () {
+                // Clear search and show suppliers again
+                context.read<SearchCubit>().clearSearch();
+              },
+              icon: const Icon(Icons.edit, size: 16),
+              label: const Text('تعديل البحث'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primaryColor,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            ),
+          ],
+        ),
+        if (activeFilters.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: activeFilters.map((filter) {
+              return Chip(
+                label: Text(
+                  filter,
+                  style: AppTextStyles.bodySmall,
+                ),
+                backgroundColor: AppColors.cardColor,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+        ],
+        // Search Results List
+        if (suppliers.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32),
+              child: Column(
                 children: [
-                  Text(
-                    'نتائج البحث',
-                    style: AppTextStyles.headingMedium,
+                  Icon(
+                    Icons.search_off,
+                    size: 64,
+                    color: AppColors.textSecondary,
                   ),
-                  TextButton.icon(
-                    onPressed: () {
-                      // Clear search and show form again
-                      context.read<SearchCubit>().clearSearch();
-                    },
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('تعديل البحث'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primaryColor,
+                  const SizedBox(height: 16),
+                  Text(
+                    'لا توجد نتائج',
+                    style: AppTextStyles.headingSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'لم نجد موردين يطابقون معايير البحث',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.textSecondary,
                     ),
+                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
-              if (activeFilters.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: activeFilters.map((filter) {
-                    return Chip(
-                      label: Text(
-                        filter,
-                        style: AppTextStyles.bodySmall,
-                      ),
-                      backgroundColor: AppColors.cardColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    );
-                  }).toList(),
-                ),
-              ],
-            ],
-          ),
-        ),
-        // Search Results
-        Expanded(
-          child: suppliers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 64,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'لا توجد نتائج',
-                        style: AppTextStyles.headingSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32),
-                        child: Text(
-                          'لم نجد موردين يطابقون معايير البحث',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      PrimaryButton(
-                        text: 'تعديل البحث',
-                        onPressed: () {
-                          context.read<SearchCubit>().clearSearch();
-                        },
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: suppliers.length,
-                  itemBuilder: (context, index) {
-                    final supplier = suppliers[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _buildSearchResultCard(supplier),
-                    );
-                  },
-                ),
-        ),
+            ),
+          )
+        else
+          ...suppliers.map((supplier) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildSearchResultCard(supplier),
+            );
+          }).toList(),
       ],
     );
   }

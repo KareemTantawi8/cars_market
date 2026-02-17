@@ -31,7 +31,10 @@ class UserProfileRepository {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
         if (data is Map<String, dynamic>) {
-          final result = UserProfileModel.fromJson(data);
+          // The API returns data in a nested structure: { "user": {...}, "permissions": [...], ... }
+          // Extract the user object from the response
+          final userData = data['user'] as Map<String, dynamic>? ?? data;
+          final result = UserProfileModel.fromJson(userData);
           _log('✅ Parsed user profile: ${result.name} (ID: ${result.id})');
           return result;
         }

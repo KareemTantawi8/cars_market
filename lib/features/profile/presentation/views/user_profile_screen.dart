@@ -95,83 +95,187 @@ class UserProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileSection(UserProfileModel profile) {
-    return Column(
-      children: [
-        // Profile Picture
-        Stack(
-          children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.surfaceColor,
-              ),
-              child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-                  ? ClipOval(
-                      child: CachedNetworkImage(
-                        imageUrl: profile.imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: AppColors.surfaceColor,
-                          child: const Icon(
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          // Profile Picture
+          Stack(
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.surfaceColor,
+                ),
+                child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                    ? ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: profile.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: AppColors.surfaceColor,
+                            child: const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => const Icon(
                             Icons.person,
                             size: 60,
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        errorWidget: (context, url, error) => const Icon(
-                          Icons.person,
-                          size: 60,
-                          color: AppColors.textSecondary,
-                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        size: 60,
+                        color: AppColors.textSecondary,
                       ),
-                    )
-                  : const Icon(
-                      Icons.person,
-                      size: 60,
-                      color: AppColors.textSecondary,
+              ),
+              if (profile.isVerified)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryColor,
+                      shape: BoxShape.circle,
                     ),
-            ),
-            if (profile.isVerified)
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: AppColors.textPrimary,
-                    size: 18,
+                    child: const Icon(
+                      Icons.check,
+                      color: AppColors.textPrimary,
+                      size: 18,
+                    ),
                   ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Name
+          Text(
+            profile.name,
+            style: AppTextStyles.headingMedium,
+          ),
+          const SizedBox(height: 8),
+          // User Type Badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: profile.userType == AppConstants.userTypeVendor
+                  ? AppColors.primaryColor.withOpacity(0.2)
+                  : AppColors.accentColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              profile.userType == AppConstants.userTypeVendor ? 'تاجر' : 'عميل',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: profile.userType == AppConstants.userTypeVendor
+                    ? AppColors.primaryColor
+                    : AppColors.accentColor,
+                fontWeight: FontWeight.bold,
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // User Info
+          _buildInfoRow(
+            icon: Icons.phone,
+            label: 'رقم الهاتف',
+            value: profile.formattedPhone,
+          ),
+          const SizedBox(height: 12),
+          if (profile.email != null && profile.email!.isNotEmpty)
+            _buildInfoRow(
+              icon: Icons.email,
+              label: 'البريد الإلكتروني',
+              value: profile.email!,
+            ),
+          if (profile.email != null && profile.email!.isNotEmpty)
+            const SizedBox(height: 12),
+          _buildInfoRow(
+            icon: Icons.badge,
+            label: 'رقم المستخدم',
+            value: '#${profile.id}',
+          ),
+          const SizedBox(height: 12),
+          _buildInfoRow(
+            icon: Icons.info_outline,
+            label: 'حالة الحساب',
+            value: profile.status == 'active' ? 'نشط' : profile.status ?? 'غير معروف',
+            valueColor: profile.status == 'active' ? AppColors.success : AppColors.textSecondary,
+          ),
+          if (profile.createdAt != null) ...[
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              icon: Icons.calendar_today,
+              label: 'تاريخ التسجيل',
+              value: _formatDate(profile.createdAt!),
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    Color? valueColor,
+  }) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 18,
+          color: AppColors.textSecondary,
         ),
-        const SizedBox(height: 16),
-        // Name
-        Text(
-          profile.name,
-          style: AppTextStyles.headingMedium,
-        ),
-        const SizedBox(height: 4),
-        // Phone/ID
-        Text(
-          profile.formattedPhone,
-          style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: valueColor ?? AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
+  String _formatDate(DateTime date) {
+    // Format: يوم/شهر/سنة
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
   Widget _buildLoyaltyProgramCard(UserProfileModel profile) {
+    // Only show loyalty program if user has points or if it's a feature
+    if (profile.loyaltyPoints <= 0) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
