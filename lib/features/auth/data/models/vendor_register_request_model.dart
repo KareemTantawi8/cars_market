@@ -6,7 +6,7 @@ class VendorRegisterRequestModel {
   final String passwordConfirmation;
   final String deviceName;
   final String companyName;
-  final String governorate;
+  final int governorateId;
 
   VendorRegisterRequestModel({
     required this.name,
@@ -14,7 +14,7 @@ class VendorRegisterRequestModel {
     required this.password,
     required this.passwordConfirmation,
     required this.companyName,
-    required this.governorate,
+    required this.governorateId,
     this.deviceName = 'Mobile',
   });
 
@@ -27,7 +27,7 @@ class VendorRegisterRequestModel {
       'password_confirmation': passwordConfirmation,
       'device_name': deviceName,
       'company_name': companyName,
-      'governorate': governorate,
+      'governorate_id': governorateId,
     };
   }
 }

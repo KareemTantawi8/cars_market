@@ -11,6 +11,8 @@ import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../cubit/register_cubit.dart';
+import '../../../home/presentation/cubit/category_cubit.dart';
+import '../../../home/data/models/category_models.dart';
 
 /// Register Screen
 class RegisterScreen extends StatefulWidget {
@@ -27,10 +29,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   final _companyNameController = TextEditingController();
-  final _governorateController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirmation = true;
   String _selectedUserType = AppConstants.userTypeCustomer;
+  GovernorateModel? _selectedGovernorate;
 
   @override
   void dispose() {
@@ -39,7 +41,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _passwordConfirmationController.dispose();
     _companyNameController.dispose();
-    _governorateController.dispose();
     super.dispose();
   }
 
@@ -55,22 +56,118 @@ class _RegisterScreenState extends State<RegisterScreen> {
           passwordConfirmation: _passwordConfirmationController.text,
         );
       } else {
+        if (_selectedGovernorate == null) {
+          CustomToast.showError(
+            context,
+            'الرجاء اختيار المحافظة',
+            duration: const Duration(seconds: 2),
+          );
+          return;
+        }
         cubit.registerAsVendor(
           name: _nameController.text,
           phone: _phoneController.text,
           password: _passwordController.text,
           passwordConfirmation: _passwordConfirmationController.text,
           companyName: _companyNameController.text,
-          governorate: _governorateController.text,
+          governorateId: _selectedGovernorate!.id,
         );
       }
     }
   }
 
+  void _showGovernorateSelectionDialog(CategoryLoaded state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.8,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textHint,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Title
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'اختر المحافظة',
+                style: AppTextStyles.headingSmall,
+              ),
+            ),
+            const Divider(color: AppColors.dividerColor),
+            // Items list
+            Expanded(
+              child: state.governorates.isEmpty
+                  ? Center(
+                      child: Text(
+                        'لا توجد بيانات',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: state.governorates.length,
+                      itemBuilder: (context, index) {
+                        final governorate = state.governorates[index];
+                        final isSelected = governorate == _selectedGovernorate;
+                        return ListTile(
+                          title: Text(
+                            governorate.displayName,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: isSelected
+                                  ? AppColors.primaryColor
+                                  : AppColors.textPrimary,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.primaryColor,
+                                )
+                              : null,
+                          onTap: () {
+                            setState(() {
+                              _selectedGovernorate = governorate;
+                            });
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => RegisterCubit(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => RegisterCubit()),
+        BlocProvider(create: (context) => CategoryCubit()..loadInitialData()),
+      ],
       child: BlocListener<RegisterCubit, RegisterState>(
         listener: (context, state) {
           if (state is RegisterSuccess) {
@@ -492,52 +589,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            // Governorate Field
-                            Text(
-                              'المحافظة',
-                              style: AppTextStyles.inputLabel,
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _governorateController,
-                              keyboardType: TextInputType.text,
-                              textInputAction: TextInputAction.done,
-                              onFieldSubmitted: (_) => _handleRegister(context),
-                              style: AppTextStyles.input,
-                              decoration: InputDecoration(
-                                hintText: 'أدخل المحافظة',
-                                hintStyle: AppTextStyles.inputHint,
-                                filled: true,
-                                fillColor: AppColors.inputBackground,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.inputBorder,
-                                  ),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.inputBorder,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.inputBorderFocused,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (_selectedUserType == AppConstants.userTypeVendor) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'الرجاء إدخال المحافظة';
+                            // Governorate Field (Dropdown)
+                            if (_selectedUserType == AppConstants.userTypeVendor)
+                              BlocBuilder<CategoryCubit, CategoryState>(
+                                builder: (context, categoryState) {
+                                  if (categoryState is CategoryLoading) {
+                                    return const SizedBox(
+                                      height: 60,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
                                   }
-                                }
-                                return null;
-                              },
-                            ),
+
+                                  if (categoryState is CategoryLoaded) {
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'المحافظة',
+                                          style: AppTextStyles.inputLabel,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        InkWell(
+                                          onTap: () => _showGovernorateSelectionDialog(categoryState),
+                                          borderRadius: BorderRadius.circular(12),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.inputBackground,
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: _selectedGovernorate == null
+                                                    ? AppColors.inputBorder
+                                                    : AppColors.inputBorderFocused,
+                                                width: _selectedGovernorate == null ? 1 : 2,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    _selectedGovernorate?.displayName ?? 'اختر المحافظة',
+                                                    style: _selectedGovernorate == null
+                                                        ? AppTextStyles.inputHint
+                                                        : AppTextStyles.input,
+                                                  ),
+                                                ),
+                                                const Icon(
+                                                  Icons.arrow_drop_down,
+                                                  color: AppColors.textSecondary,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        if (_selectedGovernorate == null)
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 4, right: 4),
+                                            child: Text(
+                                              'الرجاء اختيار المحافظة',
+                                              style: AppTextStyles.bodySmall.copyWith(
+                                                color: AppColors.error,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  }
+
+                                  return const SizedBox.shrink();
+                                },
+                              ),
                         ],
                         const SizedBox(height: 24),
                         // Create Account Button

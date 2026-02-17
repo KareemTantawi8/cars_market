@@ -137,7 +137,7 @@ class RegisterCubit extends Cubit<RegisterState> {
     required String password,
     required String passwordConfirmation,
     required String companyName,
-    required String governorate,
+    required int governorateId,
     String deviceName = 'Mobile',
   }) async {
     emit(RegisterLoading());
@@ -190,8 +190,8 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      if (governorate.trim().isEmpty) {
-        emit(const RegisterError('الرجاء إدخال المحافظة'));
+      if (governorateId <= 0) {
+        emit(const RegisterError('الرجاء اختيار المحافظة'));
         return;
       }
 
@@ -202,7 +202,7 @@ class RegisterCubit extends Cubit<RegisterState> {
         password: password,
         passwordConfirmation: passwordConfirmation,
         companyName: companyName.trim(),
-        governorate: governorate.trim(),
+        governorateId: governorateId,
         deviceName: deviceName,
       );
 
