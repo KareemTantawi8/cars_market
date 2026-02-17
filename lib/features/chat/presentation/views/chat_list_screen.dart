@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/chat_item.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../cubit/chat_cubit.dart';
 
 /// Chat List Screen
 class ChatListScreen extends StatefulWidget {
@@ -19,6 +23,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
   int _currentNavIndex = 2; // Chats is at index 2
 
   final List<String> _filters = ['الكل', 'غير مقروءة', 'أرشيف'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Load chats when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ChatCubit>().getChats();
+    });
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null) return '';
+    // TODO: Implement proper date formatting
+    return 'منذ قليل';
+  }
+
+  String _getChatName(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) {
+      // Vendor sees customer name
+      return chat['customer']?['name'] ?? 'عميل';
+    } else {
+      // Customer sees vendor company name
+      return chat['vendor']?['company_name'] ?? 'تاجر';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,104 +125,126 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
           // Chat List
           Expanded(
-            child: ListView(
-              children: [
-                ChatItem(
-                  name: 'المهندس لقطع الغيار',
-                  lastMessage: 'متوفر عندنا مساعدين تويوتا أصلي بالضمان...',
-                  timestamp: '١١:١٥ ص',
-                  isOnline: true,
-                  unreadCount: 3,
-                  imageUrl: null,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                        'chatId': 'chat_1',
-                        'vendorName': 'المهندس لقطع الغيار',
-                      },
+            child: BlocConsumer<ChatCubit, ChatState>(
+              listener: (context, state) {
+                if (state is ChatError) {
+                  CustomToast.showError(context, state.message);
+                }
+              },
+              builder: (context, state) {
+                if (state is ChatLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state is ChatsLoaded) {
+                  // Filter chats based on selected filter
+                  List<Map<String, dynamic>> filteredChats = state.chats;
+                  
+                  if (_selectedFilter == 'غير مقروءة') {
+                    filteredChats = state.chats.where((chat) {
+                      final unreadCount = chat['unread_count'] as int? ?? 0;
+                      return unreadCount > 0;
+                    }).toList();
+                  } else if (_selectedFilter == 'أرشيف') {
+                    // TODO: Implement archive filter when API supports it
+                    filteredChats = [];
+                  }
+
+                  if (filteredChats.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 64,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _selectedFilter == 'غير مقروءة'
+                                ? 'لا توجد محادثات غير مقروءة'
+                                : _selectedFilter == 'أرشيف'
+                                    ? 'لا توجد محادثات مؤرشفة'
+                                    : 'لا توجد محادثات بعد',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.dividerColor),
-                ChatItem(
-                  name: 'محمد كمال',
-                  lastMessage: 'شكراً جزيلاً، هيوصل امتى؟',
-                  timestamp: '١٠:٠٥ ص',
-                  isOnline: false,
-                  unreadCount: 1,
-                  imageUrl: null,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                        'chatId': 'chat_2',
-                        'vendorName': 'محمد كمال',
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      context.read<ChatCubit>().getChats();
+                    },
+                    child: ListView.separated(
+                      itemCount: filteredChats.length,
+                      separatorBuilder: (context, index) => const Divider(
+                        height: 1,
+                        color: AppColors.dividerColor,
+                      ),
+                      itemBuilder: (context, index) {
+                        final chat = filteredChats[index];
+                        final chatId = chat['id']?.toString() ?? '';
+                        final chatName = _getChatName(chat);
+                        final lastMessage = chat['last_message'] as Map<String, dynamic>?;
+                        final lastMessageBody = lastMessage?['body']?.toString() ?? '';
+                        final lastMessageAt = chat['last_message_at']?.toString() ?? '';
+                        final unreadCount = chat['unread_count'] as int? ?? 0;
+                        final isOnline = chat['vendor']?['is_online'] ?? false;
+
+                        return ChatItem(
+                          name: chatName,
+                          lastMessage: lastMessageBody,
+                          timestamp: _formatTimestamp(lastMessageAt),
+                          isOnline: isOnline,
+                          unreadCount: unreadCount > 0 ? unreadCount : null,
+                          isRead: unreadCount == 0,
+                          imageUrl: null,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.chatRoom,
+                              arguments: {
+                                'chatId': chatId,
+                                'chatName': chatName,
+                              },
+                            );
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.dividerColor),
-                ChatItem(
-                  name: 'مركز صيانة الأمل',
-                  lastMessage: 'تم حجز موعد تغيير الزيت ليوم الثلاثاء.',
-                  timestamp: 'أمس',
-                  isOnline: false,
-                  isRead: true,
-                  imageUrl: null,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                        'chatId': 'chat_3',
-                        'vendorName': 'مركز صيانة الأمل',
-                      },
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.dividerColor),
-                ChatItem(
-                  name: 'سارة المنصوري',
-                  lastMessage: 'هل السعر قابل للتفاوض البسيط؟',
-                  timestamp: 'أمس',
-                  isOnline: false,
-                  isRead: true,
-                  imageUrl: null,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                        'chatId': 'chat_4',
-                        'vendorName': 'سارة المنصوري',
-                      },
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.dividerColor),
-                ChatItem(
-                  name: 'عالم الإطارات',
-                  lastMessage: 'تم شحن الطلب رقم #٤٤٣٢',
-                  timestamp: 'الأحد',
-                  isOnline: false,
-                  isRead: true,
-                  imageUrl: null,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                        'chatId': 'chat_5',
-                        'vendorName': 'عالم الإطارات',
-                      },
-                    );
-                  },
-                ),
-                const Divider(height: 1, color: AppColors.dividerColor),
-              ],
+                    ),
+                  );
+                }
+
+                if (state is ChatError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          state.message,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.error,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        PrimaryButton(
+                          text: 'إعادة المحاولة',
+                          onPressed: () {
+                            context.read<ChatCubit>().getChats();
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return const SizedBox.shrink();
+              },
             ),
           ),
         ],

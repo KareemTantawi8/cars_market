@@ -2,9 +2,9 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  // Base URL (relative paths, base URL is in AppConstants)
-  // API Base: http://3.88.167.66/api/v1/
-  static const String basePath = '/api/v1';
+      // Base URL (relative paths, base URL is in AppConstants)
+      // API Base: http://3.88.167.66/api/v1
+  static const String basePath = '';
 
   // Authentication
   // POST /api/v1/auth/login

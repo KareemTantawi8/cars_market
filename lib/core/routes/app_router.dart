@@ -13,10 +13,15 @@ import '../../features/vendor/presentation/views/vendor_dashboard_screen.dart';
 import '../../features/vendor/presentation/cubit/vendor_profile_cubit.dart';
 import '../../features/chat/presentation/views/chat_list_screen.dart';
 import '../../features/chat/presentation/views/chat_room_screen.dart';
+import '../../features/chat/presentation/cubit/chat_cubit.dart';
 import '../../features/subscription/presentation/views/subscription_plans_screen.dart';
 import '../../features/subscription/presentation/views/plan_details_screen.dart';
 import '../../features/profile/presentation/views/user_profile_screen.dart';
 import '../../features/profile/presentation/cubit/user_profile_cubit.dart';
+import '../../features/notifications/presentation/views/notifications_screen.dart';
+import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
+import '../../features/vendor/presentation/views/vendor_incoming_requests_screen.dart';
+import '../../features/vendor/presentation/cubit/vendor_requests_cubit.dart';
 
 /// Application Router
 class AppRouter {
@@ -74,15 +79,21 @@ class AppRouter {
 
       case AppRoutes.chatList:
         return MaterialPageRoute(
-          builder: (_) => const ChatListScreen(),
+          builder: (_) => BlocProvider(
+            create: (_) => ChatCubit(),
+            child: const ChatListScreen(),
+          ),
         );
 
       case AppRoutes.chatRoom:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => ChatRoomScreen(
-            chatId: args?['chatId'] ?? '',
-            vendorName: args?['vendorName'] ?? 'مركز النصر لقطع الغيار',
+          builder: (_) => BlocProvider(
+            create: (_) => ChatCubit(),
+            child: ChatRoomScreen(
+              chatId: args?['chatId'] ?? '',
+              chatName: args?['chatName'] ?? args?['vendorName'] ?? 'مركز النصر لقطع الغيار',
+            ),
           ),
         );
 
@@ -109,6 +120,22 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (_) => UserProfileCubit(),
             child: const UserProfileScreen(),
+          ),
+        );
+
+      case AppRoutes.notifications:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => NotificationsCubit(),
+            child: const NotificationsScreen(),
+          ),
+        );
+
+      case AppRoutes.vendorIncomingRequests:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => VendorRequestsCubit(),
+            child: const VendorIncomingRequestsScreen(),
           ),
         );
 

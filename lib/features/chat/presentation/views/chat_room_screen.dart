@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/message_bubble.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
-import '../../../../shared/widgets/common/send_message_dialog.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
+import '../cubit/chat_cubit.dart';
 
 /// Chat Room Screen
 class ChatRoomScreen extends StatefulWidget {
   final String chatId;
-  final String vendorName;
+  final String chatName;
 
   const ChatRoomScreen({
     super.key,
     required this.chatId,
-    this.vendorName = 'مركز النصر لقطع الغيار',
+    this.chatName = 'مركز النصر لقطع الغيار',
   });
 
   @override
@@ -23,7 +27,32 @@ class ChatRoomScreen extends StatefulWidget {
 class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final bool _isOnline = true;
+  bool _isOnline = false;
+  String _displayName = '';
+  List<Map<String, dynamic>> _messages = [];
+  int? _currentUserId;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUserId = int.tryParse(StorageService.getUserId() ?? '');
+    _loadChatData();
+  }
+
+  void _loadChatData() {
+    final chatId = int.tryParse(widget.chatId);
+    if (chatId == null) return;
+
+    final cubit = context.read<ChatCubit>();
+    
+    // Load chat details
+    cubit.getChatDetails(chatId).then((_) {
+      // Load messages
+      cubit.getChatMessages(chatId: chatId);
+      // Mark as read
+      cubit.markAsRead(chatId);
+    });
+  }
 
   @override
   void dispose() {
@@ -35,217 +64,282 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
 
-    // TODO: Send message via Cubit/API
-    print('Sending message: ${_messageController.text}');
+    final chatId = int.tryParse(widget.chatId);
+    if (chatId == null) return;
+
+    final message = _messageController.text.trim();
     _messageController.clear();
-    
-    // Scroll to bottom
-    _scrollController.animateTo(
-      0.0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+
+    // Send message via Cubit
+    context.read<ChatCubit>().sendMessage(
+      chatId: chatId,
+      body: message,
     );
+
+    // Scroll to bottom
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  String _formatTimestamp(String? timestamp) {
+    if (timestamp == null) return '';
+    // TODO: Implement proper date formatting
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      
+      if (difference.inMinutes < 1) {
+        return 'الآن';
+      } else if (difference.inHours < 1) {
+        return 'منذ ${difference.inMinutes} دقيقة';
+      } else if (difference.inDays < 1) {
+        return 'منذ ${difference.inHours} ساعة';
+      } else if (difference.inDays == 1) {
+        return 'أمس';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return timestamp;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.phone, color: AppColors.textPrimary),
-            onPressed: () {
-              // TODO: Handle phone call
-            },
-          ),
-        ],
-        title: Row(
-          children: [
-            // Profile Picture
-            Stack(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.surfaceColor,
-                  ),
-                  child: const Icon(
-                    Icons.store,
-                    color: AppColors.textSecondary,
-                    size: 24,
-                  ),
-                ),
-                if (_isOnline)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: OnlineIndicator(isOnline: true, size: 12),
-                  ),
-              ],
+    return BlocConsumer<ChatCubit, ChatState>(
+      listener: (context, state) {
+        if (state is ChatError) {
+          CustomToast.showError(context, state.message);
+        } else if (state is ChatDetailsLoaded) {
+          final userType = StorageService.getUserType();
+          if (userType == AppConstants.userTypeVendor) {
+            _displayName = state.chat['customer']?['name'] ?? 'عميل';
+            _isOnline = state.chat['customer']?['is_online'] ?? false;
+          } else {
+            _displayName = state.chat['vendor']?['company_name'] ?? 'تاجر';
+            _isOnline = state.chat['vendor']?['is_online'] ?? false;
+          }
+        } else if (state is MessagesLoaded) {
+          setState(() {
+            _messages = state.messages.reversed.toList(); // Reverse for display
+          });
+          // Scroll to bottom when new messages arrive
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                0.0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: AppColors.backgroundColor,
+          appBar: AppBar(
+            backgroundColor: AppColors.surfaceColor,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.vendorName,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    'متصل الآن',
-                    style: AppTextStyles.caption.copyWith(
-                      color: _isOnline ? AppColors.online : AppColors.offline,
-                    ),
-                  ),
-                ],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.phone, color: AppColors.textPrimary),
+                onPressed: () {
+                  // TODO: Handle phone call
+                },
               ),
-            ),
-          ],
-        ),
-      ),
-      body: Column(
-        children: [
-          // Chat Messages
-          Expanded(
-            child: ListView(
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            ],
+            title: Row(
               children: [
-                // Date Separator
-                const DateSeparator(date: 'اليوم'),
-                
-                // Business Message 1
-                MessageBubble(
-                  message:
-                      'أهلاً بك يا فندم في مركز النصر. كيف يمكننا مساعدتك اليوم بخصوص قطع الغيار؟',
-                  timestamp: 'AM 10:42',
-                  isSentByMe: false,
-                ),
-                
-                // User Message 1
-                MessageBubble(
-                  message: 'هل متوفر مساعدين أمامين لانسر بومة موديل 2008؟',
-                  timestamp: 'AM 10:45',
-                  isSentByMe: true,
-                ),
-                
-                // Business Message 2
-                MessageBubble(
-                  message:
-                      'نعم يا فندم متوفر نوعين، الأصلي كيب (KYB) استيراد الخارج، وفي نوع صيني جديد بجودة عالية. تحب أصورلك القطعة المتوفرة حالياً؟',
-                  timestamp: 'AM 10:46',
-                  isSentByMe: false,
-                ),
-                
-                // User Message 2
-                MessageBubble(
-                  message:
-                      'يا ريت، ومحتاج أعرف السعر للاثنين وضمان الاستبدال قد إيه؟',
-                  timestamp: 'AM 10:48',
-                  isSentByMe: true,
-                ),
-                
-                // Business Image Message
-                MessageBubble(
-                  message: '',
-                  timestamp: 'AM 10:50',
-                  isSentByMe: false,
-                  imageUrl:
-                      'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=400',
-                ),
-              ],
-            ),
-          ),
-          
-          // Message Input Field
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  // Gallery Icon
-                  IconButton(
-                    icon: const Icon(
-                      Icons.image,
-                      color: AppColors.textSecondary,
+                // Profile Picture
+                Stack(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.surfaceColor,
+                      ),
+                      child: const Icon(
+                        Icons.store,
+                        color: AppColors.textSecondary,
+                        size: 24,
+                      ),
                     ),
-                    onPressed: () {
-                      // TODO: Pick image from gallery
-                    },
-                  ),
-                  // Message Input
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      style: AppTextStyles.input,
-                      decoration: InputDecoration(
-                        hintText: 'أكتب رسالة...',
-                        hintStyle: AppTextStyles.inputHint,
-                        filled: true,
-                        fillColor: AppColors.inputBackground,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
+                    if (_isOnline)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: OnlineIndicator(isOnline: true, size: 12),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _displayName.isNotEmpty ? _displayName : widget.chatName,
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _isOnline ? 'متصل الآن' : 'غير متصل',
+                        style: AppTextStyles.caption.copyWith(
+                          color: _isOnline ? AppColors.online : AppColors.offline,
                         ),
                       ),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  // Send Button
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: AppColors.textPrimary,
-                        size: 20,
-                      ),
-                      onPressed: _sendMessage,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
+          body: Column(
+            children: [
+              // Chat Messages
+              Expanded(
+                child: state is ChatLoading && _messages.isEmpty
+                    ? const Center(child: CircularProgressIndicator())
+                    : _messages.isEmpty
+                        ? Center(
+                            child: Text(
+                              'لا توجد رسائل بعد',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            reverse: true,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            itemCount: _messages.length,
+                            itemBuilder: (context, index) {
+                              final message = _messages[index];
+                              final senderId = message['sender_id'] as int?;
+                              final isSentByMe = senderId == _currentUserId;
+                              final body = message['body']?.toString() ?? '';
+                              final timestamp = message['created_at']?.toString() ?? '';
+                              final isSystem = message['is_system'] as bool? ?? false;
+
+                              if (isSystem) {
+                                return Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    child: Text(
+                                      body,
+                                      style: AppTextStyles.caption.copyWith(
+                                        color: AppColors.textSecondary,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              return MessageBubble(
+                                message: body,
+                                timestamp: _formatTimestamp(timestamp),
+                                isSentByMe: isSentByMe,
+                                imageUrl: message['image_url']?.toString(),
+                              );
+                            },
+                          ),
+              ),
+              // Message Input Field
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      // Gallery Icon
+                      IconButton(
+                        icon: const Icon(
+                          Icons.image,
+                          color: AppColors.textSecondary,
+                        ),
+                        onPressed: () {
+                          // TODO: Pick image from gallery
+                        },
+                      ),
+                      // Message Input
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          style: AppTextStyles.input,
+                          decoration: InputDecoration(
+                            hintText: 'أكتب رسالة...',
+                            hintStyle: AppTextStyles.inputHint,
+                            filled: true,
+                            fillColor: AppColors.inputBackground,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Send Button
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: AppColors.textPrimary,
+                            size: 20,
+                          ),
+                          onPressed: _sendMessage,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -4,6 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../cubit/vendor_profile_cubit.dart';
@@ -360,8 +363,86 @@ class VendorProfileScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, VendorProfileModel profile) {
-    // Only show WhatsApp button (green square button)
-    // Remove the blue chat button as per requirements
+    final userType = StorageService.getUserType();
+    final isCustomer = userType != AppConstants.userTypeVendor;
+    
+    if (isCustomer) {
+      // For customers: Show both Chat and WhatsApp buttons
+      return Column(
+        children: [
+          // Start Chat Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                // Navigate to chat - if chat doesn't exist, it will be created
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.chatRoom,
+                  arguments: {
+                    'chatId': profile.id.toString(),
+                    'chatName': profile.name,
+                  },
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+                foregroundColor: AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.chat_bubble, size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'بدء محادثة',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // WhatsApp Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: AppColors.textPrimary,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.phone, size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'واتساب',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    } else {
+      // For vendors: Only show WhatsApp button
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -390,6 +471,7 @@ class VendorProfileScreen extends StatelessWidget {
         ),
       ),
     );
+    }
   }
 
   Widget _buildLocationSection(VendorProfileModel profile) {

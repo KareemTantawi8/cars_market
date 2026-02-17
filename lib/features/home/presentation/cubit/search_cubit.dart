@@ -88,5 +88,10 @@ class SearchCubit extends Cubit<SearchState> {
   void reset() {
     emit(SearchInitial());
   }
+
+  /// Clear search results and return to initial state
+  void clearSearch() {
+    emit(SearchInitial());
+  }
 }
 

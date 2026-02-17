@@ -7,9 +7,11 @@ import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 import '../../../../shared/widgets/common/supplier_card.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
+import '../../../../shared/widgets/common/rating_stars.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
+import '../../data/models/supplier_model.dart';
 
 /// Home Screen (User)
 class HomeScreen extends StatefulWidget {
@@ -242,16 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
       listeners: [
         BlocListener<SearchCubit, SearchState>(
           listener: (context, state) {
-            if (state is SearchSuccess) {
-              Navigator.pushNamed(
-                context,
-                AppRoutes.searchResults,
-                arguments: {
-                  'searchRequest': state.request,
-                  'searchResponse': state.response,
-                },
-              );
-            } else if (state is SearchError) {
+            if (state is SearchError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
@@ -283,18 +276,28 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildHeader(),
               // Content
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Search Section
-                      _buildSearchSection(),
-                      const SizedBox(height: 32),
-                      // Available Suppliers Section
-                      _buildSuppliersSection(),
-                    ],
-                  ),
+                child: BlocBuilder<SearchCubit, SearchState>(
+                  builder: (context, searchState) {
+                    // Show search results if search was successful
+                    if (searchState is SearchSuccess) {
+                      return _buildSearchResultsView(searchState);
+                    }
+                    
+                    // Otherwise show the search form and available suppliers
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Search Section
+                          _buildSearchSection(),
+                          const SizedBox(height: 32),
+                          // Available Suppliers Section
+                          _buildSuppliersSection(),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -306,8 +309,21 @@ class _HomeScreenState extends State<HomeScreen> {
             setState(() {
               _currentNavIndex = index;
             });
-            if (index == 3) {
-              Navigator.pushNamed(context, AppRoutes.profile);
+            switch (index) {
+              case 0:
+                // Home - stay on current screen
+                break;
+              case 1:
+                // My Ads - TODO: Navigate to My Ads screen
+                break;
+              case 2:
+                // Chat - Navigate to Chat List
+                Navigator.pushNamed(context, AppRoutes.chatList);
+                break;
+              case 3:
+                // Profile
+                Navigator.pushNamed(context, AppRoutes.profile);
+                break;
             }
           },
           items: const [
@@ -322,9 +338,9 @@ class _HomeScreenState extends State<HomeScreen> {
               route: '/orders',
             ),
             BottomNavItem(
-              label: 'جراجي',
-              icon: Icons.directions_car,
-              route: '/garage',
+              label: 'المحادثات',
+              icon: Icons.chat_bubble,
+              route: AppRoutes.chatList,
             ),
             BottomNavItem(
               label: 'حسابي',
@@ -352,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   color: AppColors.textPrimary,
                 ),
                 onPressed: () {
-                  // TODO: Navigate to notifications
+                  Navigator.pushNamed(context, AppRoutes.notifications);
                 },
               ),
               Positioned(
@@ -733,6 +749,292 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildSearchResultsView(SearchSuccess state) {
+    final suppliers = state.response.suppliers;
+    final request = state.request;
+    
+    // Get active filters
+    final activeFilters = <String>[];
+    if (request.partName != null && request.partName!.isNotEmpty) {
+      activeFilters.add(request.partName!);
+    }
+    if (request.brandName != null && request.brandName!.isNotEmpty) {
+      activeFilters.add(request.brandName!);
+    }
+    if (request.modelName != null && request.modelName!.isNotEmpty) {
+      activeFilters.add(request.modelName!);
+    }
+    if (request.yearName != null && request.yearName!.isNotEmpty) {
+      activeFilters.add(request.yearName!);
+    }
+    if (request.governorateName != null && request.governorateName!.isNotEmpty) {
+      activeFilters.add(request.governorateName!);
+    }
+
+    return Column(
+      children: [
+        // Search Form (Collapsed/Summary)
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: AppColors.surfaceColor,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'نتائج البحث',
+                    style: AppTextStyles.headingMedium,
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      // Clear search and show form again
+                      context.read<SearchCubit>().clearSearch();
+                    },
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('تعديل البحث'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              if (activeFilters.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: activeFilters.map((filter) {
+                    return Chip(
+                      label: Text(
+                        filter,
+                        style: AppTextStyles.bodySmall,
+                      ),
+                      backgroundColor: AppColors.cardColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+        // Search Results
+        Expanded(
+          child: suppliers.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.search_off,
+                        size: 64,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'لا توجد نتائج',
+                        style: AppTextStyles.headingSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          'لم نجد موردين يطابقون معايير البحث',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      PrimaryButton(
+                        text: 'تعديل البحث',
+                        onPressed: () {
+                          context.read<SearchCubit>().clearSearch();
+                        },
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: suppliers.length,
+                  itemBuilder: (context, index) {
+                    final supplier = suppliers[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _buildSearchResultCard(supplier),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchResultCard(SupplierModel supplier) {
+    return Card(
+      color: AppColors.cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: supplier.imageUrl != null
+                    ? Image.network(
+                        supplier.imageUrl!,
+                        width: double.infinity,
+                        height: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildImagePlaceholder(),
+                      )
+                    : _buildImagePlaceholder(),
+              ),
+              // Online Badge
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: supplier.isOnline ? AppColors.success : AppColors.offline,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        supplier.isOnline ? 'أونلاين' : 'أوفلاين',
+                        style: AppTextStyles.captionSmall.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Name
+                Text(
+                  supplier.name,
+                  style: AppTextStyles.headingSmall,
+                ),
+                const SizedBox(height: 8),
+                // Rating
+                Row(
+                  children: [
+                    RatingStars(
+                      rating: supplier.rating,
+                      size: 16,
+                      reviewCount: supplier.reviewCount,
+                    ),
+                  ],
+                ),
+                if (supplier.location.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  // Location
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          supplier.distance != null
+                              ? '${supplier.location} (${supplier.distance})'
+                              : supplier.location,
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (supplier.supportedBrands.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  // Brands
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.directions_car,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'الماركات: ${supplier.supportedBrands.join('، ')}',
+                          style: AppTextStyles.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 16),
+                // Contact Button
+                PrimaryButton(
+                  text: 'تواصل مع التاجر',
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.vendorProfile,
+                      arguments: {
+                        'vendorId': supplier.id.toString(),
+                        'vendorName': supplier.name,
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      color: AppColors.surfaceColor,
+      child: const Icon(
+        Icons.store,
+        size: 64,
+        color: AppColors.textSecondary,
+      ),
     );
   }
 }

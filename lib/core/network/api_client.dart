@@ -90,6 +90,12 @@ class ApiClient {
     _loadTokenFromStorage();
   }
 
+  /// Update base URL (useful when base URL changes)
+  void updateBaseUrl() {
+    _dio.options.baseUrl = AppConstants.baseUrl;
+    _log('🔄 Base URL updated to: ${AppConstants.baseUrl}');
+  }
+
   /// Log helper
   void _log(String message) {
     developer.log(message, name: 'ApiClient');

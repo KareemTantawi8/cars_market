@@ -54,11 +54,27 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
         ),
         centerTitle: true,
         actions: [
+          Stack(
+            children: [
           IconButton(
             icon: const Icon(Icons.notifications, color: AppColors.textPrimary),
             onPressed: () {
-              // TODO: Navigate to notifications
+                  Navigator.pushNamed(context, AppRoutes.notifications);
             },
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.notificationDot,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
         bottom: TabBar(
@@ -742,6 +758,24 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           title: 'تعديل ملف المتجر',
           onTap: () {
             // TODO: Navigate to edit store profile
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildQuickLinkCard(
+          icon: Icons.chat_bubble,
+          iconColor: AppColors.primaryColor,
+          title: 'المحادثات',
+          onTap: () {
+            Navigator.pushNamed(context, AppRoutes.chatList);
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildQuickLinkCard(
+          icon: Icons.inbox,
+          iconColor: AppColors.warning,
+          title: 'الطلبات الواردة',
+          onTap: () {
+            Navigator.pushNamed(context, AppRoutes.vendorIncomingRequests);
           },
         ),
         const SizedBox(height: 12),
