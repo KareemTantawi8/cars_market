@@ -15,13 +15,13 @@ class VendorProfileRepository {
     print('👤 VendorProfileRepository: $message');
   }
 
-  /// Get vendor profile by user ID
-  /// GET /api/v1/users/:id
-  Future<VendorProfileModel> getVendorProfile(int userId) async {
-    _log('📋 Fetching vendor profile for user ID: $userId');
+  /// Get vendor profile by vendor ID
+  /// GET /api/v1/vendors/:id
+  Future<VendorProfileModel> getVendorProfile(int vendorId) async {
+    _log('📋 Fetching vendor profile for vendor ID: $vendorId');
     try {
       final response = await _apiClient.get(
-        ApiEndpoints.userProfileById(userId),
+        ApiEndpoints.vendorById(vendorId),
       );
 
       _log('✅ Vendor profile response status: ${response.statusCode}');

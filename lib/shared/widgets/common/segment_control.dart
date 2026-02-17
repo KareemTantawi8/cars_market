@@ -36,6 +36,7 @@ class SegmentControl<T> extends StatelessWidget {
           return Expanded(
             child: GestureDetector(
               onTap: () => onChanged(segment.value),
+              behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,

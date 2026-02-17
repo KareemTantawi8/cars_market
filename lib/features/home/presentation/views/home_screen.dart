@@ -343,25 +343,50 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // App Logo
-          const AppLogo(size: 40, withGlow: false),
-          const Text(
-            'سوق القطع',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryColor,
-            ),
+          // Notification Bell
+          Stack(
+            children: [
+              IconButton(
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: AppColors.textPrimary,
+                ),
+                onPressed: () {
+                  // TODO: Navigate to notifications
+                },
+              ),
+              Positioned(
+                right: 8,
+                top: 8,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: AppColors.notificationDot,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
           ),
-          // Chat Icon
-          IconButton(
-            icon: const Icon(
-              Icons.chat_bubble_outline,
-              color: AppColors.textPrimary,
+          // Title
+          Text(
+            'سوق القطع',
+            style: AppTextStyles.headingMedium,
+          ),
+          // Car Icon
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.primaryColor,
+              borderRadius: BorderRadius.circular(8),
             ),
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.chatList);
-            },
+            child: const Icon(
+              Icons.directions_car,
+              color: AppColors.textPrimary,
+              size: 24,
+            ),
           ),
         ],
       ),
@@ -372,24 +397,32 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Main Title
         Text(
-          'ابحث عن قطع غيار',
-          style: AppTextStyles.headingMedium,
+          'طلب قطعة غيار',
+          style: AppTextStyles.headingLarge,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 8),
+        // Subtitle
         Text(
-          'حدد مواصفات سيارتك للوصول لأفضل الموردين',
-          style: AppTextStyles.bodySmall,
+          'املأ البيانات وسيقوم التجار بالرد عليك فوراً',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: AppColors.textSecondary,
+          ),
         ),
         const SizedBox(height: 24),
         // Part Name Field
+        Text(
+          'ما هي القطعة التي تبحث عنها؟',
+          style: AppTextStyles.inputLabel,
+        ),
+        const SizedBox(height: 8),
         TextFormField(
           controller: _partNameController,
           decoration: InputDecoration(
-            labelText: 'اسم القطعة',
-            hintText: 'مثال: تيل فرامل، مساعدين...',
+            hintText: 'مثال: تيل فرامل، مساعدين، فانوس...',
             hintStyle: AppTextStyles.inputHint,
-            prefixIcon: const Icon(
+            suffixIcon: const Icon(
               Icons.search,
               color: AppColors.textSecondary,
             ),
@@ -428,13 +461,13 @@ class _HomeScreenState extends State<HomeScreen> {
             if (state is CategoryLoaded) {
               return Column(
                 children: [
-                  // Brand and Model Row
+                  // Brand and Model Row (Left: Brand, Right: Model)
                   Row(
                     children: [
                       Expanded(
                         child: _buildSelectionField(
                           label: 'الماركة',
-                          value: state.selectedBrand?.displayName ?? 'اختر الماركة',
+                          value: state.selectedBrand?.displayName ?? 'تويوتا',
                           isPlaceholder: state.selectedBrand == null,
                           onTap: () => _showBrandSelectionDialog(state),
                         ),
@@ -443,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'الموديل',
-                          value: state.selectedModel?.displayName ?? 'اختر الموديل',
+                          value: state.selectedModel?.displayName ?? 'كورولا',
                           isPlaceholder: state.selectedModel == null,
                           onTap: () => _showModelSelectionDialog(state),
                         ),
@@ -451,24 +484,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  // Year and Governorate Row
+                  // Year and Governorate Row (Left: Governorate, Right: Year)
                   Row(
                     children: [
                       Expanded(
                         child: _buildSelectionField(
-                          label: 'السنة',
-                          value: state.selectedYear?.displayName ?? 'اختر السنة',
-                          isPlaceholder: state.selectedYear == null,
-                          onTap: () => _showYearSelectionDialog(state),
+                          label: 'المحافظة',
+                          value: state.selectedGovernorate?.displayName ?? 'القاهرة',
+                          isPlaceholder: state.selectedGovernorate == null,
+                          onTap: () => _showGovernorateSelectionDialog(state),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildSelectionField(
-                          label: 'المحافظة',
-                          value: state.selectedGovernorate?.displayName ?? 'اختر المحافظة',
-                          isPlaceholder: state.selectedGovernorate == null,
-                          onTap: () => _showGovernorateSelectionDialog(state),
+                          label: 'السنة',
+                          value: state.selectedYear?.displayName ?? '2024',
+                          isPlaceholder: state.selectedYear == null,
+                          onTap: () => _showYearSelectionDialog(state),
                         ),
                       ),
                     ],
@@ -503,17 +536,68 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 24),
-        // Search Button
+        // Submit Button
         BlocBuilder<SearchCubit, SearchState>(
           builder: (context, state) {
             final isLoading = state is SearchLoading;
             return PrimaryButton(
-              text: 'ابحث الآن',
-              icon: Icons.search,
+              text: 'إرسال الطلب الآن',
+              icon: Icons.arrow_forward,
               onPressed: isLoading ? null : _handleSearch,
               isLoading: isLoading,
             );
           },
+        ),
+        const SizedBox(height: 32),
+        // Info Section
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.inputBorder,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: AppColors.primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'اطلب قطعتك بسهولة',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'اطلب قطعتك وهيوصلك ردود من التجار في دقايق بأفضل الأسعار',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
