@@ -158,6 +158,19 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               ],
             ),
           ),
+          TextButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.createAd);
+            },
+            icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primaryColor),
+            label: Text(
+              'إضافة إعلان',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -293,7 +306,16 @@ class _MyAdCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.adDetails,
+          arguments: {'adId': ad.id},
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
       decoration: BoxDecoration(
         color: AppColors.cardColor,
         borderRadius: BorderRadius.circular(12),
@@ -403,6 +425,7 @@ class _MyAdCard extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 

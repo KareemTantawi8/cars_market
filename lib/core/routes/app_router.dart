@@ -22,6 +22,10 @@ import '../../features/notifications/presentation/views/notifications_screen.dar
 import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
 import '../../features/vendor/presentation/views/vendor_incoming_requests_screen.dart';
 import '../../features/vendor/presentation/cubit/vendor_requests_cubit.dart';
+import '../../features/my_ads/presentation/views/create_ad_screen.dart';
+import '../../features/home/presentation/cubit/category_cubit.dart';
+import '../../features/my_ads/presentation/views/create_ad_photos_screen.dart';
+import '../../features/ad_details/presentation/views/ad_details_screen.dart';
 
 /// Application Router
 class AppRouter {
@@ -136,6 +140,28 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (_) => VendorRequestsCubit(),
             child: const VendorIncomingRequestsScreen(),
+          ),
+        );
+
+      case AppRoutes.createAd:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => CategoryCubit(),
+            child: const CreateAdScreen(),
+          ),
+        );
+
+      case AppRoutes.createAdPhotos:
+        return MaterialPageRoute(
+          builder: (_) => const CreateAdPhotosScreen(),
+        );
+
+      case AppRoutes.adDetails:
+        final args = settings.arguments as Map<String, dynamic>?;
+        return MaterialPageRoute(
+          builder: (_) => AdDetailsScreen(
+            adId: args?['adId'],
+            ad: args?['ad'],
           ),
         );
 
