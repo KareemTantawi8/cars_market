@@ -9,6 +9,7 @@ class AppRoutes {
 
   // Home Routes
   static const String home = '/home';
+  static const String myAds = '/my-ads';
   static const String searchResults = '/search-results';
   static const String vendorProfile = '/vendor-profile';
 

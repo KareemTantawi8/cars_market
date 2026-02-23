@@ -8,6 +8,7 @@ import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 import '../../../../shared/widgets/common/supplier_card.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
+import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
@@ -269,39 +270,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
       child: Scaffold(
         backgroundColor: AppColors.backgroundColor,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Search Section
-                      _buildSearchSection(),
-                      const SizedBox(height: 32),
-                      // Results Section (Search Results or Available Suppliers)
-                      BlocBuilder<SearchCubit, SearchState>(
-                        builder: (context, searchState) {
-                          // Show search results if search was successful
-                          if (searchState is SearchSuccess) {
-                            return _buildSearchResultsSection(searchState);
-                          }
-                          
-                          // Otherwise show available suppliers
-                          return _buildSuppliersSection();
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        body: IndexedStack(
+          index: _currentNavIndex,
+          children: [
+            _buildHomeContent(),
+            const MyAdsScreen(),
+          ],
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _currentNavIndex,
@@ -309,16 +283,10 @@ class _HomeScreenState extends State<HomeScreen> {
             // Don't update index if navigating away - let the destination screen handle its own nav
             switch (index) {
               case 0:
-                // Home - already on home, just ensure index is correct
-                if (_currentNavIndex != 0) {
-                  setState(() {
-                    _currentNavIndex = 0;
-                  });
-                }
+                setState(() => _currentNavIndex = 0);
                 break;
               case 1:
-                // My Ads - TODO: Navigate to My Ads screen
-                // Keep current index for now
+                setState(() => _currentNavIndex = 1);
                 break;
               case 2:
                 // Chat - Navigate to Chat List (chat screen has its own bottom nav)
@@ -346,9 +314,9 @@ class _HomeScreenState extends State<HomeScreen> {
               route: '/home',
             ),
             BottomNavItem(
-              label: 'طلباتي',
-              icon: Icons.shopping_cart,
-              route: '/orders',
+              label: 'إعلاناتي',
+              icon: Icons.sell_outlined,
+              route: '/my-ads',
             ),
             BottomNavItem(
               label: 'المحادثات',
@@ -362,6 +330,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHomeContent() {
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildSearchSection(),
+                  const SizedBox(height: 32),
+                  BlocBuilder<SearchCubit, SearchState>(
+                    builder: (context, searchState) {
+                      if (searchState is SearchSuccess) {
+                        return _buildSearchResultsSection(searchState);
+                      }
+                      return _buildSuppliersSection();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
