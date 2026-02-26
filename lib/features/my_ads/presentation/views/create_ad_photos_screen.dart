@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../ads/presentation/cubit/create_ad_cubit.dart';
 
 /// Represents a photo item: file path and whether it's the cover
 class AdPhotoItem {
@@ -22,7 +25,9 @@ class AdPhotoItem {
 
 /// Create Ad - Photo Upload (Step 4 of 4) - صور العربية
 class CreateAdPhotosScreen extends StatefulWidget {
-  const CreateAdPhotosScreen({super.key});
+  final Map<String, dynamic>? formData;
+
+  const CreateAdPhotosScreen({super.key, this.formData});
 
   @override
   State<CreateAdPhotosScreen> createState() => _CreateAdPhotosScreenState();
@@ -377,17 +382,56 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
   }
 
   Widget _buildPublishButton() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: PrimaryButton(
-        text: 'نشر الإعلان',
-        icon: Icons.arrow_forward,
-        onPressed: () {
-          // TODO: submit ad with photos
-          Navigator.of(context).popUntil((route) => route.isFirst);
-        },
-      ),
+    final formData = widget.formData;
+    return BlocConsumer<CreateAdCubit, CreateAdState>(
+      listener: (context, state) {
+        if (state is CreateAdSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم إنشاء الإعلان وسيتم مراجعته قبل النشر'), backgroundColor: AppColors.success),
+          );
+          Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+        }
+        if (state is CreateAdError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+          );
+        }
+      },
+      builder: (context, state) {
+        final isSubmitting = state is CreateAdSubmitting;
+        final canSubmit = formData != null &&
+            (formData['title'] as String?)?.trim().isNotEmpty == true &&
+            (formData['brandId'] != null);
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: PrimaryButton(
+            text: 'نشر الإعلان',
+            icon: Icons.arrow_forward,
+            onPressed: (isSubmitting || !canSubmit) ? null : () => _submitAd(context, formData),
+            isLoading: isSubmitting,
+          ),
+        );
+      },
     );
+  }
+
+  void _submitAd(BuildContext context, Map<String, dynamic>? formData) {
+    if (formData == null) return;
+    final title = (formData['title'] as String?)?.trim() ?? '';
+    if (title.isEmpty) return;
+    final imageFiles = _photos.map((p) => File(p.path)).toList();
+    context.read<CreateAdCubit>().createAd(
+          title: title,
+          description: formData['description'] as String?,
+          brandId: formData['brandId'] as int? ?? 0,
+          modelId: formData['modelId'] as int?,
+          yearId: formData['yearId'] as int?,
+          condition: formData['condition'] as String? ?? 'used',
+          price: formData['price'] as double?,
+          isNegotiable: formData['isNegotiable'] as bool? ?? false,
+          isPhoneVisible: formData['isPhoneVisible'] as bool? ?? true,
+          imageFiles: imageFiles.isNotEmpty ? imageFiles : null,
+        );
   }
 }
 

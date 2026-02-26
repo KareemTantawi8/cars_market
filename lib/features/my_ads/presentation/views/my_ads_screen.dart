@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../../data/models/my_ad_model.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../ads/data/models/ad_model.dart';
+import '../../../ads/presentation/cubit/my_ads_cubit.dart';
 
 /// Filter chip type for My Ads list
 enum MyAdsFilter {
   all,
-  active,
-  underReview,
-  pending,
+  active,      // approved
+  underReview, // pending
 }
 
 /// My Ads screen - إعلاناتي (customer's ad management)
@@ -24,61 +26,33 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   final _searchController = TextEditingController();
   MyAdsFilter _selectedFilter = MyAdsFilter.all;
 
-  // Mock data matching the design
-  static final List<MyAdModel> _allAds = [
-    const MyAdModel(
-      id: '1',
-      title: 'طقم جنوط سبور 17 بوصة بحالة الزيرو',
-      priceFormatted: '5,000 ج.م',
-      status: MyAdStatus.active,
-      viewCount: 120,
-      isFeatured: true,
-    ),
-    const MyAdModel(
-      id: '2',
-      title: 'محرك تويوتا كامري 2015 كامل',
-      priceFormatted: '45,000 ج.م',
-      status: MyAdStatus.underReview,
-      viewCount: -1,
-    ),
-    const MyAdModel(
-      id: '3',
-      title: 'سيارة تويوتا كورولا 2020',
-      priceFormatted: '380,000 ج.م',
-      status: MyAdStatus.active,
-      viewCount: 843,
-    ),
-    const MyAdModel(
-      id: '4',
-      title: 'فانوس أمامي أيسر تويوتا',
-      priceFormatted: '1,200 ج.م',
-      status: MyAdStatus.active,
-      viewCount: 45,
-    ),
-  ];
-
-  List<MyAdModel> get _filteredAds {
-    switch (_selectedFilter) {
-      case MyAdsFilter.all:
-        return _allAds;
-      case MyAdsFilter.active:
-        return _allAds.where((a) => a.status == MyAdStatus.active).toList();
-      case MyAdsFilter.underReview:
-        return _allAds.where((a) => a.status == MyAdStatus.underReview).toList();
-      case MyAdsFilter.pending:
-        return _allAds.where((a) => a.status == MyAdStatus.pending).toList();
-    }
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MyAdsCubit>().loadMyAds();
+    });
   }
-
-  int get _activeCount =>
-      _allAds.where((a) => a.status == MyAdStatus.active).length;
-  int get _underReviewCount =>
-      _allAds.where((a) => a.status == MyAdStatus.underReview).length;
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<AdModel> _filterList(List<AdModel> ads) {
+    switch (_selectedFilter) {
+      case MyAdsFilter.all:
+        return ads;
+      case MyAdsFilter.active:
+        return ads.where((a) => a.status == 'approved').toList();
+      case MyAdsFilter.underReview:
+        return ads.where((a) => a.status == 'pending').toList();
+    }
+  }
+
+  int _countByStatus(List<AdModel> ads, String status) {
+    return ads.where((a) => a.status == status).length;
   }
 
   @override
@@ -93,13 +67,54 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             _buildSearchBar(),
             _buildFilterChips(),
             Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                itemCount: _filteredAds.length,
-                itemBuilder: (context, index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _MyAdCard(ad: _filteredAds[index]),
-                ),
+              child: BlocConsumer<MyAdsCubit, MyAdsState>(
+                listener: (context, state) {
+                  if (state is MyAdsError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+                    );
+                  }
+                },
+                builder: (context, state) {
+                  if (state is MyAdsLoading || state is MyAdsInitial) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (state is MyAdsError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(state.message, style: AppTextStyles.bodySmall.copyWith(color: AppColors.error), textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () => context.read<MyAdsCubit>().loadMyAds(),
+                            child: const Text('إعادة المحاولة'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  if (state is MyAdsLoaded) {
+                    final filtered = _filterList(state.ads);
+                    if (filtered.isEmpty) {
+                      return Center(
+                        child: Text(
+                          _selectedFilter == MyAdsFilter.all ? 'لا توجد إعلانات' : 'لا توجد إعلانات في هذا التصنيف',
+                          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                        ),
+                      );
+                    }
+                    return ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _MyAdCard(ad: filtered[index]),
+                      ),
+                    );
+                  }
+                  return const Center(child: CircularProgressIndicator());
+                },
               ),
             ),
           ],
@@ -117,13 +132,8 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.textPrimary,
-                ),
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
+                icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
               ),
               Positioned(
                 right: 8,
@@ -131,10 +141,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                 child: Container(
                   width: 8,
                   height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.notificationDot,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: const BoxDecoration(color: AppColors.notificationDot, shape: BoxShape.circle),
                 ),
               ),
             ],
@@ -144,32 +151,19 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'إعلاناتي',
-                  style: AppTextStyles.headingMedium,
-                ),
+                Text('إعلاناتي', style: AppTextStyles.headingMedium),
                 const SizedBox(height: 4),
                 Text(
                   'إدارة بيع وشراء قطع غيار السيارات',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           TextButton.icon(
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.createAd);
-            },
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.createAd),
             icon: const Icon(Icons.add_circle_outline, size: 20, color: AppColors.primaryColor),
-            label: Text(
-              'إضافة إعلان',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.primaryColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            label: Text('إضافة إعلان', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryColor, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -188,39 +182,19 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
         ),
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(
-                Icons.tune,
-                color: AppColors.textSecondary,
-                size: 22,
-              ),
-              onPressed: () {
-                // TODO: open filter sheet
-              },
-            ),
+            IconButton(icon: const Icon(Icons.tune, color: AppColors.textSecondary, size: 22), onPressed: () {}),
             Expanded(
               child: TextField(
                 controller: _searchController,
                 style: AppTextStyles.input,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'ابحث في إعلاناتك...',
-                  hintStyle: AppTextStyles.inputHint,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 14,
-                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
                 ),
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(left: 12),
-              child: Icon(
-                Icons.search,
-                color: AppColors.textSecondary,
-                size: 22,
-              ),
-            ),
+            const Padding(padding: EdgeInsets.only(left: 12), child: Icon(Icons.search, color: AppColors.textSecondary, size: 22)),
           ],
         ),
       ),
@@ -228,37 +202,26 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   }
 
   Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          _FilterChip(
-            label: 'الكل',
-            isSelected: _selectedFilter == MyAdsFilter.all,
-            onTap: () => setState(() => _selectedFilter = MyAdsFilter.all),
+    return BlocBuilder<MyAdsCubit, MyAdsState>(
+      buildWhen: (a, b) => a is MyAdsLoaded && b is MyAdsLoaded,
+      builder: (context, state) {
+        final ads = state is MyAdsLoaded ? state.ads : <AdModel>[];
+        final activeCount = _countByStatus(ads, 'approved');
+        final underReviewCount = _countByStatus(ads, 'pending');
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              _FilterChip(label: 'الكل', isSelected: _selectedFilter == MyAdsFilter.all, onTap: () => setState(() => _selectedFilter = MyAdsFilter.all)),
+              const SizedBox(width: 8),
+              _FilterChip(label: 'نشط ($activeCount)', isSelected: _selectedFilter == MyAdsFilter.active, onTap: () => setState(() => _selectedFilter = MyAdsFilter.active)),
+              const SizedBox(width: 8),
+              _FilterChip(label: 'قيد المراجعة ($underReviewCount)', isSelected: _selectedFilter == MyAdsFilter.underReview, onTap: () => setState(() => _selectedFilter = MyAdsFilter.underReview)),
+            ],
           ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: 'نشط ($_activeCount)',
-            isSelected: _selectedFilter == MyAdsFilter.active,
-            onTap: () => setState(() => _selectedFilter = MyAdsFilter.active),
-          ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: 'قيد المراجعة ($_underReviewCount)',
-            isSelected: _selectedFilter == MyAdsFilter.underReview,
-            onTap: () =>
-                setState(() => _selectedFilter = MyAdsFilter.underReview),
-          ),
-          const SizedBox(width: 8),
-          _FilterChip(
-            label: 'معلق',
-            isSelected: _selectedFilter == MyAdsFilter.pending,
-            onTap: () => setState(() => _selectedFilter = MyAdsFilter.pending),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -268,11 +231,7 @@ class _FilterChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -287,9 +246,7 @@ class _FilterChip extends StatelessWidget {
           child: Text(
             label,
             style: AppTextStyles.bodySmall.copyWith(
-              color: isSelected
-                  ? AppColors.textPrimary
-                  : AppColors.textSecondary,
+              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -300,9 +257,16 @@ class _FilterChip extends StatelessWidget {
 }
 
 class _MyAdCard extends StatelessWidget {
-  final MyAdModel ad;
+  final AdModel ad;
 
   const _MyAdCard({required this.ad});
+
+  String? get _imageUrl {
+    final path = ad.firstImageUrl;
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return '${AppConstants.storageBaseUrl}/$path';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -316,142 +280,77 @@ class _MyAdCard extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
-      decoration: BoxDecoration(
-        color: AppColors.cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inputBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image (right side in RTL)
-          ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(12),
-              bottomRight: Radius.circular(12),
-            ),
-            child: Stack(
-              children: [
-                _buildImage(),
-                if (ad.isFeatured)
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.accentColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'مميز',
-                        style: AppTextStyles.captionSmall.copyWith(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          // Content (left side in RTL)
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const SizedBox.shrink(),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
-                        icon: const Icon(
-                          Icons.more_vert,
-                          color: AppColors.textSecondary,
-                          size: 20,
-                        ),
-                        onPressed: () => _showAdMenu(context),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    ad.title,
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    ad.priceFormatted,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _StatusChip(status: ad.status),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.visibility_outlined,
-                        size: 14,
-                        color: AppColors.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        ad.viewsLabel,
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+        decoration: BoxDecoration(
+          color: AppColors.cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.inputBorder),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(topRight: Radius.circular(12), bottomRight: Radius.circular(12)),
+              child: SizedBox(
+                width: 120,
+                height: 120,
+                child: _imageUrl != null
+                    ? Image.network(_imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder())
+                    : _placeholder(),
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const SizedBox.shrink(),
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
+                          onPressed: () => _showAdMenu(context),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      ad.title,
+                      style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w600),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      ad.priceFormatted,
+                      style: AppTextStyles.bodyMedium.copyWith(color: AppColors.primaryColor, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _StatusChip(status: ad.status),
+                        const SizedBox(width: 12),
+                        Icon(Icons.visibility_outlined, size: 14, color: AppColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text('-- مشاهدة', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
     );
-  }
-
-  Widget _buildImage() {
-    if (ad.imageUrl != null && ad.imageUrl!.isNotEmpty) {
-      return Image.network(
-        ad.imageUrl!,
-        width: 120,
-        height: 120,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _placeholder(),
-      );
-    }
-    return _placeholder();
   }
 
   Widget _placeholder() {
     return Container(
-      width: 120,
-      height: 120,
       color: AppColors.surfaceColor,
-      child: Icon(
-        Icons.directions_car_outlined,
-        size: 40,
-        color: AppColors.textHint,
-      ),
+      child: Icon(Icons.directions_car_outlined, size: 40, color: AppColors.textHint),
     );
   }
 
@@ -459,35 +358,39 @@ class _MyAdCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => SafeArea(
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit, color: AppColors.textPrimary),
-              title: const Text('تعديل'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
               leading: const Icon(Icons.visibility, color: AppColors.textPrimary),
               title: const Text('عرض الإعلان'),
-              onTap: () => Navigator.pop(context),
-            ),
-            ListTile(
-              leading: const Icon(Icons.push_pin, color: AppColors.textPrimary),
-              title: const Text('تمييز'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.pushNamed(context, AppRoutes.adDetails, arguments: {'adId': ad.id});
+              },
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: Text(
-                'حذف',
-                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
-              ),
-              onTap: () => Navigator.pop(context),
+              title: Text('حذف', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error)),
+              onTap: () async {
+                Navigator.pop(ctx);
+                try {
+                  await context.read<MyAdsCubit>().deleteAd(ad.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('تم حذف الإعلان'), backgroundColor: AppColors.success),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
             ),
           ],
         ),
@@ -497,14 +400,14 @@ class _MyAdCard extends StatelessWidget {
 }
 
 class _StatusChip extends StatelessWidget {
-  final MyAdStatus status;
+  final String status;
 
   const _StatusChip({required this.status});
 
   @override
   Widget build(BuildContext context) {
-    final isActive = status == MyAdStatus.active;
-    final isUnderReview = status == MyAdStatus.underReview;
+    final isActive = status == 'approved';
+    final isUnderReview = status == 'pending';
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -512,45 +415,20 @@ class _StatusChip extends StatelessWidget {
           width: 6,
           height: 6,
           decoration: BoxDecoration(
-            color: isActive
-                ? AppColors.success
-                : isUnderReview
-                    ? AppColors.warning
-                    : AppColors.textHint,
+            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : AppColors.textHint,
             shape: BoxShape.circle,
           ),
         ),
-        if (isUnderReview) ...[
-          const SizedBox(width: 4),
-          Icon(
-            Icons.schedule,
-            size: 12,
-            color: AppColors.warning,
-          ),
-        ],
+        if (isUnderReview) const SizedBox(width: 4),
+        if (isUnderReview) Icon(Icons.schedule, size: 12, color: AppColors.warning),
         const SizedBox(width: 4),
         Text(
-          _label(status),
+          status == 'approved' ? 'نشط' : status == 'pending' ? 'قيد المراجعة' : 'معلق',
           style: AppTextStyles.caption.copyWith(
-            color: isActive
-                ? AppColors.success
-                : isUnderReview
-                    ? AppColors.warning
-                    : AppColors.textSecondary,
+            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : AppColors.textSecondary,
           ),
         ),
       ],
     );
-  }
-
-  String _label(MyAdStatus s) {
-    switch (s) {
-      case MyAdStatus.active:
-        return 'نشط';
-      case MyAdStatus.underReview:
-        return 'قيد المراجعة';
-      case MyAdStatus.pending:
-        return 'معلق';
-    }
   }
 }

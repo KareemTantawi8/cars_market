@@ -28,7 +28,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _priceController = TextEditingController(text: '0');
+  final _priceController = TextEditingController();
 
   AdCondition _condition = AdCondition.used;
   bool _isPriceNegotiable = false;
@@ -257,11 +257,11 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           controller: _priceController,
           style: AppTextStyles.input,
           keyboardType: TextInputType.number,
-          decoration: _inputDecoration().copyWith(
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(left: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
+          textDirection: TextDirection.ltr,
+          decoration: _inputDecoration(hint: '0').copyWith(
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
                 child: Text(
                   'ج.م',
                   style: AppTextStyles.bodyMedium.copyWith(
@@ -270,7 +270,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                 ),
               ),
             ),
-            suffixIconConstraints: const BoxConstraints(minWidth: 40),
+            prefixIconConstraints: const BoxConstraints(minWidth: 44),
           ),
         ),
         const SizedBox(height: 16),
@@ -427,7 +427,31 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         text: 'التالي',
         icon: Icons.arrow_forward,
         onPressed: () {
-          Navigator.pushNamed(context, AppRoutes.createAdPhotos);
+          final title = _titleController.text.trim();
+          if (title.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('أدخل عنوان الإعلان'), backgroundColor: AppColors.warning),
+            );
+            return;
+          }
+          final state = context.read<CategoryCubit>().state;
+          if (state is! CategoryLoaded || state.selectedBrand == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('اختر الماركة'), backgroundColor: AppColors.warning),
+            );
+            return;
+          }
+          Navigator.pushNamed(context, AppRoutes.createAdPhotos, arguments: {
+            'title': title,
+            'description': _descriptionController.text.trim(),
+            'brandId': state.selectedBrand!.id,
+            'modelId': state.selectedModel?.id,
+            'yearId': state.selectedYear?.id,
+            'condition': _condition == AdCondition.used ? 'used' : 'new',
+            'price': double.tryParse(_priceController.text.trim().replaceAll(',', '')) ?? 0,
+            'isNegotiable': _isPriceNegotiable,
+            'isPhoneVisible': _showPhoneToAll,
+          });
         },
       ),
     );

@@ -9,6 +9,8 @@ class AppConstants {
 
   // API Configuration
   static const String baseUrl = 'http://3.88.167.66/api/v1';
+  /// Base URL for storage (e.g. ad images). Paths from API are relative (e.g. "ads/img.jpg").
+  static const String storageBaseUrl = 'http://3.88.167.66/storage';
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 

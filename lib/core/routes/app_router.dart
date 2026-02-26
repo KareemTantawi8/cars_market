@@ -23,8 +23,10 @@ import '../../features/notifications/presentation/cubit/notifications_cubit.dart
 import '../../features/vendor/presentation/views/vendor_incoming_requests_screen.dart';
 import '../../features/vendor/presentation/cubit/vendor_requests_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_screen.dart';
-import '../../features/home/presentation/cubit/category_cubit.dart';
+import '../../features/ads/presentation/cubit/my_ads_cubit.dart';
+import '../../features/ads/presentation/cubit/create_ad_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_photos_screen.dart';
+import '../../features/ads/presentation/cubit/ad_details_cubit.dart';
 import '../../features/ad_details/presentation/views/ad_details_screen.dart';
 
 /// Application Router
@@ -52,6 +54,7 @@ class AppRouter {
             providers: [
               BlocProvider(create: (_) => SearchCubit()),
               BlocProvider(create: (_) => CategoryCubit()),
+              BlocProvider(create: (_) => MyAdsCubit()),
             ],
             child: const HomeScreen(),
           ),
@@ -152,16 +155,29 @@ class AppRouter {
         );
 
       case AppRoutes.createAdPhotos:
+        final formArgs = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => const CreateAdPhotosScreen(),
+          builder: (_) => BlocProvider(
+            create: (_) => CreateAdCubit(),
+            child: CreateAdPhotosScreen(formData: formArgs),
+          ),
         );
 
       case AppRoutes.adDetails:
         final args = settings.arguments as Map<String, dynamic>?;
+        final adId = args?['adId']?.toString();
+        final id = adId != null && adId.isNotEmpty ? int.tryParse(adId) : null;
         return MaterialPageRoute(
-          builder: (_) => AdDetailsScreen(
-            adId: args?['adId'],
-            ad: args?['ad'],
+          builder: (_) => BlocProvider(
+            create: (_) {
+              final cubit = AdDetailsCubit();
+              if (id != null && id > 0) cubit.loadAd(id);
+              return cubit;
+            },
+            child: AdDetailsScreen(
+              adId: adId,
+              ad: args?['ad'],
+            ),
           ),
         );
 

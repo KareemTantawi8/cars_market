@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../data/models/public_ad_details_model.dart';
+import '../../../ads/presentation/cubit/ad_details_cubit.dart';
 
 /// Public Ad Details Screen
 class AdDetailsScreen extends StatefulWidget {
@@ -27,44 +30,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   int _currentImageIndex = 0;
   bool _descriptionExpanded = false;
 
-  PublicAdDetailsModel get _ad {
-    return widget.ad ?? _defaultAd;
-  }
-
-  static PublicAdDetailsModel get _defaultAd {
-    return PublicAdDetailsModel(
-      id: '1',
-      title: 'كاوتش ميشلان ١٧ بوصة جديد',
-      priceFormatted: '٤٥٠٠ ج.م',
-      location: 'القاهرة، مدينة نصر',
-      timeAgo: 'منذ ٣ ساعات',
-      statusLabel: 'جديد',
-      imageUrls: [],
-      type: 'قطع غيار',
-      condition: 'جديد تماماً',
-      warranty: 'متاح',
-      size: '١٧ بوصة',
-      description:
-          'طقم كاوتش ميشلان ١٧ بوصة جديد بالكامل لم يستخدم نهائياً. صناعة فرنسية اصلية، تاريخ انتاج ٢٠٢٣. مناسب لجميع السيارات السيدان الحديثة. البيع لعدم الحاجة، السعر نهائي غير قابل للنقاش. المعاينة متاحة في مدينة نصر الحي السابع يومياً من الساعة ٥ مساءً.',
-      sellerName: 'أحمد محمد',
-      sellerRating: 4.5,
-      sellerReviewCount: 26,
-      sellerIsOnline: true,
-      similarAds: const [
-        SimilarAdItem(
-          id: 's1',
-          title: 'بطارية نسر جافة',
-          priceFormatted: '٨٢٠٠ ج.م',
-        ),
-        SimilarAdItem(
-          id: 's2',
-          title: 'جنوط سبور ١٩',
-          priceFormatted: '٨٣٠٠ ج.م',
-        ),
-      ],
-    );
-  }
-
   @override
   void dispose() {
     _imagePageController.dispose();
@@ -76,28 +41,61 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundColor,
       appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
+      body: _buildBody(),
+    );
+  }
+
+  Widget _buildBody() {
+    if (widget.ad != null) {
+      return _buildContent(widget.ad!);
+    }
+    return BlocBuilder<AdDetailsCubit, AdDetailsState>(
+      builder: (context, state) {
+        if (state is AdDetailsLoaded) {
+          return _buildContent(PublicAdDetailsModel.fromAdModel(state.ad));
+        }
+        if (state is AdDetailsError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildImageSection(),
-                  _buildInfoCard(),
-                  _buildSpecGrid(),
-                  _buildDetailsSection(),
-                  _buildLocationSection(),
-                  _buildSellerSection(),
-                  _buildSimilarAdsSection(),
-                  const SizedBox(height: 100),
+                  Text(state.message, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error), textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  TextButton(onPressed: () => Navigator.maybePop(context), child: const Text('رجوع')),
                 ],
               ),
             ),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+  }
+
+  Widget _buildContent(PublicAdDetailsModel ad) {
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildImageSection(ad),
+                _buildInfoCard(ad),
+                _buildSpecGrid(ad),
+                _buildDetailsSection(ad),
+                _buildLocationSection(ad),
+                _buildSellerSection(ad),
+                _buildSimilarAdsSection(ad),
+                const SizedBox(height: 100),
+              ],
+            ),
           ),
-          _buildBottomBar(),
-        ],
-      ),
+        ),
+        _buildBottomBar(ad),
+      ],
     );
   }
 
@@ -123,8 +121,12 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildImageSection() {
-    final images = _ad.imageUrls.isEmpty ? [null] : _ad.imageUrls;
+  Widget _buildImageSection(PublicAdDetailsModel ad) {
+    final imageUrls = ad.imageUrls.map((p) {
+      if (p.startsWith('http')) return p;
+      return '${AppConstants.storageBaseUrl}/$p';
+    }).toList();
+    final images = imageUrls.isEmpty ? [null] : imageUrls;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: ClipRRect(
@@ -139,12 +141,12 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 onPageChanged: (i) => setState(() => _currentImageIndex = i),
                 itemBuilder: (context, index) {
                   final url = images[index];
-                  return Container(
+                    return Container(
                     color: AppColors.cardColor,
                     child: url != null
                         ? Image.network(
                             url,
-                            fit: BoxFit.contain,
+                            fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _imagePlaceholder(),
                           )
                         : _imagePlaceholder(),
@@ -241,7 +243,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildInfoCard() {
+  Widget _buildInfoCard(PublicAdDetailsModel ad) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -257,7 +259,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _ad.timeAgo,
+                ad.timeAgo,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -269,7 +271,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  _ad.statusLabel,
+                  ad.statusLabel,
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.primaryColor,
                     fontWeight: FontWeight.w600,
@@ -280,12 +282,12 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            _ad.title,
+            ad.title,
             style: AppTextStyles.headingSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            _ad.priceFormatted,
+            ad.priceFormatted,
             style: AppTextStyles.bodyLarge.copyWith(
               color: AppColors.primaryColor,
               fontWeight: FontWeight.w700,
@@ -297,7 +299,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 6),
               Text(
-                _ad.location,
+                ad.location,
                 style: AppTextStyles.bodySmall,
               ),
             ],
@@ -307,7 +309,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildSpecGrid() {
+  Widget _buildSpecGrid(PublicAdDetailsModel ad) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: GridView.count(
@@ -318,10 +320,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
         crossAxisSpacing: 12,
         childAspectRatio: 1.4,
         children: [
-          _specCard('النوع', _ad.type, Icons.build_outlined),
-          _specCard('الحالة', _ad.condition, Icons.check_circle_outline),
-          _specCard('الضمان', _ad.warranty, Icons.verified_outlined),
-          _specCard('المقاس', _ad.size, Icons.straighten_outlined),
+          _specCard('النوع', ad.type, Icons.build_outlined),
+          _specCard('الحالة', ad.condition, Icons.check_circle_outline),
+          _specCard('الضمان', ad.warranty, Icons.verified_outlined),
+          _specCard('المقاس', ad.size, Icons.straighten_outlined),
         ],
       ),
     );
@@ -362,9 +364,9 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildDetailsSection() {
+  Widget _buildDetailsSection(PublicAdDetailsModel ad) {
     const maxLines = 4;
-    final long = _ad.description.length > 120;
+    final long = ad.description.length > 120;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -376,7 +378,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            _ad.description,
+            ad.description,
             style: AppTextStyles.bodySmall.copyWith(height: 1.5),
             maxLines: _descriptionExpanded ? null : maxLines,
             overflow: _descriptionExpanded ? null : TextOverflow.ellipsis,
@@ -397,7 +399,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildLocationSection() {
+  Widget _buildLocationSection(PublicAdDetailsModel ad) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -458,7 +460,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildSellerSection() {
+  Widget _buildSellerSection(PublicAdDetailsModel ad) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -485,16 +487,16 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _ad.sellerName,
+                        ad.sellerName,
                         style: AppTextStyles.bodyLarge.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 4),
                       RatingStars(
-                        rating: _ad.sellerRating,
+                        rating: ad.sellerRating,
                         size: 16,
-                        reviewCount: _ad.sellerReviewCount,
+                        reviewCount: ad.sellerReviewCount,
                       ),
                     ],
                   ),
@@ -505,10 +507,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: AppColors.surfaceColor,
-                      backgroundImage: _ad.sellerAvatarUrl != null
-                          ? NetworkImage(_ad.sellerAvatarUrl!)
+                      backgroundImage: ad.sellerAvatarUrl != null
+                          ? NetworkImage(ad.sellerAvatarUrl!)
                           : null,
-                      child: _ad.sellerAvatarUrl == null
+                      child: ad.sellerAvatarUrl == null
                           ? Icon(Icons.person, color: AppColors.textHint, size: 32)
                           : null,
                     ),
@@ -516,7 +518,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                       bottom: 0,
                       right: 0,
                       child: OnlineIndicator(
-                        isOnline: _ad.sellerIsOnline,
+                        isOnline: ad.sellerIsOnline,
                         size: 14,
                       ),
                     ),
@@ -564,8 +566,8 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildSimilarAdsSection() {
-    if (_ad.similarAds.isEmpty) return const SizedBox.shrink();
+  Widget _buildSimilarAdsSection(PublicAdDetailsModel ad) {
+    if (ad.similarAds.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -580,10 +582,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             height: 140,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              itemCount: _ad.similarAds.length,
+              itemCount: ad.similarAds.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
-                final item = _ad.similarAds[index];
+                final item = ad.similarAds[index];
                 return _SimilarAdCard(item: item);
               },
             ),
@@ -593,7 +595,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  Widget _buildBottomBar() {
+  Widget _buildBottomBar(PublicAdDetailsModel ad) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
@@ -611,7 +613,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           children: [
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: () => _launchPhone(_ad.sellerPhone),
+                onPressed: () => _launchPhone(ad.sellerPhone),
                 icon: const Icon(Icons.phone_outlined, size: 20),
                 label: const Text('اتصال'),
                 style: OutlinedButton.styleFrom(
@@ -628,7 +630,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
-                onPressed: () => _openChat(),
+                onPressed: () => _openChat(ad),
                 icon: const Icon(Icons.chat_bubble_outline, size: 20),
                 label: const Text('دردشة الآن'),
                 style: ElevatedButton.styleFrom(
@@ -656,14 +658,14 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     }
   }
 
-  void _openChat() {
+  void _openChat(PublicAdDetailsModel ad) {
     Navigator.pushNamed(
       context,
       AppRoutes.chatRoom,
       arguments: {
-        'chatId': _ad.sellerId ?? _ad.id,
-        'chatName': _ad.sellerName,
-        'vendorName': _ad.sellerName,
+        'chatId': ad.sellerId ?? ad.id,
+        'chatName': ad.sellerName,
+        'vendorName': ad.sellerName,
       },
     );
   }

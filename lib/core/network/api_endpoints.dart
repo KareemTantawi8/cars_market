@@ -115,5 +115,17 @@ class ApiEndpoints {
   // Governorates
   // GET /api/v1/governorates - Get all governorates
   static const String governorates = '$basePath/governorates';
+
+  // Ads
+  // GET /api/v1/ads - List published ads (query: brand_id, model_id, year_id, condition, search, page, per_page)
+  static const String ads = '$basePath/ads';
+  // GET /api/v1/ads/:id - View single ad
+  static String adById(int id) => '$basePath/ads/$id';
+  // POST /api/v1/ads - Create ad (multipart/form-data)
+  static const String createAd = '$basePath/ads';
+  // DELETE /api/v1/ads/:id - Delete ad
+  static String deleteAd(int id) => '$basePath/ads/$id';
+  // GET /api/v1/my-ads - List current user's ads (query: page, per_page)
+  static const String myAds = '$basePath/my-ads';
 }
 
