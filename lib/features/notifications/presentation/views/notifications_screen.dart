@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
@@ -142,24 +143,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.check, color: AppColors.primaryColor),
+          icon: Icon(Icons.check, color: Theme.of(context).colorScheme.primary),
           onPressed: () {
             context.read<NotificationsCubit>().markAllAsRead();
           },
         ),
-        title: Text(
-          'الإشعارات',
-          style: AppTextStyles.headingMedium,
-        ),
+        title: Text('الإشعارات', style: AppTextStyles.headingMedium),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            icon: const Icon(Icons.arrow_forward),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -186,13 +183,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Icon(
                       Icons.notifications_none,
                       size: 64,
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'لا توجد إشعارات',
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ],
@@ -294,7 +291,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           // TODO: Create new notification or action
         },
         backgroundColor: AppColors.primaryColor,
-        child: const Icon(Icons.add, color: AppColors.textPrimary),
+        child: Icon(Icons.add, color: context.textPrimary),
       ),
     );
   }
@@ -325,7 +322,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.cardColor,
+          color: context.cardBg,
           borderRadius: BorderRadius.circular(12),
           border: isUnread
               ? Border.all(color: AppColors.primaryColor.withOpacity(0.3), width: 1)
@@ -383,7 +380,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Text(
                       vendor,
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ],
@@ -391,7 +388,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     body,
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -400,7 +397,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   Text(
                     _formatTimestamp(createdAt),
                     style: AppTextStyles.captionSmall.copyWith(
-                      color: AppColors.textHint,
+                      color: context.textHint,
                     ),
                   ),
                 ],

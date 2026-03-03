@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../buttons/primary_button.dart';
 
@@ -56,12 +57,14 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(16),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.cardColor,
+          color: cs.surface,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
@@ -75,7 +78,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textPrimary),
+                    icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(context).pop(false),
                   ),
                   Text(
@@ -136,7 +139,7 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                 child: Text(
                   'سيتم تنبيه العميل بوجود رسالة جديدة منك',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),

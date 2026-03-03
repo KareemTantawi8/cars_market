@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
@@ -30,7 +31,7 @@ class VendorProfileScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => VendorProfileCubit()..fetchVendorProfile(userId),
       child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
           builder: (context, state) {
             if (state is VendorProfileLoading) {
@@ -69,18 +70,18 @@ class VendorProfileScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            icon: Icon(Icons.arrow_forward, color: context.textPrimary),
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
             IconButton(
-              icon: const Icon(Icons.favorite_border, color: AppColors.textPrimary),
+              icon: Icon(Icons.favorite_border, color: context.textPrimary),
               onPressed: () {
                 // TODO: Add to favorites
               },
             ),
             IconButton(
-              icon: const Icon(Icons.share, color: AppColors.textPrimary),
+              icon: Icon(Icons.share, color: context.textPrimary),
               onPressed: () {
                 // TODO: Share vendor
               },
@@ -98,22 +99,22 @@ class VendorProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Vendor Info Card
-                _buildVendorInfoCard(profile),
+                _buildVendorInfoCard(context, profile),
                 const SizedBox(height: 24),
                 // Supported Brands Section
                 if (profile.supportedBrands.isNotEmpty)
-                  _buildSupportedBrandsSection(profile.supportedBrands),
+                  _buildSupportedBrandsSection(context, profile.supportedBrands),
                 if (profile.supportedBrands.isNotEmpty) const SizedBox(height: 24),
                 // Available Services Section
                 if (profile.availableServices.isNotEmpty)
-                  _buildAvailableServicesSection(profile.availableServices),
+                  _buildAvailableServicesSection(context, profile.availableServices),
                 if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
                 // Action Buttons (WhatsApp only)
                 _buildActionButtons(context, profile),
                 const SizedBox(height: 24),
                 // Location Section
                 if (profile.address != null || profile.latitude != null)
-                  _buildLocationSection(profile),
+                  _buildLocationSection(context, profile),
                 const SizedBox(height: 32),
               ],
             ),
@@ -169,11 +170,11 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVendorInfoCard(VendorProfileModel profile) {
+  Widget _buildVendorInfoCard(BuildContext context, VendorProfileModel profile) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -201,7 +202,7 @@ class VendorProfileScreen extends StatelessWidget {
             Text(
               profile.description!,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
               ),
             ),
           ],
@@ -210,7 +211,7 @@ class VendorProfileScreen extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _buildMetricCard(
+                child: _buildMetricCard(context,
                   icon: Icons.access_time,
                   value: profile.isOpen ? 'مفتوح' : 'مغلق',
                   subtitle: profile.openUntil ?? '',
@@ -220,7 +221,7 @@ class VendorProfileScreen extends StatelessWidget {
               if (profile.responseTimeMinutes != null) ...[
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildMetricCard(
+                  child: _buildMetricCard(context,
                     icon: Icons.speed,
                     value: '${profile.responseTimeMinutes} دقائق',
                     subtitle: 'سرعة الرد',
@@ -230,7 +231,7 @@ class VendorProfileScreen extends StatelessWidget {
               ],
               const SizedBox(width: 12),
               Expanded(
-                child: _buildMetricCard(
+                child: _buildMetricCard(context,
                   icon: Icons.star,
                   value: profile.rating.toStringAsFixed(1),
                   subtitle: '${profile.ratingCount} تقييم',
@@ -244,7 +245,7 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildMetricCard({
+  Widget _buildMetricCard(BuildContext context, {
     required IconData icon,
     required String value,
     required String subtitle,
@@ -253,7 +254,7 @@ class VendorProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: context.surfaceBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -281,7 +282,7 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSupportedBrandsSection(List<String> brands) {
+  Widget _buildSupportedBrandsSection(BuildContext context, List<String> brands) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -296,7 +297,7 @@ class VendorProfileScreen extends StatelessWidget {
             return Expanded(
               child: Padding(
                 padding: EdgeInsets.only(right: index < brands.length - 1 ? 12 : 0),
-                child: _buildBrandCard(brand),
+                child: _buildBrandCard(context, brand),
               ),
             );
           }).toList(),
@@ -305,11 +306,11 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBrandCard(String brandName) {
+  Widget _buildBrandCard(BuildContext context, String brandName) {
     return Container(
       height: 80,
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: context.surfaceBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -329,7 +330,7 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAvailableServicesSection(List<String> services) {
+  Widget _buildAvailableServicesSection(BuildContext context, List<String> services) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -341,17 +342,17 @@ class VendorProfileScreen extends StatelessWidget {
         Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: services.map((service) => _buildServiceChip(service)).toList(),
+          children: services.map((service) => _buildServiceChip(context, service)).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildServiceChip(String serviceName) {
+  Widget _buildServiceChip(BuildContext context, String serviceName) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: context.surfaceBg,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.inputBorder),
       ),
@@ -387,7 +388,7 @@ class VendorProfileScreen extends StatelessWidget {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
-                foregroundColor: AppColors.textPrimary,
+                foregroundColor: context.textPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -417,7 +418,7 @@ class VendorProfileScreen extends StatelessWidget {
               onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
-                foregroundColor: AppColors.textPrimary,
+                foregroundColor: context.textPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -449,7 +450,7 @@ class VendorProfileScreen extends StatelessWidget {
         onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.success,
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: context.textPrimary,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -474,7 +475,7 @@ class VendorProfileScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildLocationSection(VendorProfileModel profile) {
+  Widget _buildLocationSection(BuildContext context, VendorProfileModel profile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -489,17 +490,17 @@ class VendorProfileScreen extends StatelessWidget {
           child: Container(
             height: 150,
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
+              color: context.surfaceBg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.inputBorder),
             ),
             child: Stack(
               children: [
-                const Center(
+                Center(
                   child: Icon(
                     Icons.map,
                     size: 48,
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
                 if (profile.latitude != null && profile.longitude != null)
@@ -512,9 +513,9 @@ class VendorProfileScreen extends StatelessWidget {
                         color: AppColors.primaryColor,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.location_on,
-                        color: AppColors.textPrimary,
+                        color: context.textPrimary,
                         size: 20,
                       ),
                     ),
@@ -533,7 +534,7 @@ class VendorProfileScreen extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: context.surfaceBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
@@ -563,7 +564,7 @@ class VendorProfileScreen extends StatelessWidget {
                     Text(
                       profile.address!,
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ],

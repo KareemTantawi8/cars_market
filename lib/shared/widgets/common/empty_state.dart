@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 /// Empty State Widget
@@ -30,7 +31,7 @@ class EmptyState extends StatelessWidget {
             Icon(
               icon,
               size: 64,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
             const SizedBox(height: 16),
             Text(
@@ -43,7 +44,7 @@ class EmptyState extends StatelessWidget {
               Text(
                 message!,
                 style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                 ),
                 textAlign: TextAlign.center,
               ),

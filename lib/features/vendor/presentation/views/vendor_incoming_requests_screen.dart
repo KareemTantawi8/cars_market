@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -35,12 +36,11 @@ class _VendorIncomingRequestsScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_forward),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
@@ -52,8 +52,7 @@ class _VendorIncomingRequestsScreenState
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined,
-                    color: AppColors.textPrimary),
+                icon: const Icon(Icons.notifications_outlined),
                 onPressed: () {
                   // TODO: Navigate to notifications
                 },
@@ -73,7 +72,7 @@ class _VendorIncomingRequestsScreenState
             ],
           ),
           IconButton(
-            icon: const Icon(Icons.menu, color: AppColors.textPrimary),
+            icon: const Icon(Icons.menu),
             onPressed: () {
               // TODO: Open menu
             },
@@ -85,7 +84,7 @@ class _VendorIncomingRequestsScreenState
           // Filter Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: AppColors.surfaceColor,
+            color: context.surfaceBg,
             child: Row(
               children: [
                 Container(
@@ -108,7 +107,7 @@ class _VendorIncomingRequestsScreenState
                     Text(
                       'طلبات بحث نشطة في منطقتك',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -152,13 +151,13 @@ class _VendorIncomingRequestsScreenState
                           Icon(
                             Icons.inbox_outlined,
                             size: 64,
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'لا توجد طلبات جديدة',
                             style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: context.textSecondary,
                             ),
                           ),
                         ],
@@ -234,7 +233,7 @@ class _VendorIncomingRequestsScreenState
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -276,7 +275,7 @@ class _VendorIncomingRequestsScreenState
                     height: 50,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.surfaceColor,
+                      color: context.surfaceBg,
                     ),
                     child: Center(
                       child: Text(
@@ -326,7 +325,7 @@ class _VendorIncomingRequestsScreenState
                           Text(
                             'تاجر معتمد',
                             style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textSecondary,
+                              color: context.textSecondary,
                             ),
                           ),
                       ],
@@ -337,7 +336,7 @@ class _VendorIncomingRequestsScreenState
                         Text(
                           timeAgo,
                           style: AppTextStyles.caption.copyWith(
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -349,7 +348,7 @@ class _VendorIncomingRequestsScreenState
                           decoration: BoxDecoration(
                             color: isOnline
                                 ? AppColors.primaryColor.withOpacity(0.2)
-                                : AppColors.surfaceColor,
+                                : context.surfaceBg,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
@@ -357,7 +356,7 @@ class _VendorIncomingRequestsScreenState
                             style: AppTextStyles.caption.copyWith(
                               color: isOnline
                                   ? AppColors.primaryColor
-                                  : AppColors.textSecondary,
+                                  : context.textSecondary,
                               fontSize: 11,
                             ),
                           ),
@@ -394,7 +393,7 @@ class _VendorIncomingRequestsScreenState
                     Text(
                       'القطعة المطلوبة',
                       style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -407,16 +406,16 @@ class _VendorIncomingRequestsScreenState
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.directions_car,
-                          color: AppColors.textSecondary,
+                          color: context.textSecondary,
                           size: 16,
                         ),
                         const SizedBox(width: 4),
                         Text(
                           carDetails,
                           style: AppTextStyles.bodySmall.copyWith(
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                           ),
                         ),
                       ],
@@ -434,7 +433,7 @@ class _VendorIncomingRequestsScreenState
                 child: OutlinedButton(
                   onPressed: () => _handleReject(requestId),
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: AppColors.surfaceColor,
+                    backgroundColor: context.surfaceBg,
                     side: BorderSide.none,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -444,7 +443,7 @@ class _VendorIncomingRequestsScreenState
                   child: Text(
                     'تجاهل',
                     style: AppTextStyles.button.copyWith(
-                      color: AppColors.textPrimary,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
@@ -495,7 +494,7 @@ class _VendorIncomingRequestsScreenState
     // Show accept modal with message input
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardColor,
+      backgroundColor: context.cardBg,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -543,7 +542,7 @@ class _VendorIncomingRequestsScreenState
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardColor,
+        backgroundColor: context.cardBg,
         title: Text(
           'تجاهل الطلب',
           style: AppTextStyles.headingSmall,
@@ -627,7 +626,7 @@ class _AcceptRequestModalState extends State<_AcceptRequestModal> {
                 style: AppTextStyles.headingSmall,
               ),
               IconButton(
-                icon: const Icon(Icons.close, color: AppColors.textPrimary),
+                icon: Icon(Icons.close, color: context.textPrimary),
                 onPressed: () => Navigator.pop(context),
               ),
             ],

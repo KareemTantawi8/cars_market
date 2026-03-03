@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
-/// Bottom Navigation Bar Item
+/// Bottom Navigation Bar Item model
 class BottomNavItem {
   final String label;
   final IconData icon;
@@ -15,7 +14,7 @@ class BottomNavItem {
   });
 }
 
-/// Custom Bottom Navigation Bar
+/// Custom Bottom Navigation Bar – fully theme-aware
 class CustomBottomNavBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -30,26 +29,29 @@ class CustomBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: cs.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black26,
-            blurRadius: 10,
-            offset: Offset(0, -2),
+            color: isDark
+                ? Colors.black.withOpacity(0.4)
+                : Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
-        child: Container(
+        child: SizedBox(
           height: 70,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: items.asMap().entries.map((entry) {
               final index = entry.key;
-              final item = entry.value;
+              final item  = entry.value;
               final isSelected = index == currentIndex;
 
               return Expanded(
@@ -62,8 +64,8 @@ class CustomBottomNavBar extends StatelessWidget {
                       Icon(
                         item.icon,
                         color: isSelected
-                            ? AppColors.primaryColor
-                            : AppColors.textSecondary,
+                            ? cs.primary
+                            : cs.onSurface.withOpacity(0.45),
                         size: 24,
                       ),
                       const SizedBox(height: 4),
@@ -71,8 +73,8 @@ class CustomBottomNavBar extends StatelessWidget {
                         item.label,
                         style: AppTextStyles.caption.copyWith(
                           color: isSelected
-                              ? AppColors.primaryColor
-                              : AppColors.textSecondary,
+                              ? cs.primary
+                              : cs.onSurface.withOpacity(0.45),
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -89,4 +91,3 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 }
-

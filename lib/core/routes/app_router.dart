@@ -55,6 +55,7 @@ class AppRouter {
               BlocProvider(create: (_) => SearchCubit()),
               BlocProvider(create: (_) => CategoryCubit()),
               BlocProvider(create: (_) => MyAdsCubit()),
+              BlocProvider(create: (_) => ChatCubit()),
             ],
             child: const HomeScreen(),
           ),

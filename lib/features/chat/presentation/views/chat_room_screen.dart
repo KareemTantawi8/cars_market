@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
@@ -184,17 +185,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       },
       builder: (context, state) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_forward),
           onPressed: () => Navigator.of(context).pop(),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.phone, color: AppColors.textPrimary),
+            icon: const Icon(Icons.phone),
             onPressed: () {
               // TODO: Handle phone call
             },
@@ -208,13 +208,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.surfaceColor,
+                    color: context.surfaceBg,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.store,
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                     size: 24,
                   ),
                 ),
@@ -262,7 +262,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             child: Text(
                               'لا توجد رسائل بعد',
                               style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.textSecondary,
                               ),
                             ),
                           )
@@ -286,7 +286,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                     child: Text(
                                       body,
                                       style: AppTextStyles.caption.copyWith(
-                                        color: AppColors.textSecondary,
+                                        color: context.textSecondary,
                                         fontStyle: FontStyle.italic,
                 ),
                                     ),
@@ -307,7 +307,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
+              color: context.surfaceBg,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
@@ -321,9 +321,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                 children: [
                   // Gallery Icon
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.image,
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                     onPressed: () {
                       // TODO: Pick image from gallery
@@ -363,9 +363,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.send,
-                        color: AppColors.textPrimary,
+                        color: context.textPrimary,
                         size: 20,
                       ),
                       onPressed: _sendMessage,

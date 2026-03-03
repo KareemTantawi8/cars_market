@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 /// Message Bubble Widget
@@ -22,8 +23,11 @@ class MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (imageUrl != null) {
-      return _buildImageMessage();
+      return _buildImageMessage(context);
     }
+
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -33,7 +37,7 @@ class MessageBubble extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isSentByMe) ...[
-            _buildProfilePicture(),
+            _buildProfilePicture(context),
             const SizedBox(width: 8),
           ],
           Flexible(
@@ -49,7 +53,9 @@ class MessageBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isSentByMe
                         ? AppColors.chatBubbleUser
-                        : AppColors.chatBubbleVendor,
+                        : (isDark
+                            ? AppColors.chatBubbleVendor
+                            : AppColors.lightChatBubbleVendor),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -59,27 +65,31 @@ class MessageBubble extends StatelessWidget {
                   ),
                   child: Text(
                     message,
-                    style: AppTextStyles.chatMessage,
+                    style: AppTextStyles.chatMessage.copyWith(
+                      color: isSentByMe ? Colors.white : cs.onSurface,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   timestamp,
-                  style: AppTextStyles.chatTimestamp,
+                  style: AppTextStyles.chatTimestamp.copyWith(
+                    color: context.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
           if (isSentByMe) ...[
             const SizedBox(width: 8),
-            _buildProfilePicture(),
+            _buildProfilePicture(context),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildImageMessage() {
+  Widget _buildImageMessage(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
@@ -100,13 +110,13 @@ class MessageBubble extends StatelessWidget {
                     child: Image.network(
                       imageUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
+                      errorBuilder: (ctx, error, stackTrace) {
                         return Container(
                           height: 200,
-                          color: AppColors.surfaceColor,
-                          child: const Icon(
+                          color: context.surfaceBg,
+                          child: Icon(
                             Icons.broken_image,
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                           ),
                         );
                       },
@@ -116,44 +126,46 @@ class MessageBubble extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   timestamp,
-                  style: AppTextStyles.chatTimestamp,
+                  style: AppTextStyles.chatTimestamp.copyWith(
+                    color: context.textSecondary,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          _buildProfilePicture(),
+          _buildProfilePicture(context),
         ],
       ),
     );
   }
 
-  Widget _buildProfilePicture() {
+  Widget _buildProfilePicture(BuildContext context) {
     return Container(
       width: 32,
       height: 32,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.surfaceColor,
+        color: context.surfaceBg,
       ),
       child: senderImageUrl != null
           ? ClipOval(
               child: Image.network(
                 senderImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _buildPlaceholder(),
+                errorBuilder: (ctx, error, stackTrace) =>
+                    _buildPlaceholder(context),
               ),
             )
-          : _buildPlaceholder(),
+          : _buildPlaceholder(context),
     );
   }
 
-  Widget _buildPlaceholder() {
-    return const Icon(
+  Widget _buildPlaceholder(BuildContext context) {
+    return Icon(
       Icons.person,
       size: 20,
-      color: AppColors.textSecondary,
+      color: context.textSecondary,
     );
   }
 }
@@ -173,11 +185,13 @@ class DateSeparator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          Expanded(child: Divider(color: AppColors.dividerColor)),
+          Expanded(
+            child: Divider(color: Theme.of(context).dividerColor),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
+              color: context.surfaceBg,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
@@ -185,10 +199,11 @@ class DateSeparator extends StatelessWidget {
               style: AppTextStyles.caption,
             ),
           ),
-          Expanded(child: Divider(color: AppColors.dividerColor)),
+          Expanded(
+            child: Divider(color: Theme.of(context).dividerColor),
+          ),
         ],
       ),
     );
   }
 }
-

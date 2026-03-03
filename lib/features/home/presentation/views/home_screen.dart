@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -9,6 +10,8 @@ import '../../../../shared/widgets/common/supplier_card.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
+import '../../../chat/presentation/views/chat_list_screen.dart';
+import '../../../profile/presentation/views/user_profile_screen.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
@@ -159,7 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardColor,
+      backgroundColor: context.cardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -177,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textHint,
+                color: context.textHint,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -197,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         'لا توجد بيانات',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.textSecondary,
                         ),
                       ),
                     )
@@ -213,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: isSelected
                                   ? AppColors.primaryColor
-                                  : AppColors.textPrimary,
+                                  : context.textPrimary,
                               fontWeight: isSelected
                                   ? FontWeight.bold
                                   : FontWeight.normal,
@@ -269,43 +272,20 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
       child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: IndexedStack(
           index: _currentNavIndex,
           children: [
             _buildHomeContent(),
             const MyAdsScreen(),
+            const ChatListScreen(),
+            const UserProfileScreen(isEmbeddedInTab: true),
           ],
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _currentNavIndex,
           onTap: (index) {
-            // Don't update index if navigating away - let the destination screen handle its own nav
-            switch (index) {
-              case 0:
-                setState(() => _currentNavIndex = 0);
-                break;
-              case 1:
-                setState(() => _currentNavIndex = 1);
-                break;
-              case 2:
-                // Chat - Navigate to Chat List (chat screen has its own bottom nav)
-                Navigator.pushNamed(context, AppRoutes.chatList);
-                // Don't change index here - chat screen will handle its own nav
-                break;
-              case 3:
-                // Profile - Navigate to Profile
-                Navigator.pushNamed(context, AppRoutes.profile).then((_) {
-                  // When returning, reset to home
-                  if (mounted && _currentNavIndex != 0) {
-            setState(() {
-                      _currentNavIndex = 0;
-                    });
-                  }
-            });
-                // Don't change index here - profile screen doesn't have bottom nav
-                break;
-            }
+            setState(() => _currentNavIndex = index);
           },
           items: const [
             BottomNavItem(
@@ -321,12 +301,12 @@ class _HomeScreenState extends State<HomeScreen> {
             BottomNavItem(
               label: 'المحادثات',
               icon: Icons.chat_bubble,
-              route: AppRoutes.chatList,
+              route: '/chat',
             ),
             BottomNavItem(
               label: 'حسابي',
               icon: Icons.person,
-              route: AppRoutes.profile,
+              route: '/profile',
             ),
           ],
         ),
@@ -374,9 +354,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(
+                icon: Icon(
                   Icons.notifications_outlined,
-                  color: AppColors.textPrimary,
+                  color: context.textPrimary,
                 ),
                 onPressed: () {
                   Navigator.pushNamed(context, AppRoutes.notifications);
@@ -409,9 +389,9 @@ class _HomeScreenState extends State<HomeScreen> {
               color: AppColors.primaryColor,
               borderRadius: BorderRadius.circular(8),
           ),
-            child: const Icon(
+            child: Icon(
               Icons.directions_car,
-              color: AppColors.textPrimary,
+              color: context.textPrimary,
               size: 24,
             ),
           ),
@@ -434,7 +414,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           'املأ البيانات وسيقوم التجار بالرد عليك فوراً',
           style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: context.textSecondary,
           ),
         ),
         const SizedBox(height: 24),
@@ -449,9 +429,9 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: InputDecoration(
             hintText: 'مثال: تيل فرامل، مساعدين، فانوس...',
             hintStyle: AppTextStyles.inputHint,
-            suffixIcon: const Icon(
+            suffixIcon: Icon(
               Icons.search,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
             filled: true,
             fillColor: AppColors.inputBackground,
@@ -580,7 +560,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.cardColor,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: AppColors.inputBorder,
@@ -617,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(
                       'اطلب قطعتك وهيوصلك ردود من التجار في دقايق بأفضل الأسعار',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ],
@@ -669,9 +649,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_drop_down,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ],
         ),
@@ -742,7 +722,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   filter,
                   style: AppTextStyles.bodySmall,
                 ),
-                backgroundColor: AppColors.cardColor,
+                backgroundColor: context.cardBg,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
               );
             }).toList(),
@@ -759,7 +739,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.search_off,
                     size: 64,
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
         ),
         const SizedBox(height: 16),
                   Text(
@@ -770,7 +750,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     'لم نجد موردين يطابقون معايير البحث',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -791,7 +771,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchResultCard(SupplierModel supplier) {
     return Card(
-      color: AppColors.cardColor,
+      color: context.cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -877,10 +857,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Location
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 16,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -899,10 +879,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   // Brands
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.directions_car,
                         size: 16,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -941,11 +921,11 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       width: double.infinity,
       height: 200,
-      color: AppColors.surfaceColor,
-      child: const Icon(
+      color: context.surfaceBg,
+      child: Icon(
         Icons.store,
         size: 64,
-        color: AppColors.textSecondary,
+        color: context.textSecondary,
       ),
     );
   }

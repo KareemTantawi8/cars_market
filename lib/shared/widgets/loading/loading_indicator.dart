@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 
 /// Loading Indicator Widget
 class LoadingIndicator extends StatelessWidget {
@@ -28,7 +29,7 @@ class LoadingIndicator extends StatelessWidget {
             Text(
               message!,
               style: TextStyle(
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
                 fontSize: 14,
               ),
             ),

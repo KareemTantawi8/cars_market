@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
@@ -60,24 +61,20 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.filter_list, color: AppColors.textPrimary),
+          icon: const Icon(Icons.filter_list),
           onPressed: () {
             // TODO: Open filter dialog
           },
         ),
-        title: Text(
-          'نتائج البحث',
-          style: AppTextStyles.headingMedium,
-        ),
+        title: Text('نتائج البحث', style: AppTextStyles.headingMedium),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            icon: const Icon(Icons.arrow_forward),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ],
@@ -88,7 +85,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
           if (_activeFilters.isNotEmpty)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              color: AppColors.surfaceColor,
+              color: context.surfaceBg,
               child: Row(
                 children: [
                   Expanded(
@@ -100,12 +97,12 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                             padding: const EdgeInsets.only(left: 8),
                             child: Chip(
                               label: Text(filter),
-                              backgroundColor: AppColors.cardColor,
+                              backgroundColor: context.cardBg,
                               labelStyle: AppTextStyles.bodySmall,
-                              deleteIcon: const Icon(
+                              deleteIcon: Icon(
                                 Icons.close,
                                 size: 16,
-                                color: AppColors.textSecondary,
+                                color: context.textSecondary,
                               ),
                               onDeleted: () {
                                 setState(() {
@@ -189,7 +186,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                         Icon(
                           Icons.search_off,
                           size: 64,
-                          color: AppColors.textSecondary,
+                          color: context.textSecondary,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -202,7 +199,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                           child: Text(
                             'لم نجد موردين يطابقون معايير البحث',
                             style: AppTextStyles.bodyMedium.copyWith(
-                              color: AppColors.textSecondary,
+                              color: context.textSecondary,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -259,7 +256,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     String? supplierId,
   }) {
     return Card(
-      color: AppColors.cardColor,
+      color: context.cardBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
@@ -341,10 +338,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   // Location
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on,
                         size: 16,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
@@ -361,10 +358,10 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   // Brands
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.directions_car,
                         size: 16,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                       const SizedBox(width: 4),
                       Text(
@@ -401,11 +398,11 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return Container(
       width: double.infinity,
       height: 200,
-      color: AppColors.surfaceColor,
-      child: const Icon(
+      color: context.surfaceBg,
+      child: Icon(
         Icons.store,
         size: 64,
-        color: AppColors.textSecondary,
+        color: context.textSecondary,
       ),
     );
   }
@@ -414,7 +411,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -442,7 +439,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                   Text(
                     'reviews 205',
                     style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
+                      color: context.textSecondary,
                     ),
                   ),
                 ],
@@ -478,7 +475,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: percentage / 100,
-              backgroundColor: AppColors.surfaceColor,
+              backgroundColor: context.surfaceBg,
               valueColor: const AlwaysStoppedAnimation<Color>(
                 AppColors.primaryColor,
               ),
@@ -501,8 +498,8 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
 
   Widget _buildBottomNavBar() {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceColor,
+      decoration: BoxDecoration(
+        color: context.surfaceBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
@@ -556,7 +553,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               icon,
               color: isSelected
                   ? AppColors.primaryColor
-                  : AppColors.textSecondary,
+                  : context.textSecondary,
               size: 24,
             ),
             const SizedBox(height: 4),
@@ -565,7 +562,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
               style: AppTextStyles.caption.copyWith(
                 color: isSelected
                     ? AppColors.primaryColor
-                    : AppColors.textSecondary,
+                    : context.textSecondary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

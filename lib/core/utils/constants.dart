@@ -19,6 +19,7 @@ class AppConstants {
   static const String userTypeKey = 'user_type';
   static const String userIdKey = 'user_id';
   static const String userDataKey = 'user_data';
+  static const String themeModeKey = 'theme_mode'; // 'light', 'dark', 'system'
 
   // User Types
   static const String userTypeCustomer = 'customer';

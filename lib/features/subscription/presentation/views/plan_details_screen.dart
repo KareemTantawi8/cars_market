@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
@@ -22,12 +23,12 @@ class PlanDetailsScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => SubscriptionCubit()..fetchPlanDetails(planId),
       child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            icon: Icon(Icons.arrow_forward, color: context.textPrimary),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
@@ -70,7 +71,7 @@ class PlanDetailsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Plan Header
-          _buildPlanHeader(plan),
+          _buildPlanHeader(context, plan),
           const SizedBox(height: 24),
           
           // Plan Description
@@ -78,22 +79,22 @@ class PlanDetailsScreen extends StatelessWidget {
             Text(
               plan.description!,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 24),
           ],
 
           // Price Section
-          _buildPriceSection(plan),
+          _buildPriceSection(context, plan),
           const SizedBox(height: 24),
 
           // Features Section
-          _buildFeaturesSection(plan),
+          _buildFeaturesSection(context, plan),
           const SizedBox(height: 24),
 
           // Additional Details
-          _buildAdditionalDetails(plan),
+          _buildAdditionalDetails(context, plan),
           const SizedBox(height: 32),
 
           // Subscribe Button
@@ -112,11 +113,11 @@ class PlanDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlanHeader(PlanModel plan) {
+  Widget _buildPlanHeader(BuildContext context, PlanModel plan) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: plan.isPopular
             ? Border.all(color: AppColors.ratingStar, width: 2)
@@ -178,11 +179,11 @@ class PlanDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceSection(PlanModel plan) {
+  Widget _buildPriceSection(BuildContext context, PlanModel plan) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -208,7 +209,7 @@ class PlanDetailsScreen extends StatelessWidget {
                 child: Text(
                   '/ شهر',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
               ),
@@ -219,11 +220,11 @@ class PlanDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeaturesSection(PlanModel plan) {
+  Widget _buildFeaturesSection(BuildContext context, PlanModel plan) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -259,11 +260,11 @@ class PlanDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAdditionalDetails(PlanModel plan) {
+  Widget _buildAdditionalDetails(BuildContext context, PlanModel plan) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -275,20 +276,20 @@ class PlanDetailsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (plan.unlimitedParts)
-            _buildDetailItem(
+            _buildDetailItem(context,
               icon: Icons.all_inclusive,
               label: 'قطع الغيار',
               value: 'غير محدود',
             )
           else if (plan.maxParts != null)
-            _buildDetailItem(
+            _buildDetailItem(context,
               icon: Icons.inventory_2,
               label: 'قطع الغيار',
               value: '${plan.maxParts} قطعة',
             ),
           if (plan.priorityInSearch) ...[
             const SizedBox(height: 12),
-            _buildDetailItem(
+            _buildDetailItem(context,
               icon: Icons.trending_up,
               label: 'الظهور في البحث',
               value: 'في المقدمة',
@@ -296,7 +297,7 @@ class PlanDetailsScreen extends StatelessWidget {
           ],
           if (plan.supportType != null) ...[
             const SizedBox(height: 12),
-            _buildDetailItem(
+            _buildDetailItem(context,
               icon: Icons.support_agent,
               label: 'الدعم الفني',
               value: plan.supportType!,
@@ -304,7 +305,7 @@ class PlanDetailsScreen extends StatelessWidget {
           ],
           if (plan.hasAnalytics) ...[
             const SizedBox(height: 12),
-            _buildDetailItem(
+            _buildDetailItem(context,
               icon: Icons.analytics,
               label: 'التحليلات',
               value: 'متاحة',
@@ -315,7 +316,7 @@ class PlanDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailItem({
+  Widget _buildDetailItem(BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -327,7 +328,7 @@ class PlanDetailsScreen extends StatelessWidget {
         Text(
           label,
           style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: context.textSecondary,
           ),
         ),
         const Spacer(),
@@ -352,7 +353,7 @@ class PlanDetailsScreen extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.cardColor,
+        backgroundColor: context.cardBg,
         title: Text(
           'تأكيد الاشتراك',
           style: AppTextStyles.headingSmall,

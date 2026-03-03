@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -18,12 +19,12 @@ class SubscriptionPlansScreen extends StatelessWidget {
     return BlocProvider(
       create: (context) => SubscriptionCubit()..fetchPlans(),
       child: Scaffold(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+            icon: Icon(Icons.arrow_forward, color: context.textPrimary),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -62,7 +63,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Section
-          _buildHeader(),
+          _buildHeader(context),
           const SizedBox(height: 32),
           // Subscription Plans
           ...plans.map((plan) => Padding(
@@ -71,17 +72,17 @@ class SubscriptionPlansScreen extends StatelessWidget {
               )),
           const SizedBox(height: 32),
           // Why Choose Our Platform Section
-          _buildBenefitsSection(),
+          _buildBenefitsSection(context),
           const SizedBox(height: 32),
           // Footer
-          _buildFooter(),
+          _buildFooter(context),
           const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -98,7 +99,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
         Text(
           'قم بزيادة مبيعات قطع الغيار والوصول لآلاف العملاء في مصر',
           style: AppTextStyles.bodyMedium.copyWith(
-            color: AppColors.textSecondary,
+            color: context.textSecondary,
           ),
         ),
       ],
@@ -111,7 +112,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.cardColor,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(16),
             border: plan.isPopular
                 ? Border.all(color: AppColors.ratingStar, width: 2)
@@ -167,7 +168,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
                     child: Text(
                       '/ شهر',
                       style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ),
@@ -210,7 +211,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBenefitsSection() {
+  Widget _buildBenefitsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -219,7 +220,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
           style: AppTextStyles.headingSmall,
         ),
         const SizedBox(height: 20),
-        _buildBenefitItem(
+        _buildBenefitItem(context,
           icon: Icons.trending_up,
           title: 'زيادة في المبيعات',
           description:
@@ -227,7 +228,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
           color: AppColors.success,
         ),
         const SizedBox(height: 16),
-        _buildBenefitItem(
+        _buildBenefitItem(context,
           icon: Icons.people,
           title: 'قاعدة عملاء ضخمة',
           description:
@@ -235,7 +236,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
           color: AppColors.primaryColor,
         ),
         const SizedBox(height: 16),
-        _buildBenefitItem(
+        _buildBenefitItem(context,
           icon: Icons.verified_user,
           title: 'ثقة ومصداقية',
           description:
@@ -246,7 +247,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBenefitItem({
+  Widget _buildBenefitItem(BuildContext context, {
     required IconData icon,
     required String title,
     required String description,
@@ -255,7 +256,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -284,7 +285,7 @@ class SubscriptionPlansScreen extends StatelessWidget {
                 Text(
                   description,
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
               ],
@@ -295,11 +296,11 @@ class SubscriptionPlansScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

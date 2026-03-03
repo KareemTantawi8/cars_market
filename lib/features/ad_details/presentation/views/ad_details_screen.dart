@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
@@ -39,7 +40,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: _buildBody(),
     );
@@ -101,20 +102,20 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: AppColors.surfaceColor,
+      backgroundColor: context.surfaceBg,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+        icon: Icon(Icons.arrow_forward, color: context.textPrimary),
         onPressed: () => Navigator.maybePop(context),
       ),
       title: Text(
         'Public Ad Details',
-        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+        style: AppTextStyles.caption.copyWith(color: context.textSecondary),
       ),
       titleSpacing: 0,
       actions: [
         IconButton(
-          icon: const Icon(Icons.code, color: AppColors.textSecondary, size: 20),
+          icon: Icon(Icons.code, color: context.textSecondary, size: 20),
           onPressed: () {},
         ),
       ],
@@ -142,7 +143,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 itemBuilder: (context, index) {
                   final url = images[index];
                     return Container(
-                    color: AppColors.cardColor,
+                    color: context.cardBg,
                     child: url != null
                         ? Image.network(
                             url,
@@ -238,7 +239,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       child: Icon(
         Icons.directions_car_outlined,
         size: 80,
-        color: AppColors.textHint,
+        color: context.textHint,
       ),
     );
   }
@@ -248,7 +249,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.inputBorder),
       ),
@@ -261,7 +262,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               Text(
                 ad.timeAgo,
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                 ),
               ),
               Container(
@@ -296,7 +297,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
+              Icon(Icons.location_on_outlined, size: 18, color: context.textSecondary),
               const SizedBox(width: 6),
               Text(
                 ad.location,
@@ -333,7 +334,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.inputBorder),
       ),
@@ -347,7 +348,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               Text(
                 label,
                 style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                 ),
               ),
               Icon(icon, size: 20, color: AppColors.primaryColor),
@@ -415,14 +416,14 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             child: Container(
               height: 160,
               width: double.infinity,
-              color: AppColors.cardColor,
+              color: context.cardBg,
               child: Stack(
                 children: [
                   Center(
                     child: Icon(
                       Icons.map_outlined,
                       size: 48,
-                      color: AppColors.textHint,
+                      color: context.textHint,
                     ),
                   ),
                   Center(
@@ -474,13 +475,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.cardColor,
+              color: context.cardBg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.inputBorder),
             ),
             child: Row(
               children: [
-                Icon(Icons.chevron_left, color: AppColors.textSecondary, size: 22),
+                Icon(Icons.chevron_left, color: context.textSecondary, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -506,12 +507,12 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 28,
-                      backgroundColor: AppColors.surfaceColor,
+                      backgroundColor: context.surfaceBg,
                       backgroundImage: ad.sellerAvatarUrl != null
                           ? NetworkImage(ad.sellerAvatarUrl!)
                           : null,
                       child: ad.sellerAvatarUrl == null
-                          ? Icon(Icons.person, color: AppColors.textHint, size: 32)
+                          ? Icon(Icons.person, color: context.textHint, size: 32)
                           : null,
                     ),
                     Positioned(
@@ -531,7 +532,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.cardColor,
+              color: context.cardBg,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.inputBorder),
             ),
@@ -599,7 +600,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: context.surfaceBg,
         boxShadow: [
           BoxShadow(
             color: Colors.black26,
@@ -617,7 +618,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 icon: const Icon(Icons.phone_outlined, size: 20),
                 label: const Text('اتصال'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
+                  foregroundColor: context.textPrimary,
                   side: const BorderSide(color: AppColors.inputBorder),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
@@ -690,7 +691,7 @@ class _SimilarAdCard extends StatelessWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.cardColor,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.inputBorder),
           ),
@@ -705,9 +706,9 @@ class _SimilarAdCard extends StatelessWidget {
                       ? Image.network(
                           item.imageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _placeholder(),
+                          errorBuilder: (ctx, __, ___) => _placeholder(ctx),
                         )
-                      : _placeholder(),
+                      : _placeholder(context),
                 ),
               ),
               Padding(
@@ -741,13 +742,13 @@ class _SimilarAdCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
-      color: AppColors.surfaceColor,
+      color: context.surfaceBg,
       child: Icon(
         Icons.directions_car_outlined,
         size: 36,
-        color: AppColors.textHint,
+        color: context.textHint,
       ),
     );
   }

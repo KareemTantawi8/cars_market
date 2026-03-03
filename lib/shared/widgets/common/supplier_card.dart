@@ -4,7 +4,7 @@ import '../../../core/theme/app_text_styles.dart';
 import 'online_indicator.dart';
 import 'rating_stars.dart';
 
-/// Supplier Card Widget
+/// Supplier Card Widget – fully theme-aware
 class SupplierCard extends StatelessWidget {
   final String name;
   final bool isOnline;
@@ -31,12 +31,11 @@ class SupplierCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Card(
-      color: AppColors.cardColor,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -50,7 +49,7 @@ class SupplierCard extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceColor,
+                  color: cs.primary.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: imageUrl != null
@@ -60,10 +59,10 @@ class SupplierCard extends StatelessWidget {
                           imageUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
-                              _buildPlaceholder(),
+                              _buildPlaceholder(cs),
                         ),
                       )
-                    : _buildPlaceholder(),
+                    : _buildPlaceholder(cs),
               ),
               const SizedBox(width: 16),
               // Supplier Info
@@ -90,7 +89,7 @@ class SupplierCard extends StatelessWidget {
                           style: AppTextStyles.caption.copyWith(
                             color: isOnline
                                 ? AppColors.online
-                                : AppColors.offline,
+                                : cs.onSurface.withOpacity(0.45),
                           ),
                         ),
                       ],
@@ -110,17 +109,13 @@ class SupplierCard extends StatelessWidget {
                       children: supportedBrands.take(3).map((brand) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                            horizontal: 8, vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceColor,
+                            color: cs.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            brand,
-                            style: AppTextStyles.caption,
-                          ),
+                          child: Text(brand, style: AppTextStyles.caption),
                         );
                       }).toList(),
                     ),
@@ -128,10 +123,10 @@ class SupplierCard extends StatelessWidget {
                     // Location
                     Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.location_on,
                           size: 16,
-                          color: AppColors.textSecondary,
+                          color: cs.onSurface.withOpacity(0.5),
                         ),
                         const SizedBox(width: 4),
                         Expanded(
@@ -151,19 +146,13 @@ class SupplierCard extends StatelessWidget {
               Column(
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.phone,
-                      color: AppColors.primaryColor,
-                    ),
+                    icon: Icon(Icons.phone, color: cs.primary),
                     onPressed: () {
                       // TODO: Handle phone call
                     },
                   ),
                   IconButton(
-                    icon: const Icon(
-                      Icons.location_on,
-                      color: AppColors.primaryColor,
-                    ),
+                    icon: Icon(Icons.location_on, color: cs.primary),
                     onPressed: () {
                       // TODO: Handle location
                     },
@@ -177,18 +166,11 @@ class SupplierCard extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Icon(
-        Icons.store,
-        color: AppColors.textSecondary,
-        size: 40,
-      ),
+  Widget _buildPlaceholder(ColorScheme cs) {
+    return Icon(
+      Icons.store,
+      color: cs.primary.withOpacity(0.5),
+      size: 40,
     );
   }
 }
-

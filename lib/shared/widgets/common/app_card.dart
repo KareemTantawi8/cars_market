@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 
-/// Custom Card Widget
+/// Custom Card Widget – uses the active theme's card color automatically
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -21,7 +20,8 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cardWidget = Card(
-      color: color ?? AppColors.cardColor,
+      // null means "use CardTheme.color from the active theme"
+      color: color,
       margin: margin ?? EdgeInsets.zero,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -43,4 +43,3 @@ class AppCard extends StatelessWidget {
     return cardWidget;
   }
 }
-

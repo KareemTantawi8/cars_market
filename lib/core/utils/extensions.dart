@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 /// String Extensions
 extension StringExtensions on String {
@@ -13,6 +14,29 @@ extension StringExtensions on String {
     if (isEmpty) return this;
     return '${this[0].toUpperCase()}${substring(1)}';
   }
+}
+
+/// Theme-aware surface color helpers
+extension AppThemeColors on BuildContext {
+  bool get _isDark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Adapts to the theme: dark → #2A2A2A, light → white
+  Color get cardBg => _isDark ? AppColors.cardColor : AppColors.lightCard;
+
+  /// Adapts to the theme: dark → #1E1E1E, light → white
+  Color get surfaceBg => _isDark ? AppColors.surfaceColor : AppColors.lightSurface;
+
+  /// Adapts to the theme: dark → #121212, light → #F4F6FB
+  Color get subtleBg => _isDark ? AppColors.backgroundColor : AppColors.lightBackground;
+
+  /// Primary text color  (dark → white, light → near-black)
+  Color get textPrimary => _isDark ? AppColors.textPrimary : AppColors.lightTextPrimary;
+
+  /// Secondary / muted text color
+  Color get textSecondary => _isDark ? AppColors.textSecondary : AppColors.lightTextSecondary;
+
+  /// Hint / placeholder text color
+  Color get textHint => _isDark ? AppColors.textHint : AppColors.lightTextHint;
 }
 
 /// BuildContext Extensions

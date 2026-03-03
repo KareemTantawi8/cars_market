@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 
-/// Custom Segment Control Widget
+/// Custom Segment Control Widget – fully theme-aware
 class SegmentControl<T> extends StatelessWidget {
   final List<SegmentItem<T>> segments;
   final T selectedValue;
@@ -17,20 +16,18 @@ class SegmentControl<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: AppColors.surfaceColor,
+        color: cs.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.inputBorder,
-          width: 1,
-        ),
+        border: Border.all(color: cs.outline.withOpacity(0.3)),
       ),
       child: Row(
         children: segments.asMap().entries.map((entry) {
-          final index = entry.key;
-          final segment = entry.value;
+          final segment    = entry.value;
           final isSelected = segment.value == selectedValue;
 
           return Expanded(
@@ -42,14 +39,12 @@ class SegmentControl<T> extends StatelessWidget {
                 curve: Curves.easeInOut,
                 margin: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.buttonPrimary
-                      : Colors.transparent,
+                  color: isSelected ? cs.primary : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                            color: AppColors.buttonPrimary.withOpacity(0.3),
+                            color: cs.primary.withOpacity(0.3),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -60,9 +55,7 @@ class SegmentControl<T> extends StatelessWidget {
                   child: Text(
                     segment.label,
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: isSelected
-                          ? AppColors.textPrimary
-                          : AppColors.textSecondary,
+                      color: isSelected ? Colors.white : cs.onSurface.withOpacity(0.6),
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
                       fontSize: isSelected ? 15 : 14,
                     ),
@@ -82,9 +75,5 @@ class SegmentItem<T> {
   final T value;
   final String label;
 
-  const SegmentItem({
-    required this.value,
-    required this.label,
-  });
+  const SegmentItem({required this.value, required this.label});
 }
-

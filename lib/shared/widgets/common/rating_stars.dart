@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 
 /// Rating Stars Widget
 class RatingStars extends StatelessWidget {
@@ -39,7 +40,7 @@ class RatingStars extends StatelessWidget {
             '($reviewCount)',
             style: TextStyle(
               fontSize: size * 0.7,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
         ],

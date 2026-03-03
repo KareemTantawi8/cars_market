@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/navigation_service.dart';
@@ -38,12 +41,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.settings, color: AppColors.textPrimary),
+          icon: const Icon(Icons.settings),
           onPressed: () {
             // TODO: Navigate to settings
           },
@@ -57,7 +59,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           Stack(
             children: [
           IconButton(
-            icon: const Icon(Icons.notifications, color: AppColors.textPrimary),
+            icon: const Icon(Icons.notifications),
             onPressed: () {
                   Navigator.pushNamed(context, AppRoutes.notifications);
             },
@@ -81,7 +83,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           controller: _tabController,
           indicatorColor: AppColors.primaryColor,
           labelColor: AppColors.primaryColor,
-          unselectedLabelColor: AppColors.textSecondary,
+          unselectedLabelColor: context.textSecondary,
           labelStyle: AppTextStyles.bodyMedium.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -154,7 +156,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -167,11 +169,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
                 height: 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.surfaceColor,
+                  color: context.surfaceBg,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.store,
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                   size: 50,
                 ),
               ),
@@ -202,7 +204,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           Text(
             'بائع معتمد - القاهرة، مصر',
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -235,7 +237,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -267,7 +269,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           child: Text(
             label,
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
         ),
@@ -285,7 +287,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -320,6 +322,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
             },
           ),
           const Divider(height: 24),
+          _buildThemeSettingItem(context),
+          const Divider(height: 24),
           _buildSettingItem(
             icon: Icons.logout,
             title: 'تسجيل الخروج',
@@ -333,6 +337,119 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     );
   }
 
+  Widget _buildThemeSettingItem(BuildContext context) {
+    final themeCubit = context.read<ThemeCubit>();
+    final colorScheme = Theme.of(context).colorScheme;
+    final subtitle = switch (themeCubit.state) {
+      ThemeMode.light => 'فاتح',
+      ThemeMode.dark => 'داكن',
+      ThemeMode.system => 'تلقائي',
+    };
+    return InkWell(
+      onTap: () => _showThemePicker(context, themeCubit),
+      child: Row(
+        children: [
+          Icon(
+            Icons.palette_outlined,
+            color: colorScheme.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'المظهر',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: colorScheme.onSurface.withOpacity(0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: colorScheme.onSurface.withOpacity(0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showThemePicker(BuildContext context, ThemeCubit themeCubit) {
+    final options = [
+      (ThemeMode.light, 'فاتح', Icons.light_mode_outlined),
+      (ThemeMode.dark, 'داكن', Icons.dark_mode_outlined),
+      (ThemeMode.system, 'تلقائي', Icons.brightness_auto_outlined),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'اختر المظهر',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 20),
+                ...options.map((e) {
+                  final (mode, label, icon) = e;
+                  final isSelected = themeCubit.state == mode;
+                  return ListTile(
+                    leading: Icon(
+                      icon,
+                      color: isSelected
+                          ? Theme.of(ctx).colorScheme.primary
+                          : Theme.of(ctx).colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                    title: Text(
+                      label,
+                      style: TextStyle(
+                        fontWeight:
+                            isSelected ? FontWeight.bold : FontWeight.normal,
+                        color: Theme.of(ctx).colorScheme.onSurface,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? Icon(
+                            Icons.check_circle,
+                            color: Theme.of(ctx).colorScheme.primary,
+                            size: 24,
+                          )
+                        : null,
+                    onTap: () {
+                      themeCubit.setThemeMode(mode);
+                      Navigator.of(ctx).pop();
+                    },
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSettingItem({
     required IconData icon,
     required String title,
@@ -343,20 +460,20 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, color: titleColor ?? AppColors.textPrimary, size: 24),
+          Icon(icon, color: titleColor ?? context.textPrimary, size: 24),
           const SizedBox(width: 16),
           Expanded(
             child: Text(
               title,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: titleColor ?? AppColors.textPrimary,
+                color: titleColor ?? context.textPrimary,
               ),
             ),
           ),
           Icon(
             Icons.arrow_forward_ios,
             size: 16,
-            color: AppColors.textSecondary,
+            color: context.textSecondary,
           ),
         ],
       ),
@@ -367,7 +484,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -384,7 +501,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
                 Text(
                   'بائع معتمد - القاهرة، مصر',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -419,11 +536,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.surfaceColor,
+                  color: context.surfaceBg,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.store,
-                  color: AppColors.textSecondary,
+                  color: context.textSecondary,
                   size: 32,
                 ),
               ),
@@ -479,7 +596,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.cardColor,
+            color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -496,12 +613,12 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Text(
+                      Text(
                         '٤.٨/٥',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                          color: context.textPrimary,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -531,7 +648,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -542,7 +659,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
           Text(
             title,
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 4),
@@ -571,7 +688,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -665,7 +782,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -704,7 +821,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
               Expanded(
                 child: LinearProgressIndicator(
                   value: 0.5, // 14 days out of 28
-                  backgroundColor: AppColors.surfaceColor,
+                  backgroundColor: context.surfaceBg,
                   valueColor: const AlwaysStoppedAnimation<Color>(
                     AppColors.primaryColor,
                   ),
@@ -803,7 +920,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.cardColor,
+          color: context.cardBg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -824,10 +941,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
                 style: AppTextStyles.bodyMedium,
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_forward_ios,
               size: 16,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ],
         ),

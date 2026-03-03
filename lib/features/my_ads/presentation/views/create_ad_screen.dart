@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
@@ -53,7 +54,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: SafeArea(
         child: Column(
@@ -85,7 +86,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       elevation: 0,
       leading: Padding(
         padding: const EdgeInsets.only(left: 8),
@@ -94,7 +95,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           child: Text(
             'إلغاء',
             style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
         ),
@@ -103,7 +104,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       title: Text(
         'Create Ad Form - Steps 1-2',
         style: AppTextStyles.caption.copyWith(
-          color: AppColors.textSecondary,
+          color: context.textSecondary,
         ),
       ),
       titleSpacing: 0,
@@ -119,7 +120,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           Text(
             'الخطوة $_currentStep من $_totalSteps',
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 8),
@@ -127,7 +128,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: _currentStep / _totalSteps,
-              backgroundColor: AppColors.surfaceColor,
+              backgroundColor: context.surfaceBg,
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
               minHeight: 6,
             ),
@@ -265,7 +266,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                 child: Text(
                   'ج.م',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
               ),
@@ -307,7 +308,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             child: Text(
               '$number',
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.textPrimary,
+                color: context.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -379,10 +380,10 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                     : AppTextStyles.inputHint,
               ),
             ),
-            const Icon(
+            Icon(
               Icons.arrow_back_ios_new,
               size: 16,
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ],
         ),
@@ -498,7 +499,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardColor,
+      backgroundColor: context.cardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -515,7 +516,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textHint,
+                color: context.textHint,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -530,7 +531,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                       child: Text(
                         'لا توجد بيانات',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.textSecondary,
                         ),
                       ),
                     )
@@ -546,7 +547,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: isSelected
                                   ? AppColors.primaryColor
-                                  : AppColors.textPrimary,
+                                  : context.textPrimary,
                               fontWeight:
                                   isSelected ? FontWeight.bold : FontWeight.normal,
                             ),

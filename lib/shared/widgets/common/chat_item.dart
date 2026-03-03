@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'online_indicator.dart';
 
-/// Chat Item Widget
+/// Chat Item Widget – fully theme-aware
 class ChatItem extends StatelessWidget {
   final String name;
   final String lastMessage;
@@ -28,6 +27,8 @@ class ChatItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return InkWell(
       onTap: onTap,
       child: Container(
@@ -42,7 +43,7 @@ class ChatItem extends StatelessWidget {
                   height: 56,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: AppColors.surfaceColor,
+                    color: cs.primary.withOpacity(0.1),
                   ),
                   child: imageUrl != null
                       ? ClipOval(
@@ -50,10 +51,10 @@ class ChatItem extends StatelessWidget {
                             imageUrl!,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                _buildPlaceholder(),
+                                _buildPlaceholder(cs),
                           ),
                         )
-                      : _buildPlaceholder(),
+                      : _buildPlaceholder(cs),
                 ),
                 if (isOnline)
                   Positioned(
@@ -83,7 +84,9 @@ class ChatItem extends StatelessWidget {
                       ),
                       Text(
                         timestamp,
-                        style: AppTextStyles.caption,
+                        style: AppTextStyles.caption.copyWith(
+                          color: cs.onSurface.withOpacity(0.5),
+                        ),
                       ),
                     ],
                   ),
@@ -93,7 +96,9 @@ class ChatItem extends StatelessWidget {
                       Expanded(
                         child: Text(
                           lastMessage,
-                          style: AppTextStyles.bodySmall,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: cs.onSurface.withOpacity(0.6),
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -101,27 +106,26 @@ class ChatItem extends StatelessWidget {
                       if (unreadCount != null && unreadCount! > 0)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
+                            horizontal: 8, vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.badgeColor,
+                            color: cs.primary,
                             shape: BoxShape.circle,
                           ),
                           child: Text(
                             unreadCount.toString(),
                             style: AppTextStyles.caption.copyWith(
-                              color: AppColors.textPrimary,
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 11,
                             ),
                           ),
                         )
                       else if (isRead)
-                        const Icon(
+                        Icon(
                           Icons.check_circle,
                           size: 16,
-                          color: AppColors.primaryColor,
+                          color: cs.primary,
                         ),
                     ],
                   ),
@@ -134,18 +138,11 @@ class ChatItem extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceholder() {
-    return Container(
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.surfaceColor,
-      ),
-      child: const Icon(
-        Icons.person,
-        color: AppColors.textSecondary,
-        size: 28,
-      ),
+  Widget _buildPlaceholder(ColorScheme cs) {
+    return Icon(
+      Icons.person,
+      color: cs.primary.withOpacity(0.6),
+      size: 28,
     );
   }
 }
-

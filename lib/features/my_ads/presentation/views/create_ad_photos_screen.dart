@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -95,7 +96,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: SafeArea(
         child: Column(
@@ -135,10 +136,10 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_forward, color: AppColors.textPrimary),
+        icon: Icon(Icons.arrow_forward, color: context.textPrimary),
         onPressed: () => Navigator.maybePop(context),
       ),
       title: Text(
@@ -148,7 +149,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
       centerTitle: true,
       actions: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: context.textPrimary),
           onPressed: () => Navigator.maybePop(context),
         ),
       ],
@@ -163,7 +164,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
           Text(
             'خطوة ٤ من ٤',
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(width: 12),
@@ -172,7 +173,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: 1.0,
-                backgroundColor: AppColors.surfaceColor,
+                backgroundColor: context.surfaceBg,
                 valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
                 minHeight: 6,
               ),
@@ -182,7 +183,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
           Text(
             'الصور',
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
         ],
@@ -202,7 +203,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
         Text(
           'أضف صوراً واضحة للسيارة من جميع الزوايا لتبيع أسرع. الصور الجيدة تزيد المشاهدات 5 مرات أو أكثر.',
           style: AppTextStyles.bodySmall.copyWith(
-            color: AppColors.textSecondary,
+            color: context.textSecondary,
             height: 1.5,
           ),
         ),
@@ -219,7 +220,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 32),
         decoration: BoxDecoration(
-          color: AppColors.cardColor.withOpacity(0.5),
+          color: context.cardBg.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: canAdd ? AppColors.primaryColor : AppColors.inputBorder,
@@ -232,13 +233,13 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
             Icon(
               Icons.add_a_photo,
               size: 48,
-              color: canAdd ? AppColors.primaryColor : AppColors.textHint,
+              color: canAdd ? AppColors.primaryColor : context.textHint,
             ),
             const SizedBox(height: 12),
             Text(
               'أضف صور',
               style: AppTextStyles.bodyLarge.copyWith(
-                color: canAdd ? AppColors.textPrimary : AppColors.textHint,
+                color: canAdd ? context.textPrimary : context.textHint,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -246,7 +247,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
             Text(
               'مسموح بـ $_maxPhotos صور كحد أقصى',
               style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
               ),
             ),
           ],
@@ -259,7 +260,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.cardColor,
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.inputBorder),
       ),
@@ -267,7 +268,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
         children: [
           GestureDetector(
             onTap: () => setState(() => _isUploading = false),
-            child: const Icon(Icons.close, color: AppColors.textSecondary, size: 20),
+            child: Icon(Icons.close, color: context.textSecondary, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -277,7 +278,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
                 Text(
                   'جاري الرفع...',
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -285,7 +286,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: _uploadProgress,
-                    backgroundColor: AppColors.surfaceColor,
+                    backgroundColor: context.surfaceBg,
                     valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
                     minHeight: 6,
                   ),
@@ -306,7 +307,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: AppColors.surfaceColor,
+              color: context.surfaceBg,
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -369,7 +370,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
                 Text(
                   'صور لوحة القيادة والعداد والعجلات من قرب. العملاء يحبون رؤية هذه التفاصيل للاطمئنان.',
                   style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                     height: 1.4,
                   ),
                 ),

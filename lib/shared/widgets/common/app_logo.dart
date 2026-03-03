@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
-/// App Logo Widget - Displays animated GIF logo
+/// App Logo Widget - Displays app logo image
 class AppLogo extends StatelessWidget {
   final double size;
   final bool withGlow;
 
-  const AppLogo({
-    super.key,
-    this.size = 100,
-    this.withGlow = true,
-  });
+  const AppLogo({super.key, this.size = 120, this.withGlow = true});
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +32,11 @@ class AppLogo extends StatelessWidget {
           : null,
       child: ClipOval(
         child: Image.asset(
-          'assets/images/app_logo.gif',
+          'assets/images/app_logo.jpeg',
           width: size,
           height: size,
           fit: BoxFit.cover,
+          filterQuality: FilterQuality.high,
           errorBuilder: (context, error, stackTrace) {
             // Fallback to a simple container if GIF fails to load
             return Container(
@@ -61,4 +58,3 @@ class AppLogo extends StatelessWidget {
     );
   }
 }
-

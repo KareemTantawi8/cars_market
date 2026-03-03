@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/controllers/user_type_controller.dart';
 import '../../../core/utils/constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/extensions.dart';
 import '../../../core/theme/app_text_styles.dart';
 
 /// Debug widget to switch between user types
@@ -70,7 +71,7 @@ class UserTypeSwitcher extends StatelessWidget {
               Icon(
                 Icons.swap_horiz,
                 size: 14,
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
               ),
             ],
           ),
@@ -106,7 +107,7 @@ class UserTypeSwitcherDialog extends StatelessWidget {
             Text(
               'النوع الحالي: ${controller.userTypeDisplayName}',
               style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.textSecondary,
+                color: context.textSecondary,
               ),
             ),
             const SizedBox(height: 32),
@@ -192,13 +193,13 @@ class UserTypeSwitcherDialog extends StatelessWidget {
             Icon(
               icon,
               size: 32,
-              color: isSelected ? color : AppColors.textSecondary,
+              color: isSelected ? color : context.textSecondary,
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: isSelected ? color : AppColors.textPrimary,
+                color: isSelected ? color : context.textPrimary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -236,7 +237,7 @@ class UserTypeSwitcherBottomSheet extends StatelessWidget {
             height: 4,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -248,7 +249,7 @@ class UserTypeSwitcherBottomSheet extends StatelessWidget {
           Text(
             'النوع الحالي: ${controller.userTypeDisplayName}',
             style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
+              color: context.textSecondary,
             ),
           ),
           const SizedBox(height: 24),
@@ -350,13 +351,13 @@ class UserTypeSwitcherBottomSheet extends StatelessWidget {
             Icon(
               icon,
               size: 28,
-              color: isSelected ? color : AppColors.textSecondary,
+              color: isSelected ? color : context.textSecondary,
             ),
             const SizedBox(height: 8),
             Text(
               label,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: isSelected ? color : AppColors.textPrimary,
+                color: isSelected ? color : context.textPrimary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),

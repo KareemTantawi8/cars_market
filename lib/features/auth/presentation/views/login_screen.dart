@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
           builder: (context, state) {
             final isLoading = state is LoginLoading;
             return Scaffold(
-              backgroundColor: AppColors.backgroundColor,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               appBar: AppBar(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
@@ -123,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Text(
                               'سجل دخولك للوصول إلى قطع الغيار والخدمات',
                               style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.textSecondary,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -146,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   padding: const EdgeInsets.all(12.0),
                                   child: Icon(
                                     Icons.phone,
-                                    color: AppColors.textSecondary,
+                                    color: context.textSecondary,
                                   ),
                                 ),
                                 filled: true,
@@ -199,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     _obscurePassword
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    color: AppColors.textSecondary,
+                                    color: context.textSecondary,
                                   ),
                                   onPressed: () {
                                     setState(() {
@@ -270,7 +270,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 Text(
                                   'ليس لديك حساب؟',
                                   style: AppTextStyles.bodyMedium.copyWith(
-                                    color: AppColors.textSecondary,
+                                    color: context.textSecondary,
                                   ),
                                 ),
                                 const SizedBox(width: 8),

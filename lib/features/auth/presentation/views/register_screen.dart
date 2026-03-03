@@ -79,7 +79,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void _showGovernorateSelectionDialog(CategoryLoaded state) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardColor,
+      backgroundColor: context.cardBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -97,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.textHint,
+                color: context.textHint,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -117,7 +117,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Text(
                         'لا توجد بيانات',
                         style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
+                          color: context.textSecondary,
                         ),
                       ),
                     )
@@ -133,7 +133,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: isSelected
                                   ? AppColors.primaryColor
-                                  : AppColors.textPrimary,
+                                  : context.textPrimary,
                               fontWeight: isSelected
                                   ? FontWeight.bold
                                   : FontWeight.normal,
@@ -200,7 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           builder: (context, state) {
             final isLoading = state is RegisterLoading;
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       // appBar: AppBar(
       //   backgroundColor: Colors.transparent,
       //   elevation: 0,
@@ -242,7 +242,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Text(
                   'انضم إلى أكبر سوق لقطع غيار السيارات في مصر',
                   style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -381,7 +381,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       padding: const EdgeInsets.all(12.0),
                       child: Icon(
                         Icons.phone,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                     filled: true,
@@ -436,7 +436,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _obscurePassword
                             ? Icons.visibility_off
                             : Icons.visibility,
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                       onPressed: () {
                         setState(() {
@@ -497,7 +497,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   _obscurePasswordConfirmation
                                       ? Icons.visibility_off
                                       : Icons.visibility,
-                            color: AppColors.textSecondary,
+                            color: context.textSecondary,
                                 ),
                                 onPressed: () {
                                   setState(() {
@@ -636,9 +636,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                         : AppTextStyles.input,
                                                   ),
                                                 ),
-                                                const Icon(
+                                                Icon(
                                                   Icons.arrow_drop_down,
-                                                  color: AppColors.textSecondary,
+                                                  color: context.textSecondary,
                                   ),
                                               ],
                                             ),
@@ -677,7 +677,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     Text(
                       'لديك حساب بالفعل ؟',
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                     const SizedBox(width: 8),

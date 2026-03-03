@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/constants.dart';
@@ -58,7 +59,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -100,7 +101,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                       return Center(
                         child: Text(
                           _selectedFilter == MyAdsFilter.all ? 'لا توجد إعلانات' : 'لا توجد إعلانات في هذا التصنيف',
-                          style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                          style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
                         ),
                       );
                     }
@@ -132,7 +133,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary),
+                icon: Icon(Icons.notifications_outlined, color: context.textPrimary),
                 onPressed: () => Navigator.pushNamed(context, AppRoutes.notifications),
               ),
               Positioned(
@@ -155,7 +156,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'إدارة بيع وشراء قطع غيار السيارات',
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                  style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary),
                 ),
               ],
             ),
@@ -182,7 +183,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
         ),
         child: Row(
           children: [
-            IconButton(icon: const Icon(Icons.tune, color: AppColors.textSecondary, size: 22), onPressed: () {}),
+            IconButton(icon: Icon(Icons.tune, color: context.textSecondary, size: 22), onPressed: () {}),
             Expanded(
               child: TextField(
                 controller: _searchController,
@@ -194,7 +195,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                 ),
               ),
             ),
-            const Padding(padding: EdgeInsets.only(left: 12), child: Icon(Icons.search, color: AppColors.textSecondary, size: 22)),
+            Padding(padding: const EdgeInsets.only(left: 12), child: Icon(Icons.search, color: context.textSecondary, size: 22)),
           ],
         ),
       ),
@@ -236,7 +237,7 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? AppColors.primaryColor : AppColors.cardColor,
+      color: isSelected ? AppColors.primaryColor : context.cardBg,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -246,7 +247,7 @@ class _FilterChip extends StatelessWidget {
           child: Text(
             label,
             style: AppTextStyles.bodySmall.copyWith(
-              color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              color: isSelected ? context.textPrimary : context.textSecondary,
               fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
             ),
           ),
@@ -281,7 +282,7 @@ class _MyAdCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.cardColor,
+          color: context.cardBg,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.inputBorder),
         ),
@@ -294,8 +295,8 @@ class _MyAdCard extends StatelessWidget {
                 width: 120,
                 height: 120,
                 child: _imageUrl != null
-                    ? Image.network(_imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder())
-                    : _placeholder(),
+                    ? Image.network(_imageUrl!, fit: BoxFit.cover, errorBuilder: (ctx, __, ___) => _placeholder(ctx))
+                    : _placeholder(context),
               ),
             ),
             Expanded(
@@ -311,7 +312,7 @@ class _MyAdCard extends StatelessWidget {
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                          icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
+                          icon: Icon(Icons.more_vert, color: context.textSecondary, size: 20),
                           onPressed: () => _showAdMenu(context),
                         ),
                       ],
@@ -332,9 +333,9 @@ class _MyAdCard extends StatelessWidget {
                       children: [
                         _StatusChip(status: ad.status),
                         const SizedBox(width: 12),
-                        Icon(Icons.visibility_outlined, size: 14, color: AppColors.textSecondary),
+                        Icon(Icons.visibility_outlined, size: 14, color: context.textSecondary),
                         const SizedBox(width: 4),
-                        Text('-- مشاهدة', style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary)),
+                        Text('-- مشاهدة', style: AppTextStyles.caption.copyWith(color: context.textSecondary)),
                       ],
                     ),
                   ],
@@ -347,24 +348,24 @@ class _MyAdCard extends StatelessWidget {
     );
   }
 
-  Widget _placeholder() {
+  Widget _placeholder(BuildContext context) {
     return Container(
-      color: AppColors.surfaceColor,
-      child: Icon(Icons.directions_car_outlined, size: 40, color: AppColors.textHint),
+      color: context.surfaceBg,
+      child: Icon(Icons.directions_car_outlined, size: 40, color: context.textHint),
     );
   }
 
   void _showAdMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.cardColor,
+      backgroundColor: context.cardBg,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.visibility, color: AppColors.textPrimary),
+              leading: Icon(Icons.visibility, color: context.textPrimary),
               title: const Text('عرض الإعلان'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -415,7 +416,7 @@ class _StatusChip extends StatelessWidget {
           width: 6,
           height: 6,
           decoration: BoxDecoration(
-            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : AppColors.textHint,
+            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : context.textHint,
             shape: BoxShape.circle,
           ),
         ),
@@ -425,7 +426,7 @@ class _StatusChip extends StatelessWidget {
         Text(
           status == 'approved' ? 'نشط' : status == 'pending' ? 'قيد المراجعة' : 'معلق',
           style: AppTextStyles.caption.copyWith(
-            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : AppColors.textSecondary,
+            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : context.textSecondary,
           ),
         ),
       ],
