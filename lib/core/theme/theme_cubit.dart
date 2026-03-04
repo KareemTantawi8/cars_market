@@ -5,7 +5,7 @@ import '../utils/constants.dart';
 
 /// Cubit that holds the current [ThemeMode] and persists it.
 class ThemeCubit extends Cubit<ThemeMode> {
-  ThemeCubit() : super(ThemeMode.light) {
+  ThemeCubit() : super(ThemeMode.dark) {
     _loadTheme();
   }
 
@@ -15,7 +15,7 @@ class ThemeCubit extends Cubit<ThemeMode> {
     try {
       final saved = StorageService.getString(_key);
       if (saved == null) {
-        emit(ThemeMode.light);
+        emit(ThemeMode.dark);
         return;
       }
       switch (saved) {
@@ -26,7 +26,7 @@ class ThemeCubit extends Cubit<ThemeMode> {
           emit(ThemeMode.system);
           break;
         default:
-          emit(ThemeMode.light);
+          emit(ThemeMode.dark);
       }
     } catch (_) {
       emit(ThemeMode.light);
