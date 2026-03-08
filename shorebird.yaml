@@ -1,0 +1,17 @@
+# This file is used to configure the Shorebird updater.
+# Learn more at https://shorebird.dev
+
+# The app_id is the unique identifier for your app.
+# It will be automatically generated when you run `shorebird init`.
+# Replace YOUR_APP_ID after running `shorebird init`
+app_id: YOUR_APP_ID
+
+# Auto-update will automatically download and apply patches
+# when the app starts
+auto_update: true
+
+# Flavors (if your app uses flavors, uncomment and configure)
+# flavors:
+#   development: dev_app_id
+#   staging: staging_app_id
+#   production: prod_app_id
