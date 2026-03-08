@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/plan_model.dart';
@@ -11,8 +12,9 @@ class SubscriptionRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('💳 SubscriptionRepository: $message');
+    if (kDebugMode) {
+      debugPrint('💳 SubscriptionRepository: $message');
+    }
   }
 
   /// Get all subscription plans

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/category_models.dart';
@@ -11,8 +12,9 @@ class CategoryRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('📦 CategoryRepository: $message');
+    if (kDebugMode) {
+      debugPrint('📦 CategoryRepository: $message');
+    }
   }
 
   /// Get all car brands

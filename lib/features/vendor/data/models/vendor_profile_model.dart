@@ -7,6 +7,7 @@ class VendorProfileModel {
   final bool isOpen;
   final String? openUntil;
   final int? responseTimeMinutes;
+  final String? responseTimeHuman;
   final double rating;
   final int ratingCount;
   final List<String> supportedBrands;
@@ -17,6 +18,7 @@ class VendorProfileModel {
   final String? governorate;
   final double? latitude;
   final double? longitude;
+  final String? googleMapsUrl;
   final String? imageUrl;
   final String? backgroundImageUrl;
 
@@ -28,6 +30,7 @@ class VendorProfileModel {
     this.isOpen = false,
     this.openUntil,
     this.responseTimeMinutes,
+    this.responseTimeHuman,
     this.rating = 0.0,
     this.ratingCount = 0,
     required this.supportedBrands,
@@ -38,9 +41,17 @@ class VendorProfileModel {
     this.governorate,
     this.latitude,
     this.longitude,
+    this.googleMapsUrl,
     this.imageUrl,
     this.backgroundImageUrl,
   });
+
+  /// Parse governorate - can be String or object {id, name, slug}
+  static String? _parseGovernorate(dynamic gov) {
+    if (gov is String) return gov;
+    if (gov is Map && gov['name'] != null) return gov['name'].toString();
+    return null;
+  }
 
   /// Create from JSON
   factory VendorProfileModel.fromJson(Map<String, dynamic> json) {
@@ -128,17 +139,20 @@ class VendorProfileModel {
                   json['is_certified'] as bool? ?? false,
       isOpen: json['is_open'] as bool? ?? 
               json['open'] as bool? ?? 
-              json['status'] == 'open' ?? false,
+              json['is_online'] as bool? ??
+              (json['status']?.toString() == 'open'),
       openUntil: json['open_until'] as String? ?? 
                  json['closing_time'] as String?,
       responseTimeMinutes: responseTime,
+      responseTimeHuman: json['response_time_human'] as String?,
       rating: (json['rating'] as num?)?.toDouble() ?? 
              (json['average_rating'] as num?)?.toDouble() ?? 
              (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
-      ratingCount: json['rating_count'] as int? ?? 
-                   json['reviews_count'] as int? ?? 
-                   json['total_reviews'] as int? ?? 
-                   json['review_count'] as int? ?? 0,
+      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 
+                   (json['ratings_count'] as num?)?.toInt() ??
+                   (json['reviews_count'] as num?)?.toInt() ?? 
+                   (json['total_reviews'] as num?)?.toInt() ?? 
+                   (json['review_count'] as num?)?.toInt() ?? 0,
       supportedBrands: brands,
       availableServices: services,
       phone: json['phone'] as String? ?? 
@@ -148,10 +162,12 @@ class VendorProfileModel {
                 json['whatsapp_number'] as String? ?? 
                 json['phone'], // Fallback to phone if whatsapp not available
       address: addressStr,
-      governorate: json['governorate'] as String? ?? 
+      governorate: _parseGovernorate(json['governorate']) ?? 
                    json['governorate_name'] as String?,
       latitude: lat,
       longitude: lng,
+      googleMapsUrl: json['google_maps_url'] as String? ??
+          json['google_maps_link'] as String?,
       imageUrl: json['image_url'] as String? ?? 
                 json['image'] as String? ?? 
                 json['logo'] as String? ?? 
@@ -182,6 +198,7 @@ class VendorProfileModel {
       if (governorate != null) 'governorate': governorate,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
+      if (googleMapsUrl != null) 'google_maps_url': googleMapsUrl,
       if (imageUrl != null) 'image_url': imageUrl,
       if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
     };

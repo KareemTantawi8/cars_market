@@ -1,3 +1,5 @@
+import 'vendor_profile_data.dart';
+
 /// User Profile Model - Response from /api/v1/auth/me
 class UserProfileModel {
   final int id;
@@ -6,12 +8,14 @@ class UserProfileModel {
   final String? email;
   final String? address;
   final String? imageUrl;
+  final String? backgroundImageUrl;
   final bool isVerified;
   final String userType; // 'customer' or 'vendor'
   final int loyaltyPoints;
   final String? status;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final VendorProfileData? vendor;
 
   UserProfileModel({
     required this.id,
@@ -20,12 +24,14 @@ class UserProfileModel {
     this.email,
     this.address,
     this.imageUrl,
+    this.backgroundImageUrl,
     this.isVerified = false,
     required this.userType,
     this.loyaltyPoints = 0,
     this.status,
     this.createdAt,
     this.updatedAt,
+    this.vendor,
   });
 
   /// Create from JSON
@@ -58,9 +64,6 @@ class UserProfileModel {
     // Handle status - from API: "status": "active"
     String? status = json['status'] as String?;
 
-    // Handle is_protected - from API
-    bool isProtected = json['is_protected'] as bool? ?? false;
-
     // Handle dates
     DateTime? createdAt, updatedAt;
     if (json['created_at'] != null) {
@@ -78,29 +81,56 @@ class UserProfileModel {
       }
     }
 
-    // Check if user has vendor data
-    final vendor = json['vendor'] as Map<String, dynamic>?;
-    final isVerified = vendor != null || 
+    // Parse vendor data (auth/me response structure)
+    VendorProfileData? vendorData;
+    final vendorJson = json['vendor'];
+    if (vendorJson is Map<String, dynamic>) {
+      try {
+        vendorData = VendorProfileData.fromJson(vendorJson);
+      } catch (_) {
+        vendorData = null;
+      }
+    }
+
+    // isVerified from vendor.is_verified or user-level fields
+    final isVerified = vendorData?.isVerified ?? 
                       (json['is_verified'] as bool? ?? false) ||
                       (json['verified'] as bool? ?? false);
+
+    // Address: user address, or vendor address + city
+    String? addressValue = json['address'] as String? ?? 
+                           json['full_address'] as String?;
+    if (addressValue == null && vendorData != null) {
+      final parts = [
+        vendorData.address,
+        vendorData.city,
+        vendorData.governorate?.name,
+      ].whereType<String>().where((s) => s.isNotEmpty);
+      addressValue = parts.isNotEmpty ? parts.join('، ') : null;
+    }
+
+    // imageUrl: auth/me uses profile_image_url
+    final imageUrlValue = json['profile_image_url'] as String? ??
+        json['image_url'] as String? ??
+        json['image'] as String? ??
+        json['avatar'] as String? ??
+        json['profile_picture'] as String?;
 
     return UserProfileModel(
       id: id,
       name: name,
       phone: phone,
       email: json['email'] as String?,
-      address: json['address'] as String? ?? 
-               json['full_address'] as String?,
-      imageUrl: json['image_url'] as String? ?? 
-                json['image'] as String? ?? 
-                json['avatar'] as String? ?? 
-                json['profile_picture'] as String?,
+      address: addressValue,
+      imageUrl: imageUrlValue,
+      backgroundImageUrl: json['background_image_url'] as String?,
       isVerified: isVerified,
       userType: type,
       loyaltyPoints: points,
       status: status,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      vendor: vendorData,
     );
   }
 
@@ -113,6 +143,7 @@ class UserProfileModel {
       if (email != null) 'email': email,
       if (address != null) 'address': address,
       if (imageUrl != null) 'image_url': imageUrl,
+      if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
       'is_verified': isVerified,
       'type': userType,
       'loyalty_points': loyaltyPoints,

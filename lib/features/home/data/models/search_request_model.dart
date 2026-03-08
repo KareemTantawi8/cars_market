@@ -52,11 +52,7 @@ class SearchRequestModel {
     if (governorateId != null) {
       json['governorate_id'] = governorateId;
     }
-    
-    // Log what we're sending
-    // ignore: avoid_print
-    print('🔍 SearchRequest.toJson(): $json');
-    
+
     return json;
   }
 

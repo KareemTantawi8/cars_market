@@ -126,7 +126,7 @@ class AppRouter {
       case AppRoutes.profile:
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (_) => UserProfileCubit(),
+            create: (_) => UserProfileCubit()..fetchCurrentUserProfile(),
             child: const UserProfileScreen(),
           ),
         );

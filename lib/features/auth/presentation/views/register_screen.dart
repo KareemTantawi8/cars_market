@@ -593,12 +593,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (_selectedUserType == AppConstants.userTypeVendor)
                               BlocBuilder<CategoryCubit, CategoryState>(
                                 builder: (context, categoryState) {
-                                  if (categoryState is CategoryLoading) {
-                                    return const SizedBox(
-                                      height: 60,
-                                      child: Center(
-                                        child: CircularProgressIndicator(),
-                                      ),
+                                  if (categoryState is CategoryLoading ||
+                                      categoryState is CategoryInitial) {
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'المحافظة',
+                                          style: AppTextStyles.inputLabel,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const SizedBox(
+                                          height: 56,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  if (categoryState is CategoryError) {
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'المحافظة',
+                                          style: AppTextStyles.inputLabel,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          padding: const EdgeInsets.all(16),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(
+                                              color: AppColors.error.withOpacity(0.5),
+                                            ),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                categoryState.message,
+                                                style: AppTextStyles.bodySmall.copyWith(
+                                                  color: AppColors.error,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              const SizedBox(height: 12),
+                                              TextButton.icon(
+                                                onPressed: () {
+                                                  context.read<CategoryCubit>().loadInitialData();
+                                                },
+                                                icon: const Icon(Icons.refresh, size: 18),
+                                                label: const Text('إعادة المحاولة'),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     );
                                   }
 

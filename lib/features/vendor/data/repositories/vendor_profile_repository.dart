@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/vendor_profile_model.dart';
@@ -11,8 +12,9 @@ class VendorProfileRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('👤 VendorProfileRepository: $message');
+    if (kDebugMode) {
+      debugPrint('👤 VendorProfileRepository: $message');
+    }
   }
 
   /// Get vendor profile by vendor ID

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/search_request_model.dart';
@@ -12,8 +13,9 @@ class SearchRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('🔍 SearchRepository: $message');
+    if (kDebugMode) {
+      debugPrint('🔍 SearchRepository: $message');
+    }
   }
 
   /// Search for suppliers based on part specifications

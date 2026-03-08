@@ -347,8 +347,7 @@ class PlanDetailsScreen extends StatelessWidget {
     // After successful subscription:
     // 1. Save subscription data
     // 2. Navigate to vendor dashboard
-    print('Subscribing to ${plan.name} (ID: ${plan.id})');
-    
+
     // Show confirmation dialog
     showDialog(
       context: context,

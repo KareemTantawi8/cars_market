@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../../../../core/utils/constants.dart';
 import '../../../../core/services/navigation_service.dart';
-import '../../../../shared/widgets/common/online_indicator.dart';
-import '../../../../shared/widgets/common/rating_stars.dart';
-import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/loading/loading_indicator.dart';
+import '../../../../shared/widgets/common/error_state.dart';
+import '../cubit/vendor_dashboard_cubit.dart';
+import '../../data/models/vendor_profile_model.dart';
 
-/// Vendor Dashboard Screen
+/// Vendor Dashboard Screen - Displays vendor profile from auth/me
 class VendorDashboardScreen extends StatefulWidget {
   const VendorDashboardScreen({super.key});
 
@@ -20,274 +21,648 @@ class VendorDashboardScreen extends StatefulWidget {
   State<VendorDashboardScreen> createState() => _VendorDashboardScreenState();
 }
 
-class _VendorDashboardScreenState extends State<VendorDashboardScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  // Sample data for the graph
-  final List<double> weeklyData = [120, 80, 150, 90, 140, 100, 130];
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () {
-            // TODO: Navigate to settings
+    return BlocProvider(
+      create: (context) => VendorDashboardCubit()..fetchVendorProfile(),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: BlocBuilder<VendorDashboardCubit, VendorDashboardState>(
+          builder: (context, state) {
+            if (state is VendorDashboardLoading) {
+              return const Center(child: LoadingIndicator());
+            }
+            if (state is VendorDashboardError) {
+              return Center(
+                child: ErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    context.read<VendorDashboardCubit>().fetchVendorProfile();
+                  },
+                ),
+              );
+            }
+            if (state is VendorDashboardLoaded) {
+              return RefreshIndicator(
+                onRefresh: () =>
+                    context.read<VendorDashboardCubit>().refresh(),
+                child: _buildProfileViewDesign(context, state.profile),
+              );
+            }
+            return const SizedBox.shrink();
           },
         ),
-        title: Text(
-          'لوحة التحكم',
-          style: AppTextStyles.headingMedium,
-        ),
-        centerTitle: true,
-        actions: [
-          Stack(
-            children: [
-          IconButton(
-            icon: const Icon(Icons.notifications),
+      ),
+    );
+  }
+
+  Widget _buildProfileViewDesign(
+      BuildContext context, VendorProfileModel profile) {
+    return CustomScrollView(
+      slivers: [
+        // Hero Banner with transparent AppBar overlay
+        SliverAppBar(
+          expandedHeight: 220,
+          pinned: false,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.favorite_border, color: context.textPrimary),
             onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
+              // TODO: Add to favorites
             },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.notificationDot,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.primaryColor,
-          labelColor: AppColors.primaryColor,
-          unselectedLabelColor: context.textSecondary,
-          labelStyle: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-          tabs: const [
-            Tab(text: 'لوحة التحكم'),
-            Tab(text: 'الملف الشخصي'),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.share, color: context.textPrimary),
+              onPressed: () {
+                // TODO: Share vendor profile
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.settings, color: context.textPrimary),
+              onPressed: () {
+                // TODO: Navigate to settings
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.notifications, color: context.textPrimary),
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.notifications);
+              },
+            ),
           ],
+          flexibleSpace: FlexibleSpaceBar(
+            title: Text(
+              'عرض الملف الشخصي',
+              style: AppTextStyles.caption.copyWith(
+                color: context.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            centerTitle: true,
+            background: _buildHeroBanner(profile.backgroundImageUrl),
+          ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          // Dashboard Tab
-          _buildDashboardTab(),
-          // Profile Tab
-          _buildProfileTab(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDashboardTab() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Store Information Section
-            _buildStoreInfoSection(),
-            const SizedBox(height: 24),
-            // Store Performance Section
-            _buildPerformanceSection(),
-            const SizedBox(height: 24),
-            // Subscription Section
-            _buildSubscriptionSection(),
-            const SizedBox(height: 24),
-            // Quick Links Section
-            _buildQuickLinksSection(),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileTab() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile Picture and Info
-            _buildProfileHeader(),
-            const SizedBox(height: 24),
-            // Store Information
-            _buildProfileStoreInfo(),
-            const SizedBox(height: 24),
-            // Account Settings
-            _buildProfileSettings(),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          // Profile Picture
-          Stack(
-            children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.surfaceBg,
-                ),
-                child: Icon(
-                  Icons.store,
-                  color: context.textSecondary,
-                  size: 50,
+        // Dark blue content card
+        SliverToBoxAdapter(
+          child: Transform.translate(
+            offset: const Offset(0, -24),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.vendorProfileCard,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
               ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Vendor identity
+                    _buildVendorIdentity(profile),
+                    const SizedBox(height: 20),
+                    // Metrics row
+                    _buildProfileMetricsRow(profile),
+                    const SizedBox(height: 24),
+                    // Supported Brands
+                    if (profile.supportedBrands.isNotEmpty) ...[
+                      _buildSectionTitle('الماركات المدعومة'),
+                      const SizedBox(height: 12),
+                      _buildSupportedBrands(profile.supportedBrands),
+                      const SizedBox(height: 24),
+                    ],
+                    // Available Services
+                    if (profile.availableServices.isNotEmpty) ...[
+                      _buildSectionTitle('الخدمات المتوفرة'),
+                      const SizedBox(height: 12),
+                      _buildAvailableServicesPills(profile.availableServices),
+                      const SizedBox(height: 24),
+                    ],
+                    // Location
+                    _buildSectionTitle('الموقع'),
+                    const SizedBox(height: 12),
+                    _buildLocationSection(profile),
+                    const SizedBox(height: 24),
+                    // Quick links / Settings
+                    _buildProfileSettingsCard(),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'قطع غيار الأهرام',
-            style: AppTextStyles.headingMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'بائع معتمد - القاهرة، مصر',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: context.textSecondary,
             ),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                OnlineIndicator(isOnline: true, size: 8),
-                const SizedBox(width: 6),
-                Text(
-                  'متصل الآن',
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.success,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfileStoreInfo() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'معلومات المتجر',
-            style: AppTextStyles.headingSmall,
-          ),
-          const SizedBox(height: 16),
-          _buildInfoRow(Icons.phone, 'رقم الهاتف', '01012345678'),
-          const SizedBox(height: 12),
-          _buildInfoRow(Icons.location_on, 'العنوان', 'القاهرة، مصر'),
-          const SizedBox(height: 12),
-          _buildInfoRow(Icons.star, 'التقييم', '4.8/5'),
-          const SizedBox(height: 12),
-          _buildInfoRow(Icons.access_time, 'سرعة الرد', '15 دقيقة'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primaryColor, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: context.textSecondary,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: AppTextStyles.bodyMedium.copyWith(
-            fontWeight: FontWeight.bold,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildProfileSettings() {
+  Widget _buildHeroBanner(String? imageUrl) {
+    const fallbackUrl =
+        'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800';
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        imageUrl != null && imageUrl.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(color: Colors.black87),
+                errorWidget: (_, __, ___) => _heroPlaceholder(fallbackUrl),
+              )
+            : _heroPlaceholder(fallbackUrl),
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black.withOpacity(0.7),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heroPlaceholder(String url) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      placeholder: (_, __) => Container(color: Colors.black87),
+      errorWidget: (_, __, ___) => Container(
+        color: const Color(0xFF1B2032),
+        child: Icon(
+          Icons.storefront,
+          size: 80,
+          color: context.textSecondary.withOpacity(0.5),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVendorIdentity(VendorProfileModel profile) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: context.surfaceBg,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: profile.imageUrl!,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Icon(
+                  Icons.build_circle_outlined,
+                  size: 32,
+                  color: AppColors.accentColor,
+                ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      profile.name,
+                      style: AppTextStyles.headingMedium.copyWith(
+                        color: context.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (profile.isVerified) ...[
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.verified,
+                      color: AppColors.primaryColor,
+                      size: 22,
+                    ),
+                  ],
+                ],
+              ),
+              if (profile.description != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  profile.description!,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryLight.withOpacity(0.9),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileMetricsRow(VendorProfileModel profile) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildProfileMetricCard(
+            value: profile.isOpen ? 'مفتوح' : 'مغلق',
+            subtitle: profile.openUntil ?? '',
+            color: profile.isOpen ? AppColors.success : AppColors.error,
+          ),
+        ),
+        const SizedBox(width: 12),
+        if (profile.responseTimeMinutes != null ||
+            (profile.responseTimeHuman != null &&
+                profile.responseTimeHuman!.isNotEmpty))
+          Expanded(
+            child: _buildProfileMetricCard(
+              value: profile.responseTimeMinutes != null
+                  ? '${profile.responseTimeMinutes} دقائق'
+                  : (profile.responseTimeHuman ?? ''),
+              subtitle: 'سرعة الرد',
+              color: AppColors.primaryLight,
+            ),
+          ),
+        if (profile.responseTimeMinutes != null ||
+            (profile.responseTimeHuman != null &&
+                profile.responseTimeHuman!.isNotEmpty))
+          const SizedBox(width: 12),
+        Expanded(
+          child: _buildProfileMetricCard(
+            value: profile.rating.toStringAsFixed(1),
+            subtitle: '${profile.ratingCount} تقييم',
+            color: AppColors.ratingStar,
+            trailing: const Icon(Icons.star, color: AppColors.ratingStar, size: 18),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProfileMetricCard({
+    required String value,
+    required String subtitle,
+    required Color color,
+    Widget? trailing,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (trailing != null) ...[
+                trailing,
+                const SizedBox(width: 4),
+              ],
+              Text(
+                value,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          if (subtitle.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.primaryLight.withOpacity(0.9),
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: AppTextStyles.headingSmall.copyWith(
+        color: context.textPrimary,
+      ),
+    );
+  }
+
+  Widget _buildSupportedBrands(List<String> brands) {
+    return SizedBox(
+      height: 100,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: brands.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final brand = brands[i];
+          return SizedBox(
+            width: 72,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: context.surfaceBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.directions_car,
+                    color: AppColors.primaryColor,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  brand,
+                  style: AppTextStyles.caption.copyWith(
+                    color: context.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAvailableServicesPills(List<String> services) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: services
+          .map(
+            (s) => Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.primaryLight.withOpacity(0.3),
+                ),
+              ),
+              child: Text(
+                s,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.primaryLight,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildLocationSection(VendorProfileModel profile) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => _openGoogleMaps(
+            profile.googleMapsUrl,
+            profile.latitude,
+            profile.longitude,
+            profile.address,
+          ),
+          child: Container(
+            height: 150,
+            decoration: BoxDecoration(
+              color: context.surfaceBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.inputBorder),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Icon(
+                    Icons.map,
+                    size: 48,
+                    color: context.textSecondary,
+                  ),
+                ),
+                if (profile.latitude != null && profile.longitude != null)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        Icons.location_on,
+                        color: context.textPrimary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Contact bar: Phone + Chat
+        Row(
+          children: [
+            Expanded(
+              child: Material(
+                color: AppColors.success,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: () => _openPhone(profile.phone ?? profile.whatsapp),
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Icon(Icons.phone, color: Colors.white, size: 28),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: Material(
+                color: AppColors.primaryColor,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.chatRoom,
+                      arguments: {
+                        'chatId': profile.id.toString(),
+                        'chatName': profile.name,
+                      },
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.chat_bubble, color: Colors.white, size: 22),
+                        SizedBox(width: 8),
+                        Text(
+                          'بدء محادثة',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (profile.address != null ||
+            profile.governorate != null ||
+            profile.googleMapsUrl != null) ...[
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: () => _openGoogleMaps(
+              profile.googleMapsUrl,
+              profile.latitude,
+              profile.longitude,
+              profile.address,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.navigation,
+                    color: AppColors.primaryColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (profile.governorate != null)
+                        Text(
+                          profile.governorate!,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: context.textPrimary,
+                          ),
+                        ),
+                      if (profile.address != null) ...[
+                        if (profile.governorate != null)
+                          const SizedBox(height: 4),
+                        Text(
+                          profile.address!,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primaryLight.withOpacity(0.9),
+                          ),
+                        ),
+                      ],
+                      if ((profile.address == null || profile.address!.isEmpty) &&
+                          (profile.governorate == null ||
+                              profile.governorate!.isEmpty) &&
+                          profile.googleMapsUrl != null)
+                        Text(
+                          'فتح في خرائط جوجل',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _openPhone(String? phone) async {
+    if (phone == null || phone.isEmpty) return;
+    final uri = Uri.parse('tel:$phone');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
+  Future<void> _openGoogleMaps(
+    String? googleMapsUrl,
+    double? lat,
+    double? lng,
+    String? address,
+  ) async {
+    // Prefer direct URL from auth/me
+    if (googleMapsUrl != null && googleMapsUrl.isNotEmpty) {
+      final url = Uri.tryParse(googleMapsUrl);
+      if (url != null && await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+        return;
+      }
+    }
+    if (lat != null && lng != null) {
+      final url = Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else if (address != null && address.isNotEmpty) {
+      final encoded = Uri.encodeComponent(address);
+      final url = Uri.parse(
+          'https://www.google.com/maps/search/?api=1&query=$encoded');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
+  Widget _buildProfileSettingsCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.cardBg,
+        color: context.surfaceBg.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -479,478 +854,4 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen>
       ),
     );
   }
-
-  Widget _buildStoreInfoSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'أهلاً، قطع غيار الأهرام',
-                  style: AppTextStyles.headingSmall,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'بائع معتمد - القاهرة، مصر',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: context.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      OnlineIndicator(isOnline: true, size: 8),
-                      const SizedBox(width: 6),
-                      Text(
-                        'متصل الآن',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.success,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Profile Picture
-          Stack(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.surfaceBg,
-                ),
-                child: Icon(
-                  Icons.store,
-                  color: context.textSecondary,
-                  size: 32,
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: OnlineIndicator(isOnline: true, size: 14),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPerformanceSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'أداء المتجر',
-          style: AppTextStyles.headingSmall,
-        ),
-        const SizedBox(height: 16),
-        // Performance Cards
-        Row(
-          children: [
-            Expanded(
-              child: _buildMetricCard(
-                icon: Icons.access_time,
-                iconColor: AppColors.warning,
-                title: 'سرعة الرد',
-                value: '١٥ دقيقة',
-                change: '-5%',
-                changeColor: AppColors.error,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildMetricCard(
-                icon: Icons.chat_bubble,
-                iconColor: AppColors.primaryColor,
-                title: 'إجمالي المحادثات',
-                value: '١,٢٥٠',
-                change: '+۱۲%',
-                changeColor: AppColors.success,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Rating Card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.cardBg,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.star, color: AppColors.ratingStar, size: 28),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'التقييم العام',
-                    style: AppTextStyles.bodyMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        '٤.٨/٥',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      RatingStars(rating: 4.8, size: 16),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Weekly Activity Graph
-        _buildWeeklyActivityGraph(),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String value,
-    required String change,
-    required Color changeColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: iconColor, size: 24),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: context.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                value,
-                style: AppTextStyles.headingSmall,
-              ),
-              Text(
-                change,
-                style: AppTextStyles.caption.copyWith(
-                  color: changeColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeeklyActivityGraph() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'نشاط المحادثات الأسبوعي',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Row(
-                children: [
-                  Text(
-                    '٨٥٠ محادثة',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '+15%',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.success,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 120,
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: weeklyData.asMap().entries.map((entry) {
-                      return FlSpot(entry.key.toDouble(), entry.value);
-                    }).toList(),
-                    isCurved: true,
-                    color: AppColors.primaryColor,
-                    barWidth: 3,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppColors.primaryColor.withOpacity(0.1),
-                    ),
-                  ),
-                ],
-                minX: 0,
-                maxX: 6,
-                minY: 0,
-                maxY: 180,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildDayLabel('سبت'),
-              _buildDayLabel('أحد'),
-              _buildDayLabel('اثنين'),
-              _buildDayLabel('ثلاثاء'),
-              _buildDayLabel('أربعاء'),
-              _buildDayLabel('خميس'),
-              _buildDayLabel('جمعة'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDayLabel(String day) {
-    return Text(
-      day,
-      style: AppTextStyles.captionSmall,
-    );
-  }
-
-  Widget _buildSubscriptionSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'الاشتراك والخدمات',
-            style: AppTextStyles.headingSmall,
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Icon(Icons.star, color: AppColors.ratingStar, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'الباقة الحالية: ',
-                style: AppTextStyles.bodyMedium,
-              ),
-              Text(
-                'التاجر المميز (Gold)',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.ratingStar,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'صلاحية الاشتراك',
-            style: AppTextStyles.bodyMedium,
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: LinearProgressIndicator(
-                  value: 0.5, // 14 days out of 28
-                  backgroundColor: context.surfaceBg,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.primaryColor,
-                  ),
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                '١٤ يوم متبقية',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.primaryColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          PrimaryButton(
-            text: 'تجديد الاشتراك أو الترقية',
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.subscriptionPlans);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickLinksSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'روابط سريعة',
-          style: AppTextStyles.headingSmall,
-        ),
-        const SizedBox(height: 16),
-        _buildQuickLinkCard(
-          icon: Icons.inventory_2,
-          iconColor: AppColors.primaryColor,
-          title: 'إدارة المخزون والقطع',
-          onTap: () {
-            // TODO: Navigate to inventory management
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildQuickLinkCard(
-          icon: Icons.store,
-          iconColor: Colors.purple,
-          title: 'تعديل ملف المتجر',
-          onTap: () {
-            // TODO: Navigate to edit store profile
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildQuickLinkCard(
-          icon: Icons.chat_bubble,
-          iconColor: AppColors.primaryColor,
-          title: 'المحادثات',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.chatList);
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildQuickLinkCard(
-          icon: Icons.inbox,
-          iconColor: AppColors.warning,
-          title: 'الطلبات الواردة',
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.vendorIncomingRequests);
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildQuickLinkCard(
-          icon: Icons.headset_mic,
-          iconColor: AppColors.success,
-          title: 'الدعم الفني والشكاوى',
-          onTap: () {
-            // TODO: Navigate to support
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickLinkCard({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: AppTextStyles.bodyMedium,
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: context.textSecondary,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
 }
-

@@ -15,6 +15,7 @@ class AppColors {
   static const Color backgroundColor = Color(0xFF121212);
   static const Color surfaceColor    = Color(0xFF1E1E1E);
   static const Color cardColor       = Color(0xFF2A2A2A);
+  static const Color vendorProfileCard = Color(0xFF1B2032); // Dark blue for vendor profile card
 
   // Text
   static const Color textPrimary   = Color(0xFFFFFFFF);

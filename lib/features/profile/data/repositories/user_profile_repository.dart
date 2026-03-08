@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/user_profile_model.dart';
@@ -11,8 +12,9 @@ class UserProfileRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('👤 UserProfileRepository: $message');
+    if (kDebugMode) {
+      debugPrint('👤 UserProfileRepository: $message');
+    }
   }
 
   /// Get current user profile
@@ -26,7 +28,6 @@ class UserProfileRepository {
       );
 
       _log('✅ User profile response status: ${response.statusCode}');
-      _log('📄 User profile response data: ${response.data}');
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
@@ -35,7 +36,7 @@ class UserProfileRepository {
           // Extract the user object from the response
           final userData = data['user'] as Map<String, dynamic>? ?? data;
           final result = UserProfileModel.fromJson(userData);
-          _log('✅ Parsed user profile: ${result.name} (ID: ${result.id})');
+          _log('✅ Parsed user profile: ${result.name} (ID: ${result.id}), vendor: ${result.vendor != null}');
           return result;
         }
         throw Exception('Invalid response format');

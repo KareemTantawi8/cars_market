@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
@@ -28,28 +29,46 @@ class ApiClient {
       ),
     );
 
-    // Add interceptor to log auth header
+    // Add interceptor to handle auth header (do NOT send for login/register)
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        final authHeader = options.headers['Authorization'];
-        if (authHeader != null) {
-          _log('🔑 Authorization header present: ${authHeader.toString().substring(0, authHeader.toString().length > 30 ? 30 : authHeader.toString().length)}...');
+        // Remove Authorization header for public/unauthenticated endpoints
+        // Sending invalid/mock token causes 500 on register/login, 401 on governorates/brands
+        final path = options.path;
+        final isPublicEndpoint = path.contains('/auth/login') ||
+            path.contains('/auth/register') ||
+            path.contains('/auth/register-vendor') ||
+            path.contains('/auth/forgot-password') ||
+            path.contains('/auth/verify-otp') ||
+            path.contains('/auth/reset-password') ||
+            path.contains('governorates') ||
+            path.contains('categories/brands') ||
+            path.contains('categories/models') ||
+            path.contains('categories');
+        if (isPublicEndpoint) {
+          options.headers.remove('Authorization');
+          _log('🔓 No Authorization for public endpoint: $path');
         } else {
-          _log('⚠️ No Authorization header in request');
+          final authHeader = options.headers['Authorization'];
+          if (authHeader != null) {
+            _log('🔑 Authorization header present');
+          }
         }
         handler.next(options);
       },
     ));
 
-    // Add logging interceptor in debug mode
-    _dio.interceptors.add(PrettyDioLogger(
-      requestHeader: true,
-      requestBody: true,
-      responseBody: true,
-      responseHeader: false,
-      error: true,
-      compact: true,
-    ));
+    // Add logging interceptor only in debug mode
+    if (kDebugMode) {
+      _dio.interceptors.add(PrettyDioLogger(
+        requestHeader: true,
+        requestBody: true,
+        responseBody: true,
+        responseHeader: false,
+        error: true,
+        compact: true,
+      ));
+    }
 
     // Load token from storage if available
     _loadTokenFromStorage();
@@ -96,11 +115,11 @@ class ApiClient {
     _log('🔄 Base URL updated to: ${AppConstants.baseUrl}');
   }
 
-  /// Log helper
+  /// Log helper (only prints in debug mode)
   void _log(String message) {
-    developer.log(message, name: 'ApiClient');
-    // ignore: avoid_print
-    print('📡 ApiClient: $message');
+    if (kDebugMode) {
+      developer.log(message, name: 'ApiClient');
+    }
   }
 
   /// GET request

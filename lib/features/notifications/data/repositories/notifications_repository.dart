@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 
@@ -10,8 +11,9 @@ class NotificationsRepository {
       : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
-    // ignore: avoid_print
-    print('🔔 NotificationsRepository: $message');
+    if (kDebugMode) {
+      debugPrint('🔔 NotificationsRepository: $message');
+    }
   }
 
   /// Get notifications (paginated)

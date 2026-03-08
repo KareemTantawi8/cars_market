@@ -97,7 +97,7 @@ class LoginCubit extends Cubit<LoginState> {
       // Call API
       final response = await _authRepository.login(request);
 
-      // Save token and user data
+      // Save token
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
@@ -105,6 +105,16 @@ class LoginCubit extends Cubit<LoginState> {
 
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
+
+      // Fetch fresh user data from auth/me after login
+      try {
+        final userProfile = await _authRepository.getCurrentUser();
+        await StorageService.saveUserData(jsonEncode(userProfile.toJson()));
+        await StorageService.saveUserType(userProfile.type);
+        await StorageService.saveUserId(userProfile.id.toString());
+      } catch (_) {
+        // Keep login response user data if auth/me fails
+      }
 
       emit(LoginSuccess(response));
     } catch (e) {
