@@ -48,14 +48,14 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
       case MyAdsFilter.all:
         return ads;
       case MyAdsFilter.active:
-        return ads.where((a) => a.status == 'approved').toList();
+        return ads.where((a) => a.statusNormalized == 'approved').toList();
       case MyAdsFilter.underReview:
-        return ads.where((a) => a.status == 'pending').toList();
+        return ads.where((a) => a.statusNormalized == 'pending').toList();
     }
   }
 
-  int _countByStatus(List<AdModel> ads, String status) {
-    return ads.where((a) => a.status == status).length;
+  int _countByStatus(List<AdModel> ads, String normalizedStatus) {
+    return ads.where((a) => a.statusNormalized == normalizedStatus).length;
   }
 
   @override
@@ -74,6 +74,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
           ),
         ),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,29 +143,9 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
+        textDirection: TextDirection.rtl,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  'إعلاناتي',
-                  style: AppTextStyles.headingMedium.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 22,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'إدارة بيع وشراء قطع غيار السيارات',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: context.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
           Stack(
             clipBehavior: Clip.none,
             children: [
@@ -186,6 +167,30 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               ),
             ],
           ),
+          Expanded(
+            child: Center(
+              child: Column(
+                children: [
+                  Text(
+                    'إعلاناتي',
+                    style: AppTextStyles.headingMedium.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'إدارة بيع وشراء قطع غيار السيارات',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 48),
         ],
       ),
     );
@@ -195,6 +200,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
+        textDirection: TextDirection.rtl,
         children: [
           Material(
             color: AppColors.primaryColor,
@@ -205,7 +211,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               child: const SizedBox(
                 width: 48,
                 height: 48,
-                child: Icon(Icons.tune, color: Colors.white, size: 24),
+                child: Icon(Icons.filter_list, color: Colors.white, size: 24),
               ),
             ),
           ),
@@ -219,6 +225,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                 border: Border.all(color: AppColors.inputBorder),
               ),
               child: Row(
+                textDirection: TextDirection.rtl,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(right: 12),
@@ -227,11 +234,12 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _searchController,
-                      style: AppTextStyles.input,
+                      style: AppTextStyles.input.copyWith(color: context.textPrimary),
+                      textDirection: TextDirection.rtl,
                       decoration: const InputDecoration(
                         hintText: 'ابحث في إعلاناتك...',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                     ),
                   ),
@@ -249,6 +257,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
       buildWhen: (a, b) => a is MyAdsLoaded && b is MyAdsLoaded,
       builder: (context, state) {
         final ads = state is MyAdsLoaded ? state.ads : <AdModel>[];
+        final totalCount = ads.length;
         final activeCount = _countByStatus(ads, 'approved');
         final underReviewCount = _countByStatus(ads, 'pending');
         return Padding(
@@ -257,7 +266,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             children: [
               Expanded(
                 child: _FilterChip(
-                  label: 'الكل',
+                  label: 'الكل ($totalCount)',
                   isSelected: _selectedFilter == MyAdsFilter.all,
                   onTap: () => setState(() => _selectedFilter = MyAdsFilter.all),
                 ),
@@ -357,106 +366,113 @@ class _MyAdCard extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const SizedBox.shrink(),
-                        IconButton(
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                          icon: Icon(Icons.more_vert, color: context.textSecondary, size: 22),
-                          onPressed: () => _showAdMenu(context),
+        child: IntrinsicHeight(
+          child: Row(
+            textDirection: TextDirection.rtl,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Image on the right in RTL (first in Row)
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(16),
+                      bottomRight: Radius.circular(16),
+                    ),
+                    child: SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: _imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: _imageUrl!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => _placeholder(context),
+                              errorWidget: (_, __, ___) => _placeholder(context),
+                            )
+                          : _placeholder(context),
+                    ),
+                  ),
+                  if (_isFeatured)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.ratingStar,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
-                    ),
-                    Text(
-                      ad.title,
-                      style: AppTextStyles.bodyLarge.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: context.textPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      ad.priceFormatted,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primaryColor,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        _StatusChip(status: ad.status),
-                        const SizedBox(width: 12),
-                        Icon(Icons.visibility_outlined, size: 16, color: context.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          '-- مشاهدة',
-                          style: AppTextStyles.caption.copyWith(color: context.textSecondary),
+                        child: Text(
+                          'مميز',
+                          style: AppTextStyles.caption.copyWith(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ],
+                ],
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                            icon: Icon(Icons.more_vert, color: context.textSecondary, size: 22),
+                            onPressed: () => _showAdMenu(context),
+                          ),
+                          const SizedBox.shrink(),
+                        ],
+                      ),
+                      Text(
+                        ad.title,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        ad.priceFormatted,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(Icons.visibility_outlined, size: 16, color: context.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            ad.viewsFormatted,
+                            style: AppTextStyles.caption.copyWith(color: context.textSecondary),
+                          ),
+                          const SizedBox(width: 12),
+                          _StatusChip(status: ad.statusNormalized),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                  ),
-                  child: SizedBox(
-                    width: 120,
-                    height: 120,
-                    child: _imageUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: _imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => _placeholder(context),
-                            errorWidget: (_, __, ___) => _placeholder(context),
-                          )
-                        : _placeholder(context),
-                  ),
-                ),
-                if (_isFeatured)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.ratingStar,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        'مميز',
-                        style: AppTextStyles.caption.copyWith(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -523,27 +539,45 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = status == 'approved';
     final isUnderReview = status == 'pending';
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 6,
-          height: 6,
-          decoration: BoxDecoration(
-            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : context.textHint,
-            shape: BoxShape.circle,
+    final bgColor = isActive
+        ? AppColors.success.withOpacity(0.2)
+        : isUnderReview
+            ? AppColors.warning.withOpacity(0.2)
+            : context.textHint.withOpacity(0.2);
+    final fgColor = isActive
+        ? AppColors.success
+        : isUnderReview
+            ? AppColors.warning
+            : context.textSecondary;
+    final label = status == 'approved' ? 'نشط' : status == 'pending' ? 'قيد المراجعة' : 'معلق';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: fgColor,
+              shape: BoxShape.circle,
+            ),
           ),
-        ),
-        if (isUnderReview) const SizedBox(width: 4),
-        if (isUnderReview) Icon(Icons.schedule, size: 12, color: AppColors.warning),
-        const SizedBox(width: 4),
-        Text(
-          status == 'approved' ? 'نشط' : status == 'pending' ? 'قيد المراجعة' : 'معلق',
-          style: AppTextStyles.caption.copyWith(
-            color: isActive ? AppColors.success : isUnderReview ? AppColors.warning : context.textSecondary,
+          if (isUnderReview) ...[const SizedBox(width: 4), Icon(Icons.schedule, size: 12, color: fgColor)],
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: fgColor,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

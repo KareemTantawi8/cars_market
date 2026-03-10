@@ -25,8 +25,9 @@ class ChatRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data['data'] != null) {
-          return List<Map<String, dynamic>>.from(data['data'] as List);
+        if (data is Map<String, dynamic>) {
+          final raw = data['data'];
+          if (raw is List) return raw.whereType<Map<String, dynamic>>().toList();
         }
         return [];
       } else {
@@ -50,10 +51,12 @@ class ChatRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data['data'] != null) {
-          return data['data'] as Map<String, dynamic>;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          if (inner is Map<String, dynamic>) return inner;
+          return data;
         }
-        return data as Map<String, dynamic>;
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to get chat details: ${response.statusCode}');
       }
@@ -80,7 +83,9 @@ class ChatRepository {
       );
 
       if (response.statusCode == 200) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) return data;
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to get messages: ${response.statusCode}');
       }
@@ -110,10 +115,12 @@ class ChatRepository {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data['data'] != null) {
-          return data['data'] as Map<String, dynamic>;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          if (inner is Map<String, dynamic>) return inner;
+          return data;
         }
-        return data as Map<String, dynamic>;
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to send message: ${response.statusCode}');
       }

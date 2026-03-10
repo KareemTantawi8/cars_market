@@ -21,14 +21,29 @@ class LoginResponseModel {
   });
 
   /// Create from JSON
+  /// API may return { data: { user, token, expires_at } } or { user, token, ... }
   factory LoginResponseModel.fromJson(Map<String, dynamic> json) {
+    final userJson = json['user'];
+    if (userJson == null || userJson is! Map<String, dynamic>) {
+      throw Exception('Login response missing user');
+    }
+    final token = json['token'] as String?;
+    if (token == null || token.isEmpty) {
+      throw Exception('Login response missing token');
+    }
+    DateTime expiresAt = DateTime.now().add(const Duration(days: 365));
+    if (json['expires_at'] != null) {
+      try {
+        expiresAt = DateTime.parse(json['expires_at'] as String);
+      } catch (_) {}
+    }
     return LoginResponseModel(
-      message: json['message'] as String,
-      user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
+      message: json['message'] as String? ?? 'تم تسجيل الدخول بنجاح',
+      user: UserModel.fromJson(userJson),
       permissions: json['permissions'] as List<dynamic>? ?? [],
-      token: json['token'] as String,
-      tokenType: json['token_type'] as String,
-      expiresAt: DateTime.parse(json['expires_at'] as String),
+      token: token,
+      tokenType: json['token_type'] as String? ?? 'Bearer',
+      expiresAt: expiresAt,
       abilities: (json['abilities'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??

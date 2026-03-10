@@ -26,7 +26,11 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return RegisterResponseModel.fromJson(response.data);
+        final data = response.data;
+        final payload = data is Map<String, dynamic> && data['data'] != null
+            ? data['data'] as Map<String, dynamic>
+            : data as Map<String, dynamic>;
+        return RegisterResponseModel.fromJson(payload);
       } else {
         throw Exception('Registration failed: ${response.statusCode}');
       }
@@ -57,7 +61,11 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return RegisterResponseModel.fromJson(response.data);
+        final data = response.data;
+        final payload = data is Map<String, dynamic> && data['data'] != null
+            ? data['data'] as Map<String, dynamic>
+            : data as Map<String, dynamic>;
+        return RegisterResponseModel.fromJson(payload);
       } else {
         throw Exception('Registration failed: ${response.statusCode}');
       }
@@ -88,7 +96,11 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return LoginResponseModel.fromJson(response.data);
+        final data = response.data;
+        final payload = data is Map<String, dynamic> && data['data'] != null
+            ? data['data'] as Map<String, dynamic>
+            : data as Map<String, dynamic>;
+        return LoginResponseModel.fromJson(payload);
       } else {
         throw Exception('Login failed: ${response.statusCode}');
       }
@@ -116,10 +128,11 @@ class AuthRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data['user'] != null) {
-          return UserModel.fromJson(data['user'] as Map<String, dynamic>);
-        }
-        return UserModel.fromJson(data as Map<String, dynamic>);
+        if (data is! Map<String, dynamic>) throw Exception('Invalid auth/me response');
+        final payload = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
+        final userRaw = payload['user'];
+        if (userRaw is Map<String, dynamic>) return UserModel.fromJson(userRaw);
+        return UserModel.fromJson(payload);
       } else {
         throw Exception('Failed to get user: ${response.statusCode}');
       }
@@ -149,7 +162,12 @@ class AuthRepository {
       final response = await _apiClient.post(ApiEndpoints.refreshToken);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to refresh token: ${response.statusCode}');
       }
@@ -168,7 +186,12 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to send OTP: ${response.statusCode}');
       }
@@ -200,7 +223,12 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to verify OTP: ${response.statusCode}');
       }
@@ -236,7 +264,12 @@ class AuthRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to reset password: ${response.statusCode}');
       }

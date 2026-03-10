@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/ad_model.dart';
@@ -30,19 +31,21 @@ class AdsRepository {
 
     final response = await _api.get(ApiEndpoints.ads, queryParameters: query);
     _ensureSuccess(response);
-    final data = response.data as Map<String, dynamic>?;
-    final dataPayload = data?['data'] as Map<String, dynamic>?;
-    if (dataPayload == null) throw Exception('Invalid response: no data');
-    return PaginatedAdsResponse.fromJson(dataPayload);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: expected map');
+    // API may return { data: [...], current_page, ... } - data is the list; use full map for fromJson
+    final payload = (data['data'] is Map<String, dynamic>) ? data['data'] as Map<String, dynamic> : data;
+    return PaginatedAdsResponse.fromJson(payload);
   }
 
   /// GET /ads/:id - View single ad
   Future<AdModel> getAdById(int id) async {
     final response = await _api.get(ApiEndpoints.adById(id));
     _ensureSuccess(response);
-    final data = response.data as Map<String, dynamic>?;
-    final adData = data?['data'] as Map<String, dynamic>?;
-    if (adData == null) throw Exception('Ad not found');
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Ad not found');
+    final raw = data['data'];
+    final adData = raw is Map<String, dynamic> ? raw : (raw is List && raw.isNotEmpty && raw.first is Map ? raw.first as Map<String, dynamic> : data);
     return AdModel.fromJson(adData);
   }
 
@@ -75,12 +78,23 @@ class AdsRepository {
 
     if (imageFiles != null && imageFiles.isNotEmpty) {
       for (int i = 0; i < imageFiles.length && i < 5; i++) {
+        final file = imageFiles[i];
+        final bytes = await FlutterImageCompress.compressWithFile(
+          file.absolute.path,
+          minWidth: 1920,
+          minHeight: 1080,
+          quality: 80,
+          format: CompressFormat.jpeg,
+        );
+        final filename = file.path.split(RegExp(r'[/\\]')).last;
+        final name = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
+            ? filename
+            : '${filename.split('.').first}.jpg';
         formData.files.add(MapEntry(
           'images[]',
-          await MultipartFile.fromFile(
-            imageFiles[i].path,
-            filename: imageFiles[i].path.split(RegExp(r'[/\\]')).last,
-          ),
+          bytes != null && bytes.isNotEmpty
+              ? MultipartFile.fromBytes(bytes, filename: name)
+              : await MultipartFile.fromFile(file.path, filename: filename),
         ));
       }
     }
@@ -96,9 +110,10 @@ class AdsRepository {
     if (response.statusCode != 201) {
       throw Exception(_messageFromResponse(response));
     }
-    final data = response.data as Map<String, dynamic>?;
-    final adData = data?['data'] as Map<String, dynamic>?;
-    if (adData == null) throw Exception('Invalid response: no data');
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: no data');
+    final raw = data['data'];
+    final adData = raw is Map<String, dynamic> ? raw : (raw is List && raw.isNotEmpty && raw.first is Map ? raw.first as Map<String, dynamic> : data);
     return AdModel.fromJson(adData);
   }
 
@@ -118,10 +133,10 @@ class AdsRepository {
       queryParameters: {'page': page, 'per_page': perPage},
     );
     _ensureSuccess(response);
-    final data = response.data as Map<String, dynamic>?;
-    final dataPayload = data?['data'] as Map<String, dynamic>?;
-    if (dataPayload == null) throw Exception('Invalid response: no data');
-    return PaginatedAdsResponse.fromJson(dataPayload);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: expected map');
+    final payload = (data['data'] is Map<String, dynamic>) ? data['data'] as Map<String, dynamic> : data;
+    return PaginatedAdsResponse.fromJson(payload);
   }
 
   void _ensureSuccess(Response response) {

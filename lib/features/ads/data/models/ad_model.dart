@@ -9,6 +9,15 @@ int _parseInt(dynamic value) {
   return 0;
 }
 
+/// Parse optional int (null if missing)
+int? _parseIntOrNull(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is String) return int.tryParse(value);
+  if (value is num) return value.toInt();
+  return null;
+}
+
 /// Parse bool from JSON (API may return bool, int 0/1, or string)
 bool _parseBool(dynamic value) {
   if (value == null) return false;
@@ -96,6 +105,7 @@ class AdModel {
   final String? expiresAt;
   final String? createdAt;
   final String? updatedAt;
+  final int? viewsCount;
   final AdUserModel? user;
   final AdBrandModel? brand;
   final AdCarModelRef? carModel;
@@ -120,6 +130,7 @@ class AdModel {
     this.expiresAt,
     this.createdAt,
     this.updatedAt,
+    this.viewsCount,
     this.user,
     this.brand,
     this.carModel,
@@ -158,16 +169,17 @@ class AdModel {
       expiresAt: json['expires_at'] as String?,
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
-      user: json['user'] != null
+      viewsCount: _parseIntOrNull(json['views_count'] ?? json['views']),
+      user: json['user'] is Map<String, dynamic>
           ? AdUserModel.fromJson(json['user'] as Map<String, dynamic>)
           : null,
-      brand: json['brand'] != null
+      brand: json['brand'] is Map<String, dynamic>
           ? AdBrandModel.fromJson(json['brand'] as Map<String, dynamic>)
           : null,
-      carModel: carModelJson != null
-          ? AdCarModelRef.fromJson(carModelJson as Map<String, dynamic>)
+      carModel: carModelJson is Map<String, dynamic>
+          ? AdCarModelRef.fromJson(carModelJson)
           : null,
-      year: json['year'] != null
+      year: json['year'] is Map<String, dynamic>
           ? AdYearModel.fromJson(json['year'] as Map<String, dynamic>)
           : null,
     );
@@ -186,9 +198,18 @@ class AdModel {
   /// Condition label in Arabic
   String get conditionLabel => condition == 'new' ? 'جديد' : 'مستعمل';
 
+  /// Normalized status for filtering (backend may send approved/active/published or pending/under_review)
+  String get statusNormalized {
+    final s = status.toLowerCase();
+    if (s == 'approved' || s == 'active' || s == 'published') return 'approved';
+    if (s == 'pending' || s == 'under_review' || s == 'in_review' || s == 'under review') return 'pending';
+    if (s == 'rejected') return 'rejected';
+    return s;
+  }
+
   /// Status label in Arabic
   String get statusLabel {
-    switch (status) {
+    switch (statusNormalized) {
       case 'approved':
         return 'نشط';
       case 'pending':
@@ -203,6 +224,12 @@ class AdModel {
   /// First image URL (full URL if relative)
   String? get firstImageUrl =>
       images.isNotEmpty ? images.first : null;
+
+  /// Views text for display: "120 مشاهدة" or "-- مشاهدة"
+  String get viewsFormatted =>
+      viewsCount != null && viewsCount! >= 0
+          ? '$viewsCount مشاهدة'
+          : '-- مشاهدة';
 }
 
 /// Paginated response for GET /ads and GET /my-ads
@@ -226,16 +253,18 @@ class PaginatedAdsResponse {
   });
 
   factory PaginatedAdsResponse.fromJson(Map<String, dynamic> json) {
-    final dataList = json['data'] as List<dynamic>? ?? [];
+    final raw = json['data'];
+    final dataList = raw is List ? raw : <dynamic>[];
     return PaginatedAdsResponse(
-      currentPage: json['current_page'] as int? ?? 1,
-      perPage: json['per_page'] as int? ?? 20,
-      total: json['total'] as int? ?? 0,
-      lastPage: json['last_page'] as int? ?? 1,
-      from: json['from'] as int? ?? 0,
-      to: json['to'] as int? ?? 0,
+      currentPage: (json['current_page'] as num?)?.toInt() ?? 1,
+      perPage: (json['per_page'] as num?)?.toInt() ?? 20,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      lastPage: (json['last_page'] as num?)?.toInt() ?? 1,
+      from: (json['from'] as num?)?.toInt() ?? 0,
+      to: (json['to'] as num?)?.toInt() ?? 0,
       data: dataList
-          .map((e) => AdModel.fromJson(e as Map<String, dynamic>))
+          .whereType<Map<String, dynamic>>()
+          .map((e) => AdModel.fromJson(e))
           .toList(),
     );
   }

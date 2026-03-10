@@ -29,7 +29,7 @@ class CategoryRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is List) {
-          final brands = data.map((e) => BrandModel.fromJson(e as Map<String, dynamic>)).toList();
+          final brands = data.whereType<Map<String, dynamic>>().map((e) => BrandModel.fromJson(e)).toList();
           _log('✅ Parsed ${brands.length} brands');
           return brands;
         } else if (data is Map<String, dynamic>) {
@@ -72,7 +72,7 @@ class CategoryRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is List) {
-          final models = data.map((e) => CarModelModel.fromJson(e as Map<String, dynamic>)).toList();
+          final models = data.whereType<Map<String, dynamic>>().map((e) => CarModelModel.fromJson(e)).toList();
           _log('✅ Parsed ${models.length} models');
           return models;
         } else if (data is Map<String, dynamic>) {
@@ -115,7 +115,7 @@ class CategoryRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is List) {
-          final years = data.map((e) => YearModel.fromJson(e as Map<String, dynamic>)).toList();
+          final years = data.whereType<Map<String, dynamic>>().map((e) => YearModel.fromJson(e)).toList();
           _log('✅ Parsed ${years.length} years');
           return years;
         } else if (data is Map<String, dynamic>) {
@@ -157,7 +157,7 @@ class CategoryRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is List) {
-          final governorates = data.map((e) => GovernorateModel.fromJson(e as Map<String, dynamic>)).toList();
+          final governorates = data.whereType<Map<String, dynamic>>().map((e) => GovernorateModel.fromJson(e)).toList();
           _log('✅ Parsed ${governorates.length} governorates');
           return governorates;
         } else if (data is Map<String, dynamic>) {

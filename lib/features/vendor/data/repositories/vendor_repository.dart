@@ -52,7 +52,12 @@ class VendorRepository {
       final response = await _apiClient.post(ApiEndpoints.vendorOnline);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to toggle online status: ${response.statusCode}');
       }

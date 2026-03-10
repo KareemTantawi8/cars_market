@@ -201,7 +201,7 @@ class BrandsResponse {
     final data = json['data'] ?? json['brands'] ?? json;
     if (data is List) {
       return BrandsResponse(
-        brands: data.map((e) => BrandModel.fromJson(e as Map<String, dynamic>)).toList(),
+        brands: data.whereType<Map<String, dynamic>>().map((e) => BrandModel.fromJson(e)).toList(),
       );
     }
     return BrandsResponse(brands: []);
@@ -218,7 +218,7 @@ class ModelsResponse {
     final data = json['data'] ?? json['models'] ?? json;
     if (data is List) {
       return ModelsResponse(
-        models: data.map((e) => CarModelModel.fromJson(e as Map<String, dynamic>)).toList(),
+        models: data.whereType<Map<String, dynamic>>().map((e) => CarModelModel.fromJson(e)).toList(),
       );
     }
     return ModelsResponse(models: []);
@@ -247,16 +247,15 @@ class YearsResponse {
     final data = json['data'];
     if (data is List) {
       return YearsResponse(
-        years: data.map((e) => YearModel.fromJson(e as Map<String, dynamic>)).toList(),
-        model: json['model'] as Map<String, dynamic>?,
-        brand: json['brand'] as Map<String, dynamic>?,
+        years: data.whereType<Map<String, dynamic>>().map((e) => YearModel.fromJson(e)).toList(),
+        model: json['model'] is Map<String, dynamic> ? json['model'] as Map<String, dynamic> : null,
+        brand: json['brand'] is Map<String, dynamic> ? json['brand'] as Map<String, dynamic> : null,
       );
     }
-    // If data is not a list, return empty years
     return YearsResponse(
       years: [],
-      model: json['model'] as Map<String, dynamic>?,
-      brand: json['brand'] as Map<String, dynamic>?,
+      model: json['model'] is Map<String, dynamic> ? json['model'] as Map<String, dynamic> : null,
+      brand: json['brand'] is Map<String, dynamic> ? json['brand'] as Map<String, dynamic> : null,
     );
   }
 }
@@ -271,7 +270,7 @@ class GovernoratesResponse {
     final data = json['data'] ?? json['governorates'] ?? json;
     if (data is List) {
       return GovernoratesResponse(
-        governorates: data.map((e) => GovernorateModel.fromJson(e as Map<String, dynamic>)).toList(),
+        governorates: data.whereType<Map<String, dynamic>>().map((e) => GovernorateModel.fromJson(e)).toList(),
       );
     }
     return GovernoratesResponse(governorates: []);

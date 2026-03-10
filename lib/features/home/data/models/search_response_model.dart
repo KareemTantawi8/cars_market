@@ -32,7 +32,8 @@ class SearchResponseModel {
     
     return SearchResponseModel(
       suppliers: suppliersData
-              ?.map((e) => SupplierModel.fromJson(e as Map<String, dynamic>))
+              ?.whereType<Map<String, dynamic>>()
+              .map((e) => SupplierModel.fromJson(e))
               .toList() ??
           [],
       totalCount: json['total_count'] as int? ?? 

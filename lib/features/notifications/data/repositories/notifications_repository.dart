@@ -27,7 +27,9 @@ class NotificationsRepository {
       );
 
       if (response.statusCode == 200) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) return data;
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to get notifications: ${response.statusCode}');
       }

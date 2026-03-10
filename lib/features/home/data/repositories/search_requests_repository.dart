@@ -40,7 +40,12 @@ class SearchRequestsRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to create search request: ${response.statusCode}');
       }
@@ -93,10 +98,12 @@ class SearchRequestsRepository {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data is Map<String, dynamic> && data['data'] != null) {
-          return data['data'] as Map<String, dynamic>;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          if (inner is Map<String, dynamic>) return inner;
+          return data;
         }
-        return data as Map<String, dynamic>;
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to get search request details: ${response.statusCode}');
       }
@@ -125,7 +132,12 @@ class SearchRequestsRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to accept search request: ${response.statusCode}');
       }
@@ -152,7 +164,12 @@ class SearchRequestsRepository {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
       } else {
         throw Exception('Failed to reject search request: ${response.statusCode}');
       }

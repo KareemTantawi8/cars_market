@@ -252,14 +252,15 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildFieldLabel('السعر المطلوب'),
+        _buildFieldLabel('السعر المطلوب (المبلغ بالجنيه المصري)'),
         const SizedBox(height: 8),
         TextFormField(
           controller: _priceController,
-          style: AppTextStyles.input,
-          keyboardType: TextInputType.number,
+          style: AppTextStyles.input.copyWith(color: context.textPrimary),
+          cursorColor: AppColors.primaryColor,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textDirection: TextDirection.ltr,
-          decoration: _inputDecoration(hint: '0').copyWith(
+          decoration: _inputDecoration(hint: 'أدخل المبلغ، مثال: 5000').copyWith(
             prefixIcon: Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(

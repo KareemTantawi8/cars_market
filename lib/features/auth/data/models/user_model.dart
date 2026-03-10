@@ -29,21 +29,35 @@ class UserModel {
   });
 
   /// Create from JSON
+  /// Register/auth responses may omit created_at, updated_at, roles
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    DateTime? createdAt;
+    if (json['created_at'] != null) {
+      try {
+        createdAt = DateTime.parse(json['created_at'] as String);
+      } catch (_) {}
+    }
+    DateTime? updatedAt;
+    if (json['updated_at'] != null) {
+      try {
+        updatedAt = DateTime.parse(json['updated_at'] as String);
+      } catch (_) {}
+    }
+    final now = DateTime.now();
     return UserModel(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      phone: json['phone'] as String,
-      type: json['type'] as String,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      phone: json['phone']?.toString() ?? '',
+      type: json['type'] as String? ?? 'customer',
       status: json['status'] as String?,
       isProtected: json['is_protected'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: createdAt ?? now,
+      updatedAt: updatedAt ?? now,
       deletedAt: json['deleted_at'] != null
-          ? DateTime.parse(json['deleted_at'] as String)
+          ? DateTime.tryParse(json['deleted_at'] as String)
           : null,
       roles: json['roles'] as List<dynamic>? ?? [],
-      vendor: json['vendor'] != null
+      vendor: json['vendor'] != null && json['vendor'] is Map<String, dynamic>
           ? VendorModel.fromJson(json['vendor'] as Map<String, dynamic>)
           : null,
     );
