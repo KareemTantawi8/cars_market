@@ -496,7 +496,9 @@ class _EditAdScreenState extends State<EditAdScreen> {
       );
       return;
     }
-    final price = double.tryParse(_priceController.text.trim().replaceAll(',', ''));
+    // Normalize Arabic-Indic digits before parsing to double
+    final normalizedPriceText = _normalizeDigits(_priceController.text.trim());
+    final price = double.tryParse(normalizedPriceText.replaceAll(',', ''));
     context.read<CreateAdCubit>().updateAd(
           widget.ad.id,
           title: title,
@@ -513,6 +515,16 @@ class _EditAdScreenState extends State<EditAdScreen> {
           isActive: _isActive,
           imageFiles: _newImageFiles.isEmpty ? null : _newImageFiles,
         );
+  }
+
+  /// Convert Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to Western (0123456789)
+  String _normalizeDigits(String input) {
+    const arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    String result = input;
+    for (int i = 0; i < arabicIndic.length; i++) {
+      result = result.replaceAll(arabicIndic[i], i.toString());
+    }
+    return result;
   }
 
   void _showBrandSelection(CategoryLoaded state) {

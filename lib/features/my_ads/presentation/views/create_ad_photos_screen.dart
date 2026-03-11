@@ -428,7 +428,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
           modelId: formData['modelId'] as int?,
           yearId: formData['yearId'] as int?,
           condition: formData['condition'] as String? ?? 'used',
-          price: formData['price'] as double?,
+          price: (formData['price'] as num?)?.toDouble(),
           isNegotiable: formData['isNegotiable'] as bool? ?? false,
           isPhoneVisible: formData['isPhoneVisible'] as bool? ?? true,
           imageFiles: imageFiles.isNotEmpty ? imageFiles : null,

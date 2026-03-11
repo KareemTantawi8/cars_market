@@ -7,6 +7,9 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../ads/presentation/cubit/my_ads_cubit.dart';
+import '../../../ads/presentation/cubit/ads_list_cubit.dart';
+import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
@@ -1085,6 +1088,30 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             title: 'الإشعارات',
             isFirst: true,
             onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+          ),
+          Divider(
+            height: 1,
+            indent: 68,
+            color: context.textSecondary.withOpacity(0.1),
+          ),
+          _buildAccountTile(
+            icon: Icons.view_list_outlined,
+            iconBg: AppColors.primaryColor.withOpacity(0.08),
+            iconColor: AppColors.primaryColor,
+            title: 'كل إعلانات العملاء',
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => MultiBlocProvider(
+                    providers: [
+                      BlocProvider(create: (_) => MyAdsCubit()),
+                      BlocProvider(create: (_) => AdsListCubit()),
+                    ],
+                    child: const MyAdsScreen(initialTabIndex: 1),
+                  ),
+                ),
+              );
+            },
           ),
           Divider(
             height: 1,

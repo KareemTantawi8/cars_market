@@ -9,6 +9,7 @@ import '../../../../core/utils/constants.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/presentation/cubit/my_ads_cubit.dart';
+import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 
 /// Filter chip type for My Ads list
 enum MyAdsFilter {
@@ -19,7 +20,10 @@ enum MyAdsFilter {
 
 /// My Ads screen - إعلاناتي (customer's ad management)
 class MyAdsScreen extends StatefulWidget {
-  const MyAdsScreen({super.key});
+  const MyAdsScreen({super.key, this.initialTabIndex = 0});
+
+  /// 0 = "My Ads", 1 = "All Ads"
+  final int initialTabIndex;
 
   @override
   State<MyAdsScreen> createState() => _MyAdsScreenState();
@@ -28,6 +32,9 @@ class MyAdsScreen extends StatefulWidget {
 class _MyAdsScreenState extends State<MyAdsScreen> {
   final _searchController = TextEditingController();
   MyAdsFilter _selectedFilter = MyAdsFilter.all;
+  String? _allAdsSearch;
+  int _currentTabIndex = 0;
+  String? _myAdsSearch;
 
   @override
   void initState() {
@@ -44,98 +51,208 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   }
 
   List<AdModel> _filterList(List<AdModel> ads) {
+    Iterable<AdModel> result = ads;
+
+    // Status filter
     switch (_selectedFilter) {
       case MyAdsFilter.all:
-        return ads;
+        break;
       case MyAdsFilter.active:
-        return ads.where((a) => a.statusNormalized == 'approved').toList();
+        result = result.where((a) => a.statusNormalized == 'approved');
+        break;
       case MyAdsFilter.underReview:
-        return ads.where((a) => a.statusNormalized == 'pending').toList();
+        result = result.where((a) => a.statusNormalized == 'pending');
+        break;
     }
-  }
 
-  int _countByStatus(List<AdModel> ads, String normalizedStatus) {
-    return ads.where((a) => a.statusNormalized == normalizedStatus).length;
+    // Local search filter for "My Ads" tab
+    final query = _myAdsSearch;
+    if (query != null && query.isNotEmpty) {
+      final lower = query.toLowerCase();
+      result = result.where((a) => a.title.toLowerCase().contains(lower));
+    }
+
+    return result.toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, AppRoutes.createAd),
-        backgroundColor: AppColors.primaryColor,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: Text(
-          'إضافة إعلان',
-          style: AppTextStyles.bodyMedium.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
+    return DefaultTabController(
+      length: 2,
+      initialIndex: widget.initialTabIndex.clamp(0, 1),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.createAd),
+          backgroundColor: AppColors.primaryColor,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: Text(
+            'إضافة إعلان',
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        body: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildHeader(),
+              _buildTabs(),
+              _buildSearchBar(),
+              _buildFilterChips(),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildMyAdsList(),
+                    _buildAllAdsList(),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildHeader(),
-            _buildSearchBar(),
-            _buildFilterChips(),
-            Expanded(
-              child: BlocConsumer<MyAdsCubit, MyAdsState>(
-                listener: (context, state) {
-                  if (state is MyAdsError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
-                    );
-                  }
-                },
-                builder: (context, state) {
-                  if (state is MyAdsLoading || state is MyAdsInitial) {
-                    return const Center(child: LoadingIndicator());
-                  }
-                  if (state is MyAdsError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(state.message, style: AppTextStyles.bodySmall.copyWith(color: AppColors.error), textAlign: TextAlign.center),
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: () => context.read<MyAdsCubit>().loadMyAds(),
-                            child: const Text('إعادة المحاولة'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  if (state is MyAdsLoaded) {
-                    final filtered = _filterList(state.ads);
-                    if (filtered.isEmpty) {
-                      return Center(
-                        child: Text(
-                          _selectedFilter == MyAdsFilter.all ? 'لا توجد إعلانات' : 'لا توجد إعلانات في هذا التصنيف',
-                          style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: _MyAdCard(ad: filtered[index]),
-                      ),
-                    );
-                  }
-                  return const Center(child: CircularProgressIndicator());
-                },
-              ),
-            ),
-          ],
-        ),
+    );
+  }
+
+  Widget _buildTabs() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: TabBar(
+        labelColor: AppColors.primaryColor,
+        unselectedLabelColor: context.textSecondary,
+        indicatorColor: AppColors.primaryColor,
+        onTap: (index) {
+          setState(() {
+            _currentTabIndex = index;
+          });
+        },
+        tabs: const [
+          Tab(text: 'إعلاناتي'),
+          Tab(text: 'كل الإعلانات'),
+        ],
       ),
+    );
+  }
+
+  Widget _buildMyAdsList() {
+    return BlocConsumer<MyAdsCubit, MyAdsState>(
+      listener: (context, state) {
+        if (state is MyAdsError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is MyAdsLoading || state is MyAdsInitial) {
+          return const Center(child: LoadingIndicator());
+        }
+        if (state is MyAdsError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  state.message,
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => context.read<MyAdsCubit>().loadMyAds(),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (state is MyAdsLoaded) {
+          final filtered = _filterList(state.ads);
+          if (filtered.isEmpty) {
+            return Center(
+              child: Text(
+                _selectedFilter == MyAdsFilter.all ? 'لا توجد إعلانات' : 'لا توجد إعلانات في هذا التصنيف',
+                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            itemCount: filtered.length,
+            itemBuilder: (context, index) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _MyAdCard(ad: filtered[index]),
+            ),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
+    );
+  }
+
+  Widget _buildAllAdsList() {
+    return BlocConsumer<AdsListCubit, AdsListState>(
+      listener: (context, state) {
+        if (state is AdsListError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
+          );
+        }
+      },
+      builder: (context, state) {
+        if (state is AdsListInitial) {
+          // Trigger initial load of all ads (respect current search filter if any)
+          context.read<AdsListCubit>().loadAds(search: _allAdsSearch);
+          return const Center(child: LoadingIndicator());
+        }
+        if (state is AdsListLoading) {
+          return const Center(child: LoadingIndicator());
+        }
+        if (state is AdsListError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  state.message,
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => context.read<AdsListCubit>().loadAds(search: _allAdsSearch),
+                  child: const Text('إعادة المحاولة'),
+                ),
+              ],
+            ),
+          );
+        }
+        if (state is AdsListLoaded) {
+          // Apply same status filter used for "My Ads"
+          final ads = _filterList(state.ads);
+          if (ads.isEmpty) {
+            return Center(
+              child: Text(
+                'لا توجد إعلانات متاحة حالياً',
+                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            itemCount: ads.length,
+            itemBuilder: (context, index) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _MyAdCard(ad: ads[index]),
+            ),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
     );
   }
 
@@ -206,7 +323,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             color: AppColors.primaryColor,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              onTap: () {},
+              onTap: _onSearchPressed,
               borderRadius: BorderRadius.circular(12),
               child: const SizedBox(
                 width: 48,
@@ -236,6 +353,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
                       controller: _searchController,
                       style: AppTextStyles.input.copyWith(color: context.textPrimary),
                       textDirection: TextDirection.rtl,
+                      onSubmitted: (_) => _onSearchPressed(),
                       decoration: const InputDecoration(
                         hintText: 'ابحث في إعلاناتك...',
                         border: InputBorder.none,
@@ -252,21 +370,35 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
     );
   }
 
+  void _onSearchPressed() {
+    final text = _searchController.text.trim();
+    final search = text.isEmpty ? null : text;
+    if (_currentTabIndex == 0) {
+      // My Ads tab: apply local filter by title
+      setState(() {
+        _myAdsSearch = search;
+      });
+      return;
+    } else {
+      // All Ads tab: call /ads with search filter
+      setState(() {
+        _allAdsSearch = search;
+      });
+      context.read<AdsListCubit>().loadAds(search: search);
+    }
+  }
+
   Widget _buildFilterChips() {
     return BlocBuilder<MyAdsCubit, MyAdsState>(
       buildWhen: (a, b) => a is MyAdsLoaded && b is MyAdsLoaded,
       builder: (context, state) {
-        final ads = state is MyAdsLoaded ? state.ads : <AdModel>[];
-        final totalCount = ads.length;
-        final activeCount = _countByStatus(ads, 'approved');
-        final underReviewCount = _countByStatus(ads, 'pending');
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               Expanded(
                 child: _FilterChip(
-                  label: 'الكل ($totalCount)',
+                  label: 'الكل',
                   isSelected: _selectedFilter == MyAdsFilter.all,
                   onTap: () => setState(() => _selectedFilter = MyAdsFilter.all),
                 ),
@@ -274,7 +406,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _FilterChip(
-                  label: 'نشط ($activeCount)',
+                  label: 'نشط',
                   isSelected: _selectedFilter == MyAdsFilter.active,
                   onTap: () => setState(() => _selectedFilter = MyAdsFilter.active),
                 ),
@@ -282,7 +414,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               const SizedBox(width: 10),
               Expanded(
                 child: _FilterChip(
-                  label: 'قيد المراجعة ($underReviewCount)',
+                  label: 'قيد المراجعة',
                   isSelected: _selectedFilter == MyAdsFilter.underReview,
                   onTap: () => setState(() => _selectedFilter = MyAdsFilter.underReview),
                 ),
@@ -339,136 +471,72 @@ class _MyAdCard extends StatelessWidget {
     return '${AppConstants.storageBaseUrl}/$path';
   }
 
-  /// Optional: show "مميز" when API supports is_featured. Placeholder for now.
   bool get _isFeatured => false;
+
+  Color get _statusColor {
+    switch (ad.statusNormalized) {
+      case 'approved':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      default:
+        return AppColors.textHint;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.adDetails,
-          arguments: {'adId': ad.id},
-        );
-      },
-      borderRadius: BorderRadius.circular(16),
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        AppRoutes.adDetails,
+        arguments: {'adId': ad.id},
+      ),
       child: Container(
         decoration: BoxDecoration(
           color: context.cardBg,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.inputBorder),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 8,
+              color: _statusColor.withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: IntrinsicHeight(
-          child: Row(
-            textDirection: TextDirection.rtl,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Image on the right in RTL (first in Row)
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topRight: Radius.circular(16),
-                      bottomRight: Radius.circular(16),
-                    ),
-                    child: SizedBox(
-                      width: 120,
-                      height: 120,
-                      child: _imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: _imageUrl!,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => _placeholder(context),
-                              errorWidget: (_, __, ___) => _placeholder(context),
-                            )
-                          : _placeholder(context),
-                    ),
+              // Status accent bar
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_statusColor, _statusColor.withOpacity(0.4)],
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
                   ),
-                  if (_isFeatured)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.ratingStar,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'مميز',
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
+                ),
               ),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                            icon: Icon(Icons.more_vert, color: context.textSecondary, size: 22),
-                            onPressed: () => _showAdMenu(context),
-                          ),
-                          const SizedBox.shrink(),
-                        ],
-                      ),
-                      Text(
-                        ad.title,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        ad.priceFormatted,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          color: AppColors.primaryColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                        ),
-                        textAlign: TextAlign.right,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Icon(Icons.visibility_outlined, size: 16, color: context.textSecondary),
-                          const SizedBox(width: 4),
-                          Text(
-                            ad.viewsFormatted,
-                            style: AppTextStyles.caption.copyWith(color: context.textSecondary),
-                          ),
-                          const SizedBox(width: 12),
-                          _StatusChip(status: ad.statusNormalized),
-                        ],
-                      ),
-                    ],
-                  ),
+              // Main content row (fixed card height for consistent layout)
+              SizedBox(
+                height: 148,
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Image section (fixed size)
+                    _buildImage(context),
+                    // Info section (takes remaining width, content compressed slightly to avoid overflow)
+                    Expanded(child: _buildInfo(context)),
+                  ],
                 ),
               ),
             ],
@@ -478,10 +546,169 @@ class _MyAdCard extends StatelessWidget {
     );
   }
 
+  Widget _buildImage(BuildContext context) {
+    final imageUrl = _imageUrl;
+    return SizedBox(
+      width: 140,
+      height: 148,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _placeholder(context),
+                    errorWidget: (_, __, ___) => _placeholder(context),
+                  )
+                : _placeholder(context),
+          ),
+        // Price overlay at bottom of image
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.black.withOpacity(0.75), Colors.transparent],
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+            ),
+            child: Text(
+              ad.priceFormatted,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+          if (_isFeatured)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.ratingStar,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, size: 10, color: Colors.black87),
+                    const SizedBox(width: 2),
+                    Text(
+                      'مميز',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfo(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 12, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Status chip + menu button row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () => _showAdMenu(context),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: context.surfaceBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.more_horiz_rounded, color: context.textSecondary, size: 20),
+                ),
+              ),
+              _StatusChip(status: ad.statusNormalized),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Title
+          Text(
+            ad.title,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.textPrimary,
+              fontSize: 15,
+              height: 1.35,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 4),
+          // Price badge
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                ad.priceFormatted,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Views row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Icon(Icons.remove_red_eye_outlined, size: 13, color: context.textHint),
+              const SizedBox(width: 4),
+              Text(
+                ad.viewsFormatted,
+                style: AppTextStyles.caption.copyWith(
+                  color: context.textHint,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _placeholder(BuildContext context) {
     return Container(
       color: context.surfaceBg,
-      child: Icon(Icons.directions_car_outlined, size: 40, color: context.textHint),
+      child: Center(
+        child: Icon(Icons.directions_car_outlined, size: 48, color: context.textHint),
+      ),
     );
   }
 
@@ -489,56 +716,89 @@ class _MyAdCard extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       backgroundColor: context.cardBg,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.visibility, color: context.textPrimary),
-              title: const Text('عرض الإعلان'),
-              onTap: () {
-                Navigator.pop(ctx);
-                Navigator.pushNamed(context, AppRoutes.adDetails, arguments: {'adId': ad.id});
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit_outlined, color: context.textPrimary),
-              title: const Text('تعديل'),
-              onTap: () async {
-                Navigator.pop(ctx);
-                final result = await Navigator.pushNamed(
-                  context,
-                  AppRoutes.editAd,
-                  arguments: ad,
-                );
-                if (context.mounted && result == true) {
-                  context.read<MyAdsCubit>().loadMyAds();
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: Text('حذف', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error)),
-              onTap: () async {
-                Navigator.pop(ctx);
-                try {
-                  await context.read<MyAdsCubit>().deleteAd(ad.id);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم حذف الإعلان'), backgroundColor: AppColors.success),
-                    );
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.inputBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.visibility_outlined, color: AppColors.primaryColor, size: 20),
+                ),
+                title: const Text('عرض الإعلان'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.pushNamed(context, AppRoutes.adDetails, arguments: {'adId': ad.id});
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.edit_outlined, color: AppColors.warning, size: 20),
+                ),
+                title: const Text('تعديل الإعلان'),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final result = await Navigator.pushNamed(
+                    context,
+                    AppRoutes.editAd,
+                    arguments: ad,
+                  );
+                  if (context.mounted && result == true) {
+                    context.read<MyAdsCubit>().loadMyAds();
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppColors.error),
-                    );
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 20),
+                ),
+                title: Text('حذف الإعلان', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await context.read<MyAdsCubit>().deleteAd(ad.id);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم حذف الإعلان'), backgroundColor: AppColors.success),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppColors.error),
+                      );
+                    }
                   }
-                }
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -554,41 +814,47 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = status == 'approved';
     final isUnderReview = status == 'pending';
-    final bgColor = isActive
-        ? AppColors.success.withOpacity(0.2)
-        : isUnderReview
-            ? AppColors.warning.withOpacity(0.2)
-            : context.textHint.withOpacity(0.2);
-    final fgColor = isActive
-        ? AppColors.success
-        : isUnderReview
-            ? AppColors.warning
-            : context.textSecondary;
-    final label = status == 'approved' ? 'نشط' : status == 'pending' ? 'قيد المراجعة' : 'معلق';
+
+    final Color bgColor;
+    final Color fgColor;
+    final IconData icon;
+    final String label;
+
+    if (isActive) {
+      bgColor = AppColors.success.withOpacity(0.15);
+      fgColor = AppColors.success;
+      icon = Icons.check_circle_rounded;
+      label = 'نشط';
+    } else if (isUnderReview) {
+      bgColor = AppColors.warning.withOpacity(0.15);
+      fgColor = AppColors.warning;
+      icon = Icons.schedule_rounded;
+      label = 'قيد المراجعة';
+    } else {
+      bgColor = context.textHint.withOpacity(0.15);
+      fgColor = context.textSecondary;
+      icon = Icons.pause_circle_outline_rounded;
+      label = 'معلق';
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: fgColor.withOpacity(0.3), width: 1),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: fgColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          if (isUnderReview) ...[const SizedBox(width: 4), Icon(Icons.schedule, size: 12, color: fgColor)],
+          Icon(icon, size: 12, color: fgColor),
           const SizedBox(width: 4),
           Text(
             label,
             style: AppTextStyles.caption.copyWith(
               color: fgColor,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
             ),
           ),
         ],

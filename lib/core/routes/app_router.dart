@@ -24,6 +24,7 @@ import '../../features/vendor/presentation/views/vendor_incoming_requests_screen
 import '../../features/vendor/presentation/cubit/vendor_requests_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_screen.dart';
 import '../../features/ads/presentation/cubit/my_ads_cubit.dart';
+import '../../features/ads/presentation/cubit/ads_list_cubit.dart';
 import '../../features/ads/presentation/cubit/create_ad_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_photos_screen.dart';
 import '../../features/my_ads/presentation/views/edit_ad_screen.dart';
@@ -60,6 +61,7 @@ class AppRouter {
               BlocProvider(create: (_) => SearchCubit()),
               BlocProvider(create: (_) => CategoryCubit()),
               BlocProvider(create: (_) => MyAdsCubit()),
+              BlocProvider(create: (_) => AdsListCubit()),
               BlocProvider(create: (_) => ChatCubit()),
             ],
             child: const HomeScreen(),

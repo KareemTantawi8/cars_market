@@ -12,7 +12,7 @@ import '../../../home/data/models/category_models.dart';
 /// Ad condition: new or used
 enum AdCondition {
   newCondition, // جديد
-  used,         // مستعمل
+  used, // مستعمل
 }
 
 /// Create Ad Form - Step 1 of 3 (إضافة إعلان)
@@ -63,7 +63,10 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             _buildProgressSection(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -103,9 +106,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       leadingWidth: 80,
       title: Text(
         'Create Ad Form - Steps 1-2',
-        style: AppTextStyles.caption.copyWith(
-          color: context.textSecondary,
-        ),
+        style: AppTextStyles.caption.copyWith(color: context.textSecondary),
       ),
       titleSpacing: 0,
     );
@@ -129,7 +130,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             child: LinearProgressIndicator(
               value: _currentStep / _totalSteps,
               backgroundColor: context.surfaceBg,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primaryColor),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primaryColor,
+              ),
               minHeight: 6,
             ),
           ),
@@ -140,10 +143,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
 
   Widget _buildMainTitle() {
     return Center(
-      child: Text(
-        'إضافة إعلان',
-        style: AppTextStyles.headingMedium,
-      ),
+      child: Text('إضافة إعلان', style: AppTextStyles.headingMedium),
     );
   }
 
@@ -202,7 +202,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Text(
                   state.message,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.error,
+                  ),
                 ),
               );
             }
@@ -248,7 +250,10 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           maxLines: 4,
           decoration: _inputDecoration(
             hint: 'اكتب مواصفات السيارة والمميزات والعيوب إن وجدت....',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -256,25 +261,32 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _priceController,
-          style: AppTextStyles.input.copyWith(color: context.textPrimary),
-          cursorColor: AppColors.primaryColor,
+          style: AppTextStyles.input,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textDirection: TextDirection.ltr,
-          decoration: _inputDecoration(hint: 'أدخل المبلغ، مثال: 5000').copyWith(
-            prefixIcon: Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Center(
-                child: Text(
-                  'ج.م',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: context.textSecondary,
-                  ),
-                ),
-              ),
-            ),
-            prefixIconConstraints: const BoxConstraints(minWidth: 44),
-          ),
+          decoration: _inputDecoration(hint: 'السعر'),
         ),
+        // TextFormField(
+        //   controller: _priceController,
+        //   style: AppTextStyles.input.copyWith(color: context.textPrimary),
+        //   cursorColor: AppColors.primaryColor,
+        //   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        //   textDirection: TextDirection.ltr,
+        //   decoration: _inputDecoration(hint: 'أدخل المبلغ، مثال: 5000').copyWith(
+        //     prefixIcon: Padding(
+        //       padding: const EdgeInsets.only(right: 16),
+        //       child: Center(
+        //         child: Text(
+        //           'ج.م',
+        //           style: AppTextStyles.bodyMedium.copyWith(
+        //             color: context.textSecondary,
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //     prefixIconConstraints: const BoxConstraints(minWidth: 44),
+        //   ),
+        // ),
         const SizedBox(height: 16),
         _buildToggleRow(
           label: 'السعر قابل للتفاوض',
@@ -316,19 +328,13 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           ),
         ),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: AppTextStyles.headingSmall,
-        ),
+        Text(title, style: AppTextStyles.headingSmall),
       ],
     );
   }
 
   Widget _buildFieldLabel(String label) {
-    return Text(
-      label,
-      style: AppTextStyles.inputLabel,
-    );
+    return Text(label, style: AppTextStyles.inputLabel);
   }
 
   InputDecoration _inputDecoration({
@@ -338,7 +344,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
     return InputDecoration(
       hintText: hint,
       hintStyle: AppTextStyles.inputHint,
-      filled: true,
+      // filled: true,
       fillColor: AppColors.inputBackground,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -352,7 +358,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: AppColors.primaryColor, width: 2),
       ),
-      contentPadding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding:
+          contentPadding ??
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
 
@@ -406,10 +414,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             children: [
               Icon(icon, size: 20, color: iconColor),
               const SizedBox(width: 8),
-              Text(
-                label,
-                style: AppTextStyles.bodyMedium,
-              ),
+              Text(label, style: AppTextStyles.bodyMedium),
             ],
           ),
         ),
@@ -432,31 +437,57 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
           final title = _titleController.text.trim();
           if (title.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('أدخل عنوان الإعلان'), backgroundColor: AppColors.warning),
+              const SnackBar(
+                content: Text('أدخل عنوان الإعلان'),
+                backgroundColor: AppColors.warning,
+              ),
             );
             return;
           }
           final state = context.read<CategoryCubit>().state;
           if (state is! CategoryLoaded || state.selectedBrand == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('اختر الماركة'), backgroundColor: AppColors.warning),
+              const SnackBar(
+                content: Text('اختر الماركة'),
+                backgroundColor: AppColors.warning,
+              ),
             );
             return;
           }
-          Navigator.pushNamed(context, AppRoutes.createAdPhotos, arguments: {
-            'title': title,
-            'description': _descriptionController.text.trim(),
-            'brandId': state.selectedBrand!.id,
-            'modelId': state.selectedModel?.id,
-            'yearId': state.selectedYear?.id,
-            'condition': _condition == AdCondition.used ? 'used' : 'new',
-            'price': double.tryParse(_priceController.text.trim().replaceAll(',', '')) ?? 0,
-            'isNegotiable': _isPriceNegotiable,
-            'isPhoneVisible': _showPhoneToAll,
-          });
+          // Normalize Arabic-Indic digits before parsing to double
+          final normalizedPriceText = _normalizeDigits(
+            _priceController.text.trim(),
+          );
+          Navigator.pushNamed(
+            context,
+            AppRoutes.createAdPhotos,
+            arguments: {
+              'title': title,
+              'description': _descriptionController.text.trim(),
+              'brandId': state.selectedBrand!.id,
+              'modelId': state.selectedModel?.id,
+              'yearId': state.selectedYear?.id,
+              'condition': _condition == AdCondition.used ? 'used' : 'new',
+              'price':
+                  double.tryParse(normalizedPriceText.replaceAll(',', '')) ??
+                  0.0,
+              'isNegotiable': _isPriceNegotiable,
+              'isPhoneVisible': _showPhoneToAll,
+            },
+          );
         },
       ),
     );
+  }
+
+  /// Convert Arabic-Indic numerals (٠١٢٣٤٥٦٧٨٩) to Western (0123456789)
+  String _normalizeDigits(String input) {
+    const arabicIndic = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    String result = input;
+    for (int i = 0; i < arabicIndic.length; i++) {
+      result = result.replaceAll(arabicIndic[i], i.toString());
+    }
+    return result;
   }
 
   void _showBrandSelection(CategoryLoaded state) {
@@ -549,12 +580,16 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                               color: isSelected
                                   ? AppColors.primaryColor
                                   : context.textPrimary,
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
                             ),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.check_circle, color: AppColors.primaryColor)
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: AppColors.primaryColor,
+                                )
                               : null,
                           onTap: () {
                             onSelected(item);

@@ -1,5 +1,5 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../core/utils/extensions.dart';
 import 'login_screen.dart';
@@ -13,112 +13,68 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late VideoPlayerController _videoController;
-  bool _isInitialized = false;
+  VideoPlayerController? _controller;
+  bool _videoReady = false;
   bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeVideo();
-    _initializeAndNavigate();
+    _startVideo();
   }
 
-  Future<void> _initializeVideo() async {
-    _videoController = VideoPlayerController.asset(
-      'assets/images/splash_video.mp4',
-    );
+  Future<void> _startVideo() async {
+    final c = VideoPlayerController.asset('assets/images/splash_video.mp4');
+    _controller = c;
 
     try {
-      await _videoController.initialize();
-      if (mounted) {
-        setState(() {
-          _isInitialized = true;
-        });
-        _videoController.setLooping(false);
-        _videoController.setVolume(1.0);
-        _videoController.play();
-
-        // Listen for video completion
-        _videoController.addListener(_videoListener);
-      }
-    } catch (e) {
-      // If video fails to load, navigate after a delay
-      debugPrint('Video initialization error: $e');
-      if (mounted) {
-        // Wait a bit for initialization to complete, then navigate
-        Future.delayed(const Duration(seconds: 2), () {
-          if (!_hasNavigated && mounted) {
-            _navigateToNext();
-          }
-        });
-      }
+      await c.initialize().timeout(const Duration(seconds: 5));
+      if (!mounted) return;
+      setState(() => _videoReady = true);
+      c.setLooping(false);
+      c.play();
+      c.addListener(() {
+        if (c.value.position >= c.value.duration && c.value.duration > Duration.zero) {
+          _navigate();
+        }
+      });
+    } catch (_) {
+      // Video failed to load — navigate after a brief pause
+      await Future.delayed(const Duration(seconds: 2));
+      _navigate();
     }
   }
 
-  void _videoListener() {
-    if (_videoController.value.isCompleted && !_hasNavigated) {
-      _navigateToNext();
-    }
-  }
-
-  Future<void> _initializeAndNavigate() async {
-    // StorageService and UserTypeController are already initialized in main()
-    // Just precache the logo so the LoginScreen renders without a jank frame
-    if (mounted) {
-      await precacheImage(
-        const AssetImage('assets/images/app_logo.jpeg'),
-        context,
-      );
-    }
+  void _navigate() {
+    if (_hasNavigated || !mounted) return;
+    _hasNavigated = true;
+    context.navigateToAndRemoveUntil(const LoginScreen());
   }
 
   @override
   void dispose() {
-    _videoController.removeListener(_videoListener);
-    _videoController.dispose();
+    _controller?.dispose();
     super.dispose();
-  }
-
-  void _navigateToNext() {
-    if (_hasNavigated || !mounted) return;
-    _hasNavigated = true;
-
-    // Wait for the current frame to finish before navigating
-    // so the transition starts from a fully painted frame (no jank)
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.navigateToAndRemoveUntil(const LoginScreen());
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = _controller;
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // Video Player - fills the screen
-          if (_isInitialized && _videoController.value.isInitialized)
-            SizedBox.expand(
+      body: (c != null && _videoReady)
+          ? SizedBox.expand(
               child: FittedBox(
                 fit: BoxFit.cover,
                 child: SizedBox(
-                  width: _videoController.value.size.width,
-                  height: _videoController.value.size.height,
-                  child: VideoPlayer(_videoController),
+                  width: c.value.size.width,
+                  height: c.value.size.height,
+                  child: VideoPlayer(c),
                 ),
               ),
             )
-          else
-            // White screen while video initializes — matches native splash background
-            // to eliminate the visible flash during the native→Flutter transition
-            const SizedBox.expand(),
-        ],
-      ),
+          : const SizedBox.expand(),
     );
   }
-
 }
 
