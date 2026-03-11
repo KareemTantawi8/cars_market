@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:video_player/video_player.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/constants.dart';
-import '../../../../core/services/storage_service.dart';
-import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/utils/extensions.dart';
 import 'login_screen.dart';
 
@@ -66,12 +63,14 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeAndNavigate() async {
-    // Initialize storage service and user type controller
-    await StorageService.init();
-    await UserTypeController().initialize();
-    
-    // Don't navigate automatically - wait for video to complete
-    // Only navigate if video fails to load (handled in catch block)
+    // StorageService and UserTypeController are already initialized in main()
+    // Just precache the logo so the LoginScreen renders without a jank frame
+    if (mounted) {
+      await precacheImage(
+        const AssetImage('assets/images/app_logo.jpeg'),
+        context,
+      );
+    }
   }
 
   @override
@@ -84,15 +83,20 @@ class _SplashScreenState extends State<SplashScreen> {
   void _navigateToNext() {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    
-    // Always navigate to login screen - user must login every time
-    context.navigateToAndRemoveUntil(const LoginScreen());
+
+    // Wait for the current frame to finish before navigating
+    // so the transition starts from a fully painted frame (no jank)
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.navigateToAndRemoveUntil(const LoginScreen());
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
           // Video Player - fills the screen
@@ -108,10 +112,9 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             )
           else
-            // Black screen while video initializes (no loading indicator)
-            Container(
-              color: Colors.black,
-            ),
+            // White screen while video initializes — matches native splash background
+            // to eliminate the visible flash during the native→Flutter transition
+            const SizedBox.expand(),
         ],
       ),
     );

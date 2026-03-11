@@ -44,8 +44,9 @@ class UserModel {
       } catch (_) {}
     }
     final now = DateTime.now();
+    final id = json['id'] != null ? (json['id'] is num ? (json['id'] as num).toInt() : int.tryParse(json['id'].toString()) ?? 0) : 0;
     return UserModel(
-      id: (json['id'] as num?)?.toInt() ?? 0,
+      id: id,
       name: json['name'] as String? ?? '',
       phone: json['phone']?.toString() ?? '',
       type: json['type'] as String? ?? 'customer',

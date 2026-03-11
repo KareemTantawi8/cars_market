@@ -76,6 +76,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  Widget _buildErrorBanner(BuildContext context, String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.error.withOpacity(0.5)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, color: AppColors.error, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.close, color: AppColors.error, size: 20),
+            onPressed: () => context.read<RegisterCubit>().clearError(),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showGovernorateSelectionDialog(CategoryLoaded state) {
     showModalBottomSheet(
       context: context,
@@ -188,12 +222,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               }
             });
           } else if (state is RegisterError) {
-            // Show error toast
-            CustomToast.showError(
-              context,
-              state.message,
-              duration: const Duration(seconds: 4),
-            );
+            // Error is shown in-form as a dismissible banner (no toast)
           }
         },
         child: BlocBuilder<RegisterCubit, RegisterState>(
@@ -313,6 +342,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             ),
                             const SizedBox(height: 20),
+                // In-form error banner (e.g. "The phone has already been taken" from API)
+                if (state is RegisterError) ...[
+                  _buildErrorBanner(context, state.message),
+                  const SizedBox(height: 16),
+                ],
                 // Full Name Field
                 Text(
                   'الاسم الكامل',

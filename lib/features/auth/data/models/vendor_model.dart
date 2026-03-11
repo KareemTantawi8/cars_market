@@ -38,12 +38,28 @@ class VendorModel {
     this.categories = const [],
   });
 
-  /// Create from JSON
+  /// Create from JSON (API may omit or return null for id, user_id, dates)
   factory VendorModel.fromJson(Map<String, dynamic> json) {
+    final id = json['id'] != null ? (json['id'] is num ? (json['id'] as num).toInt() : int.tryParse(json['id'].toString()) ?? 0) : 0;
+    final userId = json['user_id'] != null ? (json['user_id'] is num ? (json['user_id'] as num).toInt() : int.tryParse(json['user_id'].toString()) ?? 0) : 0;
+    final companyName = json['company_name']?.toString() ?? json['company_name_ar']?.toString() ?? '';
+    DateTime? createdAt;
+    if (json['created_at'] != null) {
+      try {
+        createdAt = DateTime.tryParse(json['created_at'].toString());
+      } catch (_) {}
+    }
+    DateTime? updatedAt;
+    if (json['updated_at'] != null) {
+      try {
+        updatedAt = DateTime.tryParse(json['updated_at'].toString());
+      } catch (_) {}
+    }
+    final now = DateTime.now();
     return VendorModel(
-      id: json['id'] as int,
-      userId: json['user_id'] as int,
-      companyName: json['company_name'] as String,
+      id: id,
+      userId: userId,
+      companyName: companyName,
       description: json['description'] as String?,
       address: json['address'] as String?,
       city: json['city'] as String?,
@@ -52,14 +68,12 @@ class VendorModel {
       country: json['country'] as String?,
       website: json['website'] as String?,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
-      responseTimeHours: json['response_time_hours'] as int?,
+      responseTimeHours: json['response_time_hours'] != null ? (json['response_time_hours'] is num ? (json['response_time_hours'] as num).toInt() : int.tryParse(json['response_time_hours'].toString())) : null,
       isVerified: json['is_verified'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      deletedAt: json['deleted_at'] != null
-          ? DateTime.parse(json['deleted_at'] as String)
-          : null,
-      categories: json['categories'] as List<dynamic>? ?? [],
+      createdAt: createdAt ?? now,
+      updatedAt: updatedAt ?? now,
+      deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at'].toString()) : null,
+      categories: json['categories'] is List ? json['categories'] as List<dynamic> : [],
     );
   }
 

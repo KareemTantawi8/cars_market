@@ -225,5 +225,10 @@ class RegisterCubit extends Cubit<RegisterState> {
       emit(RegisterError(e.toString().replaceAll('Exception: ', '')));
     }
   }
+
+  /// Clear error state (e.g. when user dismisses the error banner)
+  void clearError() {
+    emit(RegisterInitial());
+  }
 }
 

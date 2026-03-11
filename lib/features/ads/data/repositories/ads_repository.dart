@@ -79,13 +79,7 @@ class AdsRepository {
     if (imageFiles != null && imageFiles.isNotEmpty) {
       for (int i = 0; i < imageFiles.length && i < 5; i++) {
         final file = imageFiles[i];
-        final bytes = await FlutterImageCompress.compressWithFile(
-          file.absolute.path,
-          minWidth: 1920,
-          minHeight: 1080,
-          quality: 80,
-          format: CompressFormat.jpeg,
-        );
+        final bytes = await _compressImageForUpload(file, maxBytes: 280 * 1024); // ~280KB per image so 5 fit under ~1.5MB total
         final filename = file.path.split(RegExp(r'[/\\]')).last;
         final name = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
             ? filename
@@ -99,14 +93,22 @@ class AdsRepository {
       }
     }
 
-    final response = await _api.post(
-      ApiEndpoints.createAd,
-      data: formData,
-      options: Options(
-        sendTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 30),
-      ),
-    );
+    Response response;
+    try {
+      response = await _api.post(
+        ApiEndpoints.createAd,
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 413) {
+        throw Exception('حجم الصور كبير جداً. جرب تقليل عدد الصور أو استخدام صور أصغر.');
+      }
+      rethrow;
+    }
     if (response.statusCode != 201) {
       throw Exception(_messageFromResponse(response));
     }
@@ -151,13 +153,7 @@ class AdsRepository {
     if (imageFiles != null && imageFiles.isNotEmpty) {
       for (int i = 0; i < imageFiles.length && i < 5; i++) {
         final file = imageFiles[i];
-        final bytes = await FlutterImageCompress.compressWithFile(
-          file.absolute.path,
-          minWidth: 1920,
-          minHeight: 1080,
-          quality: 80,
-          format: CompressFormat.jpeg,
-        );
+        final bytes = await _compressImageForUpload(file, maxBytes: 280 * 1024);
         final filename = file.path.split(RegExp(r'[/\\]')).last;
         final name = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
             ? filename
@@ -250,5 +246,28 @@ class AdsRepository {
       return data['message'] as String? ?? 'Request failed';
     }
     return 'Request failed: ${response.statusCode}';
+  }
+
+  /// Compress image to stay under [maxBytes] to avoid 413 from nginx. Targets ~280KB per image so 5 images fit under 1.5MB.
+  Future<List<int>?> _compressImageForUpload(File file, {int maxBytes = 280 * 1024}) async {
+    List<int>? lastResult;
+    const widths = [1280, 1024, 800];
+    const qualities = [65, 55, 45, 35];
+    for (final w in widths) {
+      for (final q in qualities) {
+        final bytes = await FlutterImageCompress.compressWithFile(
+          file.absolute.path,
+          minWidth: w,
+          minHeight: (w * 9 / 16).round(),
+          quality: q,
+          format: CompressFormat.jpeg,
+        );
+        if (bytes != null && bytes.isNotEmpty) {
+          lastResult = bytes;
+          if (bytes.length <= maxBytes) return bytes;
+        }
+      }
+    }
+    return lastResult;
   }
 }
