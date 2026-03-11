@@ -26,8 +26,13 @@ import '../../features/my_ads/presentation/views/create_ad_screen.dart';
 import '../../features/ads/presentation/cubit/my_ads_cubit.dart';
 import '../../features/ads/presentation/cubit/create_ad_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_photos_screen.dart';
+import '../../features/my_ads/presentation/views/edit_ad_screen.dart';
 import '../../features/ads/presentation/cubit/ad_details_cubit.dart';
 import '../../features/ad_details/presentation/views/ad_details_screen.dart';
+import '../../features/ads/data/models/ad_model.dart';
+import '../../features/orders/presentation/views/orders_screen.dart';
+import '../../features/permissions/presentation/views/permissions_screen.dart';
+import '../../features/permissions/presentation/cubit/permissions_cubit.dart';
 
 /// Application Router
 class AppRouter {
@@ -164,6 +169,25 @@ class AppRouter {
           ),
         );
 
+      case AppRoutes.editAd:
+        final ad = settings.arguments as AdModel?;
+        if (ad == null) {
+          return MaterialPageRoute(
+            builder: (_) => const Scaffold(
+              body: Center(child: Text('لا يوجد إعلان للتعديل')),
+            ),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (_) => CategoryCubit()),
+              BlocProvider(create: (_) => CreateAdCubit()),
+            ],
+            child: EditAdScreen(ad: ad),
+          ),
+        );
+
       case AppRoutes.adDetails:
         final args = settings.arguments as Map<String, dynamic>?;
         final adId = args?['adId']?.toString();
@@ -179,6 +203,27 @@ class AppRouter {
               adId: adId,
               ad: args?['ad'],
             ),
+          ),
+        );
+
+      case AppRoutes.orders:
+        final args = settings.arguments as Map<String, dynamic>?;
+        int? orderId;
+        if (args != null) {
+          final id = args['orderId'] ?? args['order_id'];
+          if (id is int) orderId = id;
+          if (id is num) orderId = id.toInt();
+        }
+        final orderTitle = args?['orderTitle'] as String? ?? args?['order_title'] as String?;
+        return MaterialPageRoute(
+          builder: (_) => OrdersScreen(orderId: orderId, orderTitle: orderTitle),
+        );
+
+      case AppRoutes.permissions:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => PermissionsCubit(),
+            child: const PermissionsScreen(),
           ),
         );
 

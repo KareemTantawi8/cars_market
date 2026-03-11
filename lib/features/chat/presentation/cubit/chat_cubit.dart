@@ -70,23 +70,30 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
-  /// Get chat messages
+  /// Get chat messages (API: { data: [], meta: { current_page, per_page, total, last_page, from, to } })
   Future<void> getChatMessages({
     required int chatId,
     int page = 1,
+    int perPage = 50,
   }) async {
     try {
       final response = await _repository.getChatMessages(
         chatId: chatId,
         page: page,
+        perPage: perPage,
       );
-      
+
       final data = response['data'] as List? ?? [];
-      final currentPage = response['current_page'] as int? ?? 1;
-      final lastPage = response['last_page'] as int? ?? 1;
-      
+      final meta = response['meta'] is Map<String, dynamic> ? response['meta'] as Map<String, dynamic> : null;
+      final currentPage = meta != null
+          ? (meta['current_page'] as num?)?.toInt() ?? (response['current_page'] as num?)?.toInt() ?? 1
+          : (response['current_page'] as num?)?.toInt() ?? 1;
+      final lastPage = meta != null
+          ? (meta['last_page'] as num?)?.toInt() ?? (response['last_page'] as num?)?.toInt() ?? 1
+          : (response['last_page'] as num?)?.toInt() ?? 1;
+
       emit(MessagesLoaded(
-        messages: List<Map<String, dynamic>>.from(data),
+        messages: data.whereType<Map<String, dynamic>>().toList(),
         currentPage: currentPage,
         lastPage: lastPage,
       ));

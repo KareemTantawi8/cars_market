@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
-import '../models/search_request_model.dart';
 
 /// Search Requests Repository - Handles search request (ad) API calls
 class SearchRequestsRepository {
@@ -181,6 +180,67 @@ class SearchRequestsRepository {
             ? errorData['message'] ?? 'Failed to reject search request'
             : 'Failed to reject search request';
         throw Exception(errorMessage);
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  /// Rate a vendor (customer only, request owner, once per request)
+  /// POST /api/v1/search-requests/{id}/rate - Body: { rating, review? }. 201/403/422
+  Future<Map<String, dynamic>> rateSearchRequest({
+    required int requestId,
+    required int rating,
+    String? review,
+  }) async {
+    _log('⭐ Rating search request: $requestId');
+    try {
+      final body = <String, dynamic>{'rating': rating};
+      if (review != null && review.isNotEmpty) body['review'] = review;
+      final response = await _apiClient.post(
+        ApiEndpoints.rateSearchRequest(requestId),
+        data: body,
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          return inner is Map<String, dynamic> ? inner : data;
+        }
+        return <String, dynamic>{};
+      } else {
+        throw Exception('Failed to submit rating: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _log('❌ Error rating search request: ${e.message}');
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final errorData = e.response!.data;
+        if (statusCode == 403) {
+          final msg = errorData is Map<String, dynamic>
+              ? errorData['message']?.toString() ?? 'غير مصرح بهذا الإجراء'
+              : 'غير مصرح بهذا الإجراء';
+          throw Exception(msg);
+        }
+        if (statusCode == 422) {
+          final msg = errorData is Map<String, dynamic>
+              ? errorData['message']?.toString() ?? 'التحقق من البيانات فشل'
+              : 'التحقق من البيانات فشل';
+          final errors = errorData is Map<String, dynamic> ? errorData['errors'] : null;
+          if (errors is Map<String, dynamic>) {
+            final parts = <String>[];
+            for (final entry in errors.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty) parts.add('${entry.key}: ${v.first}');
+            }
+            if (parts.isNotEmpty) throw Exception('$msg\n${parts.join('\n')}');
+          }
+          throw Exception(msg);
+        }
+        final msg = errorData is Map<String, dynamic>
+            ? errorData['message'] ?? 'Failed to submit rating'
+            : 'Failed to submit rating';
+        throw Exception(msg);
       }
       throw Exception('Network error: ${e.message}');
     }

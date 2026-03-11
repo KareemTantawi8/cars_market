@@ -12,6 +12,7 @@ class AppRoutes {
   static const String myAds = '/my-ads';
   static const String createAd = '/create-ad';
   static const String createAdPhotos = '/create-ad-photos';
+  static const String editAd = '/edit-ad';
   static const String searchResults = '/search-results';
   static const String adDetails = '/ad-details';
   static const String vendorProfile = '/vendor-profile';
@@ -39,5 +40,8 @@ class AppRoutes {
 
   // Notifications Routes
   static const String notifications = '/notifications';
+
+  // Admin / Permissions (requires permissions.view)
+  static const String permissions = '/permissions';
 }
 

@@ -503,6 +503,21 @@ class _MyAdCard extends StatelessWidget {
               },
             ),
             ListTile(
+              leading: Icon(Icons.edit_outlined, color: context.textPrimary),
+              title: const Text('تعديل'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final result = await Navigator.pushNamed(
+                  context,
+                  AppRoutes.editAd,
+                  arguments: ad,
+                );
+                if (context.mounted && result == true) {
+                  context.read<MyAdsCubit>().loadMyAds();
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.delete_outline, color: AppColors.error),
               title: Text('حذف', style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error)),
               onTap: () async {

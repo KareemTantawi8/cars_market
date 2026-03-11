@@ -8,9 +8,9 @@ class AppConstants {
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
   // API Configuration
-  static const String baseUrl = 'http://3.88.167.66/api/v1';
+  static const String baseUrl = 'http://187.124.35.51/api/v1';
   /// Base URL for storage (e.g. ad images). Paths from API are relative (e.g. "ads/img.jpg").
-  static const String storageBaseUrl = 'http://3.88.167.66/storage';
+  static const String storageBaseUrl = 'http://187.124.35.51/storage';
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 
@@ -19,6 +19,7 @@ class AppConstants {
   static const String userTypeKey = 'user_type';
   static const String userIdKey = 'user_id';
   static const String userDataKey = 'user_data';
+  static const String abilitiesKey = 'abilities'; // e.g. ['ads.update'] for admin
   static const String themeModeKey = 'theme_mode'; // 'light', 'dark', 'system'
 
   // User Types

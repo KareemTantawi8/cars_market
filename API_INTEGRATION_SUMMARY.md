@@ -275,7 +275,7 @@ BlocProvider(
 ## 📚 API Documentation Reference
 
 All endpoints follow the structure defined in:
-- Base URL: `http://localhost:8000/api/v1` (update in `AppConstants.baseUrl`)
+- Base URL: `http://187.124.35.51/api/v1` (configured in `AppConstants.baseUrl`)
 - Auth: Bearer Token (Laravel Sanctum)
 - All requests include: `Authorization: Bearer {token}`, `Accept: application/json`
 

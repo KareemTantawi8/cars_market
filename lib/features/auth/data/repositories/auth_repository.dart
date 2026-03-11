@@ -15,6 +15,25 @@ class AuthRepository {
   AuthRepository({ApiClient? apiClient})
       : _apiClient = apiClient ?? ApiClient();
 
+  /// Build a readable message from API 422 validation errors
+  /// API: { "success": false, "message": "Validation failed", "errors": { "phone": ["The phone has already been taken."], ... } }
+  static String _messageFrom422(Map<String, dynamic> errorData) {
+    final message = errorData['message'] as String? ?? 'Validation failed';
+    final errors = errorData['errors'];
+    if (errors == null || errors is! Map<String, dynamic>) return message;
+    final list = <String>[];
+    for (final entry in errors.entries) {
+      final field = entry.key;
+      final value = entry.value;
+      final text = value is List && value.isNotEmpty
+          ? value.map((e) => e.toString()).join(', ')
+          : value?.toString() ?? '';
+      if (text.isNotEmpty) list.add('$field: $text');
+    }
+    if (list.isEmpty) return message;
+    return '$message\n${list.join('\n')}';
+  }
+
   /// Register as user (customer)
   Future<RegisterResponseModel> registerAsUser(
     RegisterRequestModel request,
@@ -35,9 +54,12 @@ class AuthRepository {
         throw Exception('Registration failed: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      // Handle API errors
       if (e.response != null) {
+        final statusCode = e.response!.statusCode;
         final errorData = e.response!.data;
+        if (statusCode == 422 && errorData is Map<String, dynamic>) {
+          throw Exception(_messageFrom422(errorData));
+        }
         final errorMessage = errorData is Map<String, dynamic>
             ? errorData['message'] ?? errorData['error'] ?? 'Registration failed'
             : 'Registration failed';
@@ -70,9 +92,12 @@ class AuthRepository {
         throw Exception('Registration failed: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      // Handle API errors
       if (e.response != null) {
+        final statusCode = e.response!.statusCode;
         final errorData = e.response!.data;
+        if (statusCode == 422 && errorData is Map<String, dynamic>) {
+          throw Exception(_messageFrom422(errorData));
+        }
         final errorMessage = errorData is Map<String, dynamic>
             ? errorData['message'] ?? errorData['error'] ?? 'Registration failed'
             : 'Registration failed';
@@ -105,9 +130,12 @@ class AuthRepository {
         throw Exception('Login failed: ${response.statusCode}');
       }
     } on DioException catch (e) {
-      // Handle API errors
       if (e.response != null) {
+        final statusCode = e.response!.statusCode;
         final errorData = e.response!.data;
+        if (statusCode == 422 && errorData is Map<String, dynamic>) {
+          throw Exception(_messageFrom422(errorData));
+        }
         final errorMessage = errorData is Map<String, dynamic>
             ? errorData['message'] ?? errorData['error'] ?? 'Login failed'
             : 'Login failed';
@@ -121,7 +149,7 @@ class AuthRepository {
   }
 
   /// Get current user profile
-  /// GET /api/v1/auth/me
+  /// GET /api/v1/auth/me - Returns 200 with { user, permissions?, token_abilities?, is_dashboard?, is_mobile? }
   Future<UserModel> getCurrentUser() async {
     try {
       final response = await _apiClient.get(ApiEndpoints.currentUser);
@@ -129,6 +157,7 @@ class AuthRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is! Map<String, dynamic>) throw Exception('Invalid auth/me response');
+        // API may return top-level { user, ... } or wrapped { data: { user, ... } }
         final payload = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
         final userRaw = payload['user'];
         if (userRaw is Map<String, dynamic>) return UserModel.fromJson(userRaw);

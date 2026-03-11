@@ -1,16 +1,21 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/theme/theme_cubit.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
 import '../cubit/user_profile_cubit.dart';
 import '../../data/models/user_profile_model.dart';
 import '../../data/models/vendor_profile_data.dart';
@@ -59,7 +64,12 @@ class UserProfileScreen extends StatelessWidget {
                   ),
                 ],
         ),
-        body: BlocBuilder<UserProfileCubit, UserProfileState>(
+        body: BlocConsumer<UserProfileCubit, UserProfileState>(
+          listener: (context, state) {
+            if (state is UserProfileImagesUploaded) {
+              CustomToast.showSuccess(context, 'تم تحديث الصورة بنجاح');
+            }
+          },
           builder: (context, state) {
             if (state is UserProfileLoading) {
               return const Center(child: LoadingIndicator());
@@ -76,11 +86,14 @@ class UserProfileScreen extends StatelessWidget {
               );
             }
 
-            if (state is UserProfileLoaded) {
+            if (state is UserProfileLoaded || state is UserProfileImagesUploaded) {
+              final profile = state is UserProfileLoaded
+                  ? state.profile
+                  : (state as UserProfileImagesUploaded).profile;
               return RefreshIndicator(
                 onRefresh: () =>
                     context.read<UserProfileCubit>().fetchCurrentUserProfile(),
-                child: _buildProfileContent(context, state.profile),
+                child: _buildProfileContent(context, profile),
               );
             }
 
@@ -120,7 +133,6 @@ class UserProfileScreen extends StatelessWidget {
 
   Widget _buildProfileSection(BuildContext context, UserProfileModel profile) {
     return Container(
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -134,65 +146,112 @@ class UserProfileScreen extends StatelessWidget {
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Profile Picture
-          Stack(
-            children: [
-              Container(
-                width: 100,
+          if (profile.backgroundImageUrl != null && profile.backgroundImageUrl!.isNotEmpty)
+            GestureDetector(
+              onTap: () => _showChangeProfileImageSheet(context),
+              child: SizedBox(
                 height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: context.surfaceBg,
+                width: double.infinity,
+                child: CachedNetworkImage(
+                  imageUrl: profile.backgroundImageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(color: context.surfaceBg, child: Icon(Icons.photo_library, color: context.textSecondary, size: 40)),
+                  errorWidget: (_, __, ___) => Container(color: context.surfaceBg, child: Icon(Icons.photo_library, color: context.textSecondary, size: 40)),
                 ),
-                child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-                    ? ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: profile.imageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: context.surfaceBg,
-                            child: Icon(
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+          // Profile Picture (tappable to change)
+          GestureDetector(
+            onTap: () => _showChangeProfileImageSheet(context),
+            child: Stack(
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: context.surfaceBg,
+                  ),
+                  child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: profile.imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: context.surfaceBg,
+                              child: Icon(
+                                Icons.person,
+                                size: 60,
+                                color: context.textSecondary,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Icon(
                               Icons.person,
                               size: 60,
                               color: context.textSecondary,
                             ),
                           ),
-                          errorWidget: (context, url, error) => Icon(
-                            Icons.person,
-                            size: 60,
-                            color: context.textSecondary,
-                          ),
+                        )
+                      : Icon(
+                          Icons.person,
+                          size: 60,
+                          color: context.textSecondary,
                         ),
-                      )
-                    : Icon(
-                        Icons.person,
-                        size: 60,
-                        color: context.textSecondary,
+                ),
+                if (profile.isVerified)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryColor,
+                        shape: BoxShape.circle,
                       ),
-              ),
-              if (profile.isVerified)
+                      child: Icon(
+                        Icons.check,
+                        color: context.textPrimary,
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 Positioned(
                   bottom: 0,
-                  right: 0,
+                  left: 0,
                   child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
                       color: AppColors.primaryColor,
                       shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                     child: Icon(
-                      Icons.check,
-                      color: context.textPrimary,
+                      Icons.camera_alt,
                       size: 18,
+                      color: context.textPrimary,
                     ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           // Name
@@ -268,7 +327,64 @@ class UserProfileScreen extends StatelessWidget {
               value: _formatDate(profile.createdAt!),
             ),
           ],
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  void _showChangeProfileImageSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('تغيير صورة الملف الشخصي'),
+                subtitle: const Text('حد أقصى 2 ميجابايت، jpg/png/webp'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final picker = ImagePicker();
+                  final xFile = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 1920,
+                    maxHeight: 1920,
+                    imageQuality: 90,
+                  );
+                  if (xFile == null || !context.mounted) return;
+                  final file = File(xFile.path);
+                  if (!file.existsSync()) return;
+                  await context.read<UserProfileCubit>().uploadProfileImages(profileImage: file);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('تغيير صورة الخلفية'),
+                subtitle: const Text('حد أقصى 4 ميجابايت، jpg/png/webp'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final picker = ImagePicker();
+                  final xFile = await picker.pickImage(
+                    source: ImageSource.gallery,
+                    maxWidth: 1920,
+                    maxHeight: 1080,
+                    imageQuality: 90,
+                  );
+                  if (xFile == null || !context.mounted) return;
+                  final file = File(xFile.path);
+                  if (!file.existsSync()) return;
+                  await context.read<UserProfileCubit>().uploadProfileImages(backgroundImage: file);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -644,7 +760,7 @@ class UserProfileScreen extends StatelessWidget {
           title: 'اللغة',
           subtitle: 'العربية (مصر)',
           onTap: () {
-            // TODO: Navigate to language settings
+            // TODO: Navigate to lanqguage settings
           },
         ),
         const SizedBox(height: 12),
@@ -662,6 +778,17 @@ class UserProfileScreen extends StatelessWidget {
         const SizedBox(height: 20),
         Text('أخرى', style: AppTextStyles.headingSmall),
         const SizedBox(height: 16),
+        if (StorageService.getAbilities().contains('permissions.view'))
+          _buildSettingItem(
+            context: context,
+            icon: Icons.security,
+            title: 'الصلاحيات',
+            subtitle: 'إدارة صلاحيات النظام',
+            onTap: () {
+              Navigator.of(context).pushNamed(AppRoutes.permissions);
+            },
+          ),
+        if (StorageService.getAbilities().contains('permissions.view')) const SizedBox(height: 12),
         _buildSettingItem(
           context: context,
           icon: Icons.logout,

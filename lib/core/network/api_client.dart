@@ -41,10 +41,10 @@ class ApiClient {
             path.contains('/auth/forgot-password') ||
             path.contains('/auth/verify-otp') ||
             path.contains('/auth/reset-password') ||
-            path.contains('governorates') ||
+            (path.contains('governorates') && !path.contains('admin')) ||
             path.contains('categories/brands') ||
             path.contains('categories/models') ||
-            path.contains('categories');
+            path.contains('categories/tree');
         if (isPublicEndpoint) {
           options.headers.remove('Authorization');
           _log('🔓 No Authorization for public endpoint: $path');

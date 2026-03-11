@@ -12,6 +12,7 @@ import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
+import '../../data/repositories/vendor_profile_repository.dart';
 
 /// Vendor Dashboard Screen - Displays vendor profile from auth/me
 class VendorDashboardScreen extends StatefulWidget {
@@ -146,6 +147,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     _buildSectionTitle('الموقع'),
                     const SizedBox(height: 12),
                     _buildLocationSection(profile),
+                    const SizedBox(height: 24),
+                    // Performance report
+                    _buildPerformanceReportCard(profile),
                     const SizedBox(height: 24),
                     // Quick links / Settings
                     _buildProfileSettingsCard(),
@@ -656,6 +660,159 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     }
+  }
+
+  Widget _buildPerformanceReportCard(VendorProfileModel profile) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.surfaceBg.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'تقرير الأداء',
+            style: AppTextStyles.headingSmall.copyWith(color: context.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'ملخص أداء المتجر والتجاوب مع الطلبات',
+            style: AppTextStyles.caption.copyWith(color: context.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showPerformanceReport(context, profile.id),
+              icon: const Icon(Icons.analytics_outlined, size: 20),
+              label: const Text('عرض التقرير'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                foregroundColor: AppColors.primaryLight,
+                side: BorderSide(color: AppColors.primaryLight.withOpacity(0.5)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showPerformanceReport(BuildContext context, int vendorId) async {
+    final repo = VendorProfileRepository();
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final report = await repo.getVendorPerformanceReport(vendorId);
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      _showReportDialog(context, report);
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
+  }
+
+  void _showReportDialog(BuildContext context, Map<String, dynamic> report) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('تقرير الأداء'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: report.isEmpty
+                ? const Text('لا توجد بيانات في التقرير.')
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _reportEntriesToList(report),
+                  ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('إغلاق'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _reportEntriesToList(Map<String, dynamic> map, {String prefix = ''}) {
+    final list = <Widget>[];
+    final labels = <String, String>{
+      'total_orders': 'إجمالي الطلبات',
+      'accepted_orders': 'الطلبات المقبولة',
+      'rejected_orders': 'الطلبات المرفوضة',
+      'pending_orders': 'الطلبات المعلقة',
+      'response_time_human': 'وقت الاستجابة',
+      'average_rating': 'متوسط التقييم',
+      'ratings_count': 'عدد التقييمات',
+      'search_requests_accepted': 'طلبات البحث المقبولة',
+      'search_requests_rejected': 'طلبات البحث المرفوضة',
+    };
+    for (final e in map.entries) {
+      final key = e.key;
+      final value = e.value;
+      final label = labels[key] ?? _keyToLabel(key);
+      if (value is Map<String, dynamic>) {
+        list.add(Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(
+              color: context.textPrimary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ));
+        list.addAll(_reportEntriesToList(value, prefix: '$prefix  '));
+      } else if (value is List) {
+        list.add(const SizedBox(height: 8));
+        list.add(Text(
+          '$label: ${value.length}',
+          style: AppTextStyles.bodySmall.copyWith(color: context.textPrimary),
+        ));
+      } else {
+        list.add(const SizedBox(height: 6));
+        list.add(Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 140,
+              child: Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value?.toString() ?? '—',
+                style: AppTextStyles.bodySmall.copyWith(color: context.textPrimary),
+              ),
+            ),
+          ],
+        ));
+      }
+    }
+    return list;
+  }
+
+  String _keyToLabel(String key) {
+    return key
+        .replaceAllMapped(RegExp(r'([a-z])_([a-z])'), (m) => '${m[1]} ${m[2]}')
+        .replaceAll('_', ' ')
+        .trim();
   }
 
   Widget _buildProfileSettingsCard() {

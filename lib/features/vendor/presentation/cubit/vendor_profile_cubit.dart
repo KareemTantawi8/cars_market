@@ -45,12 +45,12 @@ class VendorProfileCubit extends Cubit<VendorProfileState> {
       : _vendorProfileRepository = vendorProfileRepository ?? VendorProfileRepository(),
         super(VendorProfileInitial());
 
-  /// Fetch vendor profile by vendor ID
+  /// Fetch vendor profile by vendor ID (uses GET /vendors/:id/profile)
   Future<void> fetchVendorProfile(int vendorId) async {
     emit(VendorProfileLoading());
 
     try {
-      final profile = await _vendorProfileRepository.getVendorProfile(vendorId);
+      final profile = await _vendorProfileRepository.getVendorProfilePage(vendorId);
       emit(VendorProfileLoaded(profile));
     } catch (e) {
       emit(VendorProfileError(e.toString().replaceAll('Exception: ', '')));

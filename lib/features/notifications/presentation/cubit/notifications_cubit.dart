@@ -43,37 +43,41 @@ class NotificationsCubit extends Cubit<NotificationsState> {
       : _repository = repository ?? NotificationsRepository(),
         super(NotificationsInitial());
 
-  /// Get notifications
+  /// Get notifications (API: { data: [], meta: { current_page, per_page, total, last_page, from, to } })
   Future<void> getNotifications({int page = 1}) async {
     if (page == 1) {
       emit(NotificationsLoading());
     }
-    
+
     try {
       final response = await _repository.getNotifications(page: page);
-      
+
       final data = response['data'] as List? ?? [];
-      final currentPage = response['current_page'] as int? ?? 1;
-      final lastPage = response['last_page'] as int? ?? 1;
-      final total = response['total'] as int? ?? 0;
-      
+      final meta = response['meta'] is Map<String, dynamic> ? response['meta'] as Map<String, dynamic> : null;
+      final currentPage = meta != null
+          ? (meta['current_page'] as num?)?.toInt() ?? (response['current_page'] as num?)?.toInt() ?? 1
+          : (response['current_page'] as num?)?.toInt() ?? 1;
+      final lastPage = meta != null
+          ? (meta['last_page'] as num?)?.toInt() ?? (response['last_page'] as num?)?.toInt() ?? 1
+          : (response['last_page'] as num?)?.toInt() ?? 1;
+      final total = meta != null
+          ? (meta['total'] as num?)?.toInt() ?? (response['total'] as num?)?.toInt() ?? 0
+          : (response['total'] as num?)?.toInt() ?? 0;
+
+      final notificationsList = data.whereType<Map<String, dynamic>>().toList();
+
       if (page == 1) {
         emit(NotificationsLoaded(
-          notifications: List<Map<String, dynamic>>.from(data),
+          notifications: notificationsList,
           currentPage: currentPage,
           lastPage: lastPage,
           total: total,
         ));
       } else {
-        // Append to existing list
         final currentState = state;
         if (currentState is NotificationsLoaded) {
-          final allNotifications = [
-            ...currentState.notifications,
-            ...List<Map<String, dynamic>>.from(data),
-          ];
           emit(NotificationsLoaded(
-            notifications: allNotifications,
+            notifications: [...currentState.notifications, ...notificationsList],
             currentPage: currentPage,
             lastPage: lastPage,
             total: total,
@@ -87,13 +91,12 @@ class NotificationsCubit extends Cubit<NotificationsState> {
 
   /// Mark notification as read
   Future<void> markAsRead(int notificationId) async {
+    final previousState = state;
     try {
       await _repository.markAsRead(notificationId);
       emit(NotificationMarkedAsRead(notificationId));
-      // Reload notifications to update read status
-      final currentState = state;
-      if (currentState is NotificationsLoaded) {
-        await getNotifications(page: currentState.currentPage);
+      if (previousState is NotificationsLoaded) {
+        await getNotifications(page: previousState.currentPage);
       }
     } catch (e) {
       emit(NotificationsError(e.toString().replaceAll('Exception: ', '')));
@@ -105,11 +108,7 @@ class NotificationsCubit extends Cubit<NotificationsState> {
     try {
       await _repository.markAllAsRead();
       emit(AllNotificationsMarkedAsRead());
-      // Reload notifications
-      final currentState = state;
-      if (currentState is NotificationsLoaded) {
-        await getNotifications(page: 1);
-      }
+      await getNotifications(page: 1);
     } catch (e) {
       emit(NotificationsError(e.toString().replaceAll('Exception: ', '')));
     }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../data/repositories/user_profile_repository.dart';
@@ -22,6 +23,16 @@ class UserProfileLoaded extends UserProfileState {
   final UserProfileModel profile;
 
   const UserProfileLoaded(this.profile);
+
+  @override
+  List<Object?> get props => [profile];
+}
+
+/// Profile images just uploaded successfully (show toast then treat like Loaded)
+class UserProfileImagesUploaded extends UserProfileState {
+  final UserProfileModel profile;
+
+  const UserProfileImagesUploaded(this.profile);
 
   @override
   List<Object?> get props => [profile];
@@ -60,6 +71,25 @@ class UserProfileCubit extends Cubit<UserProfileState> {
   /// Refresh profile
   Future<void> refresh() async {
     await fetchCurrentUserProfile();
+  }
+
+  /// Upload profile and/or background image(s), then refresh profile.
+  Future<void> uploadProfileImages({File? profileImage, File? backgroundImage}) async {
+    if ((profileImage == null || !profileImage.existsSync()) &&
+        (backgroundImage == null || !backgroundImage.existsSync())) {
+      return;
+    }
+    emit(UserProfileLoading());
+    try {
+      await _userProfileRepository.uploadProfileImages(
+        profileImage: profileImage,
+        backgroundImage: backgroundImage,
+      );
+      final profile = await _userProfileRepository.getCurrentUserProfile();
+      emit(UserProfileImagesUploaded(profile));
+    } catch (e) {
+      emit(UserProfileError(e.toString().replaceAll('Exception: ', '')));
+    }
   }
 
   /// Reset to initial state

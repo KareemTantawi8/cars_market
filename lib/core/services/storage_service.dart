@@ -53,6 +53,16 @@ class StorageService {
     return prefs.getString(AppConstants.userIdKey);
   }
 
+  /// Save abilities (e.g. from login: ads.update, etc.)
+  static Future<bool> saveAbilities(List<String> abilities) async {
+    return await prefs.setStringList(AppConstants.abilitiesKey, abilities);
+  }
+
+  /// Get abilities (empty list if not set)
+  static List<String> getAbilities() {
+    return prefs.getStringList(AppConstants.abilitiesKey) ?? [];
+  }
+
   /// Save user data
   static Future<bool> saveUserData(String userData) async {
     return await prefs.setString(AppConstants.userDataKey, userData);

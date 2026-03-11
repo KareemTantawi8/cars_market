@@ -68,5 +68,45 @@ class CreateAdCubit extends Cubit<CreateAdState> {
     }
   }
 
+  /// PUT /ads/:id - Update ad (optional fields)
+  Future<void> updateAd(
+    int id, {
+    String? title,
+    String? description,
+    int? brandId,
+    int? modelId,
+    int? yearId,
+    String? condition,
+    double? price,
+    bool? isNegotiable,
+    bool? isPhoneVisible,
+    bool? isActive,
+    List<File>? imageFiles,
+    String? expiresAt,
+  }) async {
+    emit(CreateAdSubmitting());
+    try {
+      final ad = await _repo.updateAd(
+        id,
+        title: title,
+        description: description,
+        brandId: brandId,
+        modelId: modelId,
+        yearId: yearId,
+        condition: condition,
+        price: price,
+        isNegotiable: isNegotiable,
+        isPhoneVisible: isPhoneVisible,
+        isActive: isActive,
+        imageFiles: imageFiles,
+        expiresAt: expiresAt,
+      );
+      emit(CreateAdSuccess(ad));
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      emit(CreateAdError(msg));
+    }
+  }
+
   void reset() => emit(CreateAdInitial());
 }

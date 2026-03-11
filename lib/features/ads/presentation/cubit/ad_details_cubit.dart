@@ -41,4 +41,24 @@ class AdDetailsCubit extends Cubit<AdDetailsState> {
       emit(AdDetailsError(e.toString().replaceFirst('Exception: ', '')));
     }
   }
+
+  /// Admin: approve pending ad
+  Future<void> approveAd(int id) async {
+    try {
+      final ad = await _repo.approveAd(id);
+      emit(AdDetailsLoaded(ad));
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Admin: reject pending ad with reason
+  Future<void> rejectAd(int id, {String? rejectionReason}) async {
+    try {
+      final ad = await _repo.rejectAd(id, rejectionReason: rejectionReason);
+      emit(AdDetailsLoaded(ad));
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

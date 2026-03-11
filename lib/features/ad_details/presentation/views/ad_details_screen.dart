@@ -6,10 +6,13 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../data/models/public_ad_details_model.dart';
 import '../../../ads/presentation/cubit/ad_details_cubit.dart';
+import '../../../ads/data/models/ad_model.dart';
+import '../../../ads/data/repositories/ads_repository.dart';
 
 /// Public Ad Details Screen
 class AdDetailsScreen extends StatefulWidget {
@@ -39,38 +42,46 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
     if (widget.ad != null) {
-      return _buildContent(widget.ad!);
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: _buildAppBar(context, null),
+        body: _buildContent(widget.ad!),
+      );
     }
     return BlocBuilder<AdDetailsCubit, AdDetailsState>(
       builder: (context, state) {
         if (state is AdDetailsLoaded) {
-          return _buildContent(PublicAdDetailsModel.fromAdModel(state.ad));
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            appBar: _buildAppBar(context, state.ad),
+            body: _buildContent(PublicAdDetailsModel.fromAdModel(state.ad)),
+          );
         }
         if (state is AdDetailsError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(state.message, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error), textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  TextButton(onPressed: () => Navigator.maybePop(context), child: const Text('رجوع')),
-                ],
+          return Scaffold(
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+            appBar: _buildAppBar(context, null),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(state.message, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error), textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    TextButton(onPressed: () => Navigator.maybePop(context), child: const Text('رجوع')),
+                  ],
+                ),
               ),
             ),
           );
         }
-        return const Center(child: CircularProgressIndicator());
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: _buildAppBar(context, null),
+          body: const Center(child: CircularProgressIndicator()),
+        );
       },
     );
   }
@@ -100,7 +111,42 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context, AdModel? ad) {
+    final currentUserId = StorageService.getUserId();
+    final abilities = StorageService.getAbilities();
+    final isOwner = ad != null && currentUserId != null && ad.userId.toString() == currentUserId;
+    final canAdminAds = abilities.contains('ads.update');
+    final isPending = ad?.statusNormalized == 'pending';
+
+    final actions = <Widget>[];
+    if (ad != null) {
+      if (isOwner) {
+        actions.addAll([
+          IconButton(
+            icon: Icon(Icons.edit_outlined, color: context.textPrimary, size: 22),
+            onPressed: () => _navigateToEdit(context, ad),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: AppColors.error, size: 22),
+            onPressed: () => _confirmDelete(context, ad.id),
+          ),
+        ]);
+      }
+      if (canAdminAds && isPending) {
+        actions.addAll([
+          IconButton(
+            icon: Icon(Icons.check_circle_outline, color: AppColors.success, size: 22),
+            tooltip: 'موافقة',
+            onPressed: () => _approveAd(context, ad.id),
+          ),
+          IconButton(
+            icon: Icon(Icons.cancel_outlined, color: AppColors.error, size: 22),
+            tooltip: 'رفض',
+            onPressed: () => _rejectAd(context, ad.id),
+          ),
+        ]);
+      }
+    }
     return AppBar(
       backgroundColor: context.surfaceBg,
       elevation: 0,
@@ -109,17 +155,124 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
         onPressed: () => Navigator.maybePop(context),
       ),
       title: Text(
-        'Public Ad Details',
+        'تفاصيل الإعلان',
         style: AppTextStyles.caption.copyWith(color: context.textSecondary),
       ),
       titleSpacing: 0,
-      actions: [
-        IconButton(
-          icon: Icon(Icons.code, color: context.textSecondary, size: 20),
-          onPressed: () {},
-        ),
-      ],
+      actions: actions.isEmpty ? null : actions,
     );
+  }
+
+  void _navigateToEdit(BuildContext context, AdModel ad) async {
+    final result = await Navigator.pushNamed(context, AppRoutes.editAd, arguments: ad);
+    if (context.mounted && result == true) {
+      context.read<AdDetailsCubit>().loadAd(ad.id);
+    }
+  }
+
+  void _confirmDelete(BuildContext context, int adId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الإعلان'),
+        content: const Text('هل أنت متأكد من حذف هذا الإعلان؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await AdsRepository().deleteAd(adId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم حذف الإعلان'), backgroundColor: AppColors.success),
+                  );
+                  Navigator.pop(context);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              }
+            },
+            child: Text('حذف', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _approveAd(BuildContext context, int adId) async {
+    try {
+      await context.read<AdDetailsCubit>().approveAd(adId);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تمت الموافقة على الإعلان'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectAd(BuildContext context, int adId) async {
+    final reasonController = TextEditingController();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('رفض الإعلان'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('سبب الرفض (اختياري):'),
+            const SizedBox(height: 8),
+            TextField(
+              controller: reasonController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'مثال: جودة الصور منخفضة',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text('رفض', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (result != true || !context.mounted) return;
+    try {
+      await context.read<AdDetailsCubit>().rejectAd(adId, rejectionReason: reasonController.text.trim().isEmpty ? null : reasonController.text.trim());
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم رفض الإعلان'), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
   }
 
   Widget _buildImageSection(PublicAdDetailsModel ad) {

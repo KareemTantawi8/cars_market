@@ -115,11 +115,12 @@ class RegisterCubit extends Cubit<RegisterState> {
       // Call API
       final response = await _authRepository.registerAsUser(request);
 
-      // Save token and user data
+      // Save token, user data, and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
+      await StorageService.saveAbilities(response.abilities);
 
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
@@ -209,11 +210,12 @@ class RegisterCubit extends Cubit<RegisterState> {
       // Call API
       final response = await _authRepository.registerAsVendor(request);
 
-      // Save token and user data
+      // Save token, user data, and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
+      await StorageService.saveAbilities(response.abilities);
 
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);

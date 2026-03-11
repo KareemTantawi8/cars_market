@@ -1,4 +1,6 @@
 /// Vendor Register Request Model
+/// API: name, phone, password, password_confirmation, device_name,
+///      company_name, governorate_id, address (optional), category_ids (optional)
 class VendorRegisterRequestModel {
   final String name;
   final String phone;
@@ -7,6 +9,8 @@ class VendorRegisterRequestModel {
   final String deviceName;
   final String companyName;
   final int governorateId;
+  final String? address;
+  final List<int>? categoryIds;
 
   VendorRegisterRequestModel({
     required this.name,
@@ -16,11 +20,13 @@ class VendorRegisterRequestModel {
     required this.companyName,
     required this.governorateId,
     this.deviceName = 'Mobile',
+    this.address,
+    this.categoryIds,
   });
 
-  /// Convert to JSON for API request
+  /// Convert to JSON for API request (snake_case)
   Map<String, dynamic> toJson() {
-    return {
+    final map = <String, dynamic>{
       'name': name,
       'phone': phone,
       'password': password,
@@ -29,6 +35,9 @@ class VendorRegisterRequestModel {
       'company_name': companyName,
       'governorate_id': governorateId,
     };
+    if (address != null && address!.trim().isNotEmpty) map['address'] = address!.trim();
+    if (categoryIds != null && categoryIds!.isNotEmpty) map['category_ids'] = categoryIds;
+    return map;
   }
 }
 

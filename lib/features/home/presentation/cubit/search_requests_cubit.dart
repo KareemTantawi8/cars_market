@@ -74,5 +74,24 @@ class SearchRequestsCubit extends Cubit<SearchRequestsState> {
       return null;
     }
   }
+
+  /// Rate the vendor for an accepted search request (customer only, once per request)
+  Future<Map<String, dynamic>?> rateSearchRequest({
+    required int requestId,
+    required int rating,
+    String? review,
+  }) async {
+    try {
+      final result = await _repository.rateSearchRequest(
+        requestId: requestId,
+        rating: rating,
+        review: review,
+      );
+      return result;
+    } catch (e) {
+      emit(SearchRequestsError(e.toString().replaceAll('Exception: ', '')));
+      return null;
+    }
+  }
 }
 

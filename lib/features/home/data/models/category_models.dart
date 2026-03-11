@@ -1,23 +1,30 @@
 /// Brand Model
+/// API: GET /categories/brands returns items with id, name, slug, meta
 class BrandModel {
   final int id;
   final String name;
   final String? nameAr;
   final String? logo;
+  final String? slug;
+  final Map<String, dynamic>? meta;
 
   BrandModel({
     required this.id,
     required this.name,
     this.nameAr,
     this.logo,
+    this.slug,
+    this.meta,
   });
 
   factory BrandModel.fromJson(Map<String, dynamic> json) {
     return BrandModel(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? json['brand_name'] as String? ?? '',
       nameAr: json['name_ar'] as String? ?? json['brand_name_ar'] as String?,
       logo: json['logo'] as String? ?? json['image'] as String?,
+      slug: json['slug'] as String?,
+      meta: json['meta'] is Map<String, dynamic> ? json['meta'] as Map<String, dynamic> : null,
     );
   }
 
@@ -27,6 +34,8 @@ class BrandModel {
       'name': name,
       'name_ar': nameAr,
       'logo': logo,
+      if (slug != null) 'slug': slug,
+      if (meta != null) 'meta': meta,
     };
   }
 
@@ -43,25 +52,32 @@ class BrandModel {
 }
 
 /// Car Model (not to confuse with data model)
+/// API: GET /categories/brands/{id}/models returns data[]; items may have id, name, slug, brand_id, etc.
 class CarModelModel {
   final int id;
   final int brandId;
   final String name;
   final String? nameAr;
+  final String? slug;
+  final Map<String, dynamic>? meta;
 
   CarModelModel({
     required this.id,
     required this.brandId,
     required this.name,
     this.nameAr,
+    this.slug,
+    this.meta,
   });
 
   factory CarModelModel.fromJson(Map<String, dynamic> json) {
     return CarModelModel(
-      id: json['id'] as int? ?? 0,
-      brandId: json['brand_id'] as int? ?? json['brandId'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      brandId: (json['brand_id'] as num?)?.toInt() ?? (json['brandId'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? json['model_name'] as String? ?? '',
       nameAr: json['name_ar'] as String? ?? json['model_name_ar'] as String?,
+      slug: json['slug'] as String?,
+      meta: json['meta'] is Map<String, dynamic> ? json['meta'] as Map<String, dynamic> : null,
     );
   }
 
@@ -71,6 +87,8 @@ class CarModelModel {
       'brand_id': brandId,
       'name': name,
       'name_ar': nameAr,
+      if (slug != null) 'slug': slug,
+      if (meta != null) 'meta': meta,
     };
   }
 
@@ -103,18 +121,16 @@ class YearModel {
   });
 
   factory YearModel.fromJson(Map<String, dynamic> json) {
-    // API returns: {id, name, slug, meta, parent_id}
-    // name contains the year as string (e.g., "2023")
-    // parent_id is the modelId
-    final parentId = json['parent_id'] as int?;
-    final modelId = json['model_id'] as int? ?? 
-                    json['modelId'] as int? ?? 
-                    parentId ?? 0;
-    
+    // API: GET /categories/models/{id}/years returns data[] with id, name, slug, meta, parent_id, etc.
+    final parentId = (json['parent_id'] as num?)?.toInt();
+    final modelId = (json['model_id'] as num?)?.toInt() ??
+        (json['modelId'] as num?)?.toInt() ??
+        parentId ??
+        0;
     return YearModel(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       modelId: modelId,
-      name: json['name'] as String? ?? '',
+      name: json['name']?.toString() ?? '',
       slug: json['slug'] as String?,
       parentId: parentId,
     );
@@ -152,22 +168,26 @@ class YearModel {
 }
 
 /// Governorate Model
+/// API: GET /governorates returns { data: [ { id, name, slug } ] } (public, active, alphabetical)
 class GovernorateModel {
   final int id;
   final String name;
   final String? nameAr;
+  final String? slug;
 
   GovernorateModel({
     required this.id,
     required this.name,
     this.nameAr,
+    this.slug,
   });
 
   factory GovernorateModel.fromJson(Map<String, dynamic> json) {
     return GovernorateModel(
-      id: json['id'] as int? ?? 0,
+      id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? json['governorate_name'] as String? ?? '',
       nameAr: json['name_ar'] as String? ?? json['governorate_name_ar'] as String?,
+      slug: json['slug'] as String?,
     );
   }
 
@@ -176,6 +196,7 @@ class GovernorateModel {
       'id': id,
       'name': name,
       'name_ar': nameAr,
+      if (slug != null) 'slug': slug,
     };
   }
 

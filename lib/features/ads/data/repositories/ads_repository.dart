@@ -5,7 +5,7 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/ad_model.dart';
 
-/// Repository for Ads API: list, get by id, create, delete, my-ads
+/// Repository for Ads API: list, get by id, create, update, delete, my-ads, admin approve/reject
 class AdsRepository {
   final ApiClient _api = ApiClient();
 
@@ -117,6 +117,76 @@ class AdsRepository {
     return AdModel.fromJson(adData);
   }
 
+  /// PUT /ads/:id - Update ad (multipart/form-data)
+  Future<AdModel> updateAd(
+    int id, {
+    String? title,
+    String? description,
+    int? brandId,
+    int? modelId,
+    int? yearId,
+    String? condition,
+    double? price,
+    bool? isNegotiable,
+    bool? isPhoneVisible,
+    bool? isActive,
+    List<File>? imageFiles,
+    String? expiresAt,
+  }) async {
+    final map = <String, dynamic>{};
+    if (title != null && title.isNotEmpty) map['title'] = title;
+    if (description != null) map['description'] = description;
+    if (brandId != null) map['brand_id'] = brandId;
+    if (modelId != null) map['model_id'] = modelId;
+    if (yearId != null) map['year_id'] = yearId;
+    if (condition != null && condition.isNotEmpty) map['condition'] = condition;
+    if (price != null) map['price'] = price;
+    if (isNegotiable != null) map['is_negotiable'] = isNegotiable ? '1' : '0';
+    if (isPhoneVisible != null) map['is_phone_visible'] = isPhoneVisible ? '1' : '0';
+    if (isActive != null) map['is_active'] = isActive ? '1' : '0';
+    if (expiresAt != null && expiresAt.isNotEmpty) map['expires_at'] = expiresAt;
+
+    final formData = FormData.fromMap(map);
+
+    if (imageFiles != null && imageFiles.isNotEmpty) {
+      for (int i = 0; i < imageFiles.length && i < 5; i++) {
+        final file = imageFiles[i];
+        final bytes = await FlutterImageCompress.compressWithFile(
+          file.absolute.path,
+          minWidth: 1920,
+          minHeight: 1080,
+          quality: 80,
+          format: CompressFormat.jpeg,
+        );
+        final filename = file.path.split(RegExp(r'[/\\]')).last;
+        final name = filename.toLowerCase().endsWith('.jpg') || filename.toLowerCase().endsWith('.jpeg')
+            ? filename
+            : '${filename.split('.').first}.jpg';
+        formData.files.add(MapEntry(
+          'images[]',
+          bytes != null && bytes.isNotEmpty
+              ? MultipartFile.fromBytes(bytes, filename: name)
+              : await MultipartFile.fromFile(file.path, filename: filename),
+        ));
+      }
+    }
+
+    final response = await _api.put(
+      ApiEndpoints.updateAd(id),
+      data: formData,
+      options: Options(
+        sendTimeout: const Duration(seconds: 60),
+        receiveTimeout: const Duration(seconds: 30),
+      ),
+    );
+    _ensureSuccess(response);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: no data');
+    final raw = data['data'];
+    final adData = raw is Map<String, dynamic> ? raw : (raw is List && raw.isNotEmpty && raw.first is Map ? raw.first as Map<String, dynamic> : data);
+    return AdModel.fromJson(adData);
+  }
+
   /// DELETE /ads/:id - Delete ad
   Future<void> deleteAd(int id) async {
     final response = await _api.delete(ApiEndpoints.deleteAd(id));
@@ -137,6 +207,34 @@ class AdsRepository {
     if (data is! Map<String, dynamic>) throw Exception('Invalid response: expected map');
     final payload = (data['data'] is Map<String, dynamic>) ? data['data'] as Map<String, dynamic> : data;
     return PaginatedAdsResponse.fromJson(payload);
+  }
+
+  /// POST /admin/ads/:id/approve - Approve a pending ad (admin)
+  Future<AdModel> approveAd(int id) async {
+    final response = await _api.post(ApiEndpoints.adminApproveAd(id));
+    _ensureSuccess(response);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: no data');
+    final raw = data['data'];
+    final adData = raw is Map<String, dynamic> ? raw : (raw is List && raw.isNotEmpty && raw.first is Map ? raw.first as Map<String, dynamic> : data);
+    return AdModel.fromJson(adData);
+  }
+
+  /// POST /admin/ads/:id/reject - Reject a pending ad with reason (admin)
+  Future<AdModel> rejectAd(int id, {String? rejectionReason}) async {
+    final body = rejectionReason != null && rejectionReason.isNotEmpty
+        ? <String, dynamic>{'rejection_reason': rejectionReason}
+        : null;
+    final response = await _api.post(
+      ApiEndpoints.adminRejectAd(id),
+      data: body,
+    );
+    _ensureSuccess(response);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) throw Exception('Invalid response: no data');
+    final raw = data['data'];
+    final adData = raw is Map<String, dynamic> ? raw : (raw is List && raw.isNotEmpty && raw.first is Map ? raw.first as Map<String, dynamic> : data);
+    return AdModel.fromJson(adData);
   }
 
   void _ensureSuccess(Response response) {

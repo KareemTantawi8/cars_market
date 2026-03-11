@@ -97,11 +97,12 @@ class LoginCubit extends Cubit<LoginState> {
       // Call API
       final response = await _authRepository.login(request);
 
-      // Save token
+      // Save token and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
+      await StorageService.saveAbilities(response.abilities);
 
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);

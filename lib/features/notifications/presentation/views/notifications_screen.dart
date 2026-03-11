@@ -137,6 +137,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } else if (type == 'search_request_rejected') {
       // Navigate to My Ads or show details
       // TODO: Navigate to My Ads screen
+    } else if (type == 'order_pending' || type == 'new_order') {
+      final orderId = meta?['order_id'];
+      if (orderId != null) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.orders,
+          arguments: {
+            'orderId': orderId is int ? orderId : (orderId is num ? orderId.toInt() : int.tryParse(orderId.toString())),
+            'orderTitle': notification['title']?.toString(),
+          },
+        );
+      }
     }
   }
 

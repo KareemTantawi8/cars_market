@@ -523,7 +523,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                 );
               }),
               _buildNavItem(Icons.shopping_cart, 'طلباتي', 1, () {
-                // TODO: Navigate to orders
+                Navigator.pushNamed(context, AppRoutes.orders);
               }),
               _buildNavItem(Icons.chat_bubble, 'المحادثات', 2, () {
                 Navigator.pushNamed(context, AppRoutes.chatList);
