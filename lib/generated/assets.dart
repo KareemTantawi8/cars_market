@@ -6,7 +6,6 @@ class Assets {
   static const String assetsImagesSplashVideo = 'assets/images/splash_video.mp4';
   static const String carsMarketShorebird = 'shorebird.yaml';
   static const String imagesAppIcon = 'assets/images/app_icon.jpeg';
-  static const String imagesAppLogo = 'assets/images/app_logo.gif';
   static const String imagesSplashVideo = 'assets/images/splash_video.mp4';
 
 }
