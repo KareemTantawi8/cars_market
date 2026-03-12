@@ -12,7 +12,6 @@ import '../../../../core/utils/constants.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
@@ -20,11 +19,8 @@ import '../cubit/user_profile_cubit.dart';
 import '../../data/models/user_profile_model.dart';
 import '../../data/models/vendor_profile_data.dart';
 
-/// User Profile Screen
 class UserProfileScreen extends StatelessWidget {
-  /// When true, screen is shown as a tab (e.g. in home bottom nav); back button is hidden.
   final bool isEmbeddedInTab;
-
   const UserProfileScreen({super.key, this.isEmbeddedInTab = false});
 
   @override
@@ -33,37 +29,6 @@ class UserProfileScreen extends StatelessWidget {
       create: (context) => UserProfileCubit()..fetchCurrentUserProfile(),
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: Icon(
-              Icons.settings,
-              color: Theme.of(context).iconTheme.color,
-            ),
-            onPressed: () {
-              // TODO: Navigate to settings
-            },
-          ),
-          title: Text(
-            'الملف الشخصي',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          centerTitle: true,
-          actions: isEmbeddedInTab
-              ? null
-              : [
-                  IconButton(
-                    icon: Icon(
-                      Icons.arrow_forward,
-                      color: Theme.of(context).iconTheme.color,
-                    ),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-        ),
         body: BlocConsumer<UserProfileCubit, UserProfileState>(
           listener: (context, state) {
             if (state is UserProfileImagesUploaded) {
@@ -74,18 +39,15 @@ class UserProfileScreen extends StatelessWidget {
             if (state is UserProfileLoading) {
               return const Center(child: LoadingIndicator());
             }
-
             if (state is UserProfileError) {
               return Center(
                 child: ErrorState(
                   message: state.message,
-                  onRetry: () {
-                    context.read<UserProfileCubit>().fetchCurrentUserProfile();
-                  },
+                  onRetry: () =>
+                      context.read<UserProfileCubit>().fetchCurrentUserProfile(),
                 ),
               );
             }
-
             if (state is UserProfileLoaded || state is UserProfileImagesUploaded) {
               final profile = state is UserProfileLoaded
                   ? state.profile
@@ -93,241 +55,341 @@ class UserProfileScreen extends StatelessWidget {
               return RefreshIndicator(
                 onRefresh: () =>
                     context.read<UserProfileCubit>().fetchCurrentUserProfile(),
-                child: _buildProfileContent(context, profile),
+                child: _ProfileContent(
+                  profile: profile,
+                  isEmbeddedInTab: isEmbeddedInTab,
+                ),
               );
             }
-
             return const SizedBox.shrink();
           },
         ),
       ),
     );
   }
+}
 
-  Widget _buildProfileContent(BuildContext context, UserProfileModel profile) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Main scrollable content
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProfileContent extends StatelessWidget {
+  final UserProfileModel profile;
+  final bool isEmbeddedInTab;
+  const _ProfileContent({required this.profile, required this.isEmbeddedInTab});
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Profile Picture and Info
-            _buildProfileSection(context, profile),
-            if (profile.vendor != null) ...[
-              const SizedBox(height: 24),
-              _buildVendorSection(context, profile.vendor!),
-            ],
-            const SizedBox(height: 24),
-            // Loyalty Program Card
-            _buildLoyaltyProgramCard(context, profile),
-            const SizedBox(height: 24),
-            // Account Settings
-            _buildAccountSettingsSection(context, profile),
-            const SizedBox(height: 24),
+      child: Column(
+        children: [
+          // ── Gradient header ────────────────────────────────────────────────
+          _ProfileHeader(profile: profile, isEmbeddedInTab: isEmbeddedInTab),
+
+          // ── White card body ────────────────────────────────────────────────
+          Transform.translate(
+            offset: const Offset(0, -28),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        margin: const EdgeInsets.only(bottom: 28),
+                        decoration: BoxDecoration(
+                          color: context.inputBorderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    // Quick stats row
+                    _StatsRow(profile: profile),
+                    const SizedBox(height: 24),
+
+                    // Info card
+                    _InfoCard(profile: profile),
+
+                    // Vendor section
+                    if (profile.vendor != null) ...[
+                      const SizedBox(height: 20),
+                      _VendorSection(vendor: profile.vendor!),
+                    ],
+
+                    // Loyalty card
+                    if (profile.loyaltyPoints > 0) ...[
+                      const SizedBox(height: 20),
+                      _LoyaltyCard(profile: profile),
+                    ],
+
+                    const SizedBox(height: 28),
+
+                    // Settings section
+                    _SectionTitle(title: 'الإعدادات'),
+                    const SizedBox(height: 14),
+                    _ThemeToggleTile(),
+
+                    if (StorageService.getAbilities()
+                        .contains('permissions.view')) ...[
+                      const SizedBox(height: 12),
+                      _SettingTile(
+                        icon: Icons.security_outlined,
+                        title: 'الصلاحيات',
+                        subtitle: 'إدارة صلاحيات النظام',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed(AppRoutes.permissions),
+                      ),
+                    ],
+
+                    const SizedBox(height: 28),
+
+                    // Logout button
+                    _LogoutButton(),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gradient header with avatar
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProfileHeader extends StatelessWidget {
+  final UserProfileModel profile;
+  final bool isEmbeddedInTab;
+  const _ProfileHeader({required this.profile, required this.isEmbeddedInTab});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF060D1F),
+            Color(0xFF0D2248),
+            AppColors.primaryDark,
           ],
+          stops: [0.0, 0.45, 1.0],
         ),
       ),
-    );
-  }
-
-  Widget _buildProfileSection(BuildContext context, UserProfileModel profile) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.06,
+      child: Stack(
+        children: [
+          // Decorative blobs
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 180,
+              height: 180,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primaryColor.withOpacity(0.12),
+              ),
             ),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+          ),
+          Positioned(
+            top: 60,
+            left: -60,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primaryLight.withOpacity(0.08),
+              ),
+            ),
+          ),
+
+          // Content
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Top bar
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (!isEmbeddedInTab)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_forward,
+                              color: Colors.white),
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      else
+                        const SizedBox(width: 48),
+                      Text(
+                        'الملف الشخصي',
+                        style: AppTextStyles.headingSmall.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Avatar
+                _AvatarWidget(profile: profile),
+                const SizedBox(height: 16),
+
+                // Name
+                Text(
+                  profile.name,
+                  style: AppTextStyles.headingMedium.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 10),
+
+                // Badge row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _HeaderBadge(
+                      label: profile.userType == AppConstants.userTypeVendor
+                          ? 'تاجر'
+                          : 'عميل',
+                      color: profile.userType == AppConstants.userTypeVendor
+                          ? AppColors.primaryColor
+                          : AppColors.accentColor,
+                    ),
+                    if (profile.isVerified) ...[
+                      const SizedBox(width: 8),
+                      _HeaderBadge(
+                        label: 'موثّق',
+                        color: AppColors.success,
+                        icon: Icons.verified,
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 56),
+              ],
+            ),
           ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+    );
+  }
+}
+
+class _HeaderBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final IconData? icon;
+  const _HeaderBadge({required this.label, required this.color, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.5)),
+      ),
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (profile.backgroundImageUrl != null && profile.backgroundImageUrl!.isNotEmpty)
-            GestureDetector(
-              onTap: () => _showChangeProfileImageSheet(context),
-              child: SizedBox(
-                height: 100,
-                width: double.infinity,
-                child: CachedNetworkImage(
-                  imageUrl: profile.backgroundImageUrl!,
-                  fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(color: context.surfaceBg, child: Icon(Icons.photo_library, color: context.textSecondary, size: 40)),
-                  errorWidget: (_, __, ___) => Container(color: context.surfaceBg, child: Icon(Icons.photo_library, color: context.textSecondary, size: 40)),
-                ),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-          // Profile Picture (tappable to change)
-          GestureDetector(
-            onTap: () => _showChangeProfileImageSheet(context),
-            child: Stack(
-              children: [
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: context.surfaceBg,
-                  ),
-                  child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: profile.imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: context.surfaceBg,
-                              child: Icon(
-                                Icons.person,
-                                size: 60,
-                                color: context.textSecondary,
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Icon(
-                              Icons.person,
-                              size: 60,
-                              color: context.textSecondary,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.person,
-                          size: 60,
-                          color: context.textSecondary,
-                        ),
-                ),
-                if (profile.isVerified)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.check,
-                        color: context.textPrimary,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.camera_alt,
-                      size: 18,
-                      color: context.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Name
-          Text(
-            profile.name,
-            style: AppTextStyles.headingMedium,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          // User Type Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: profile.userType == AppConstants.userTypeVendor
-                  ? AppColors.primaryColor.withOpacity(0.2)
-                  : AppColors.accentColor.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              profile.userType == AppConstants.userTypeVendor ? 'تاجر' : 'عميل',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: profile.userType == AppConstants.userTypeVendor
-                    ? AppColors.primaryColor
-                    : AppColors.accentColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // User Info
-          _buildInfoRow(
-            context,
-            icon: Icons.phone,
-            label: 'رقم الهاتف',
-            value: profile.formattedPhone,
-          ),
-          const SizedBox(height: 12),
-          if (profile.email != null && profile.email!.isNotEmpty)
-            _buildInfoRow(
-              context,
-              icon: Icons.email,
-              label: 'البريد الإلكتروني',
-              value: profile.email!,
-            ),
-          if (profile.email != null && profile.email!.isNotEmpty)
-            const SizedBox(height: 12),
-          _buildInfoRow(
-            context,
-            icon: Icons.badge,
-            label: 'رقم المستخدم',
-            value: '#${profile.id}',
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow(
-            context,
-            icon: Icons.info_outline,
-            label: 'حالة الحساب',
-            value: profile.status == 'active'
-                ? 'نشط'
-                : profile.status ?? 'غير معروف',
-            valueColor: profile.status == 'active'
-                ? AppColors.success
-                : context.textSecondary,
-          ),
-          if (profile.createdAt != null) ...[
-            const SizedBox(height: 12),
-            _buildInfoRow(
-              context,
-              icon: Icons.calendar_today,
-              label: 'تاريخ التسجيل',
-              value: _formatDate(profile.createdAt!),
-            ),
+          if (icon != null) ...[
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
           ],
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Avatar with camera button
+// ─────────────────────────────────────────────────────────────────────────────
+class _AvatarWidget extends StatelessWidget {
+  final UserProfileModel profile;
+  const _AvatarWidget({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showImageSheet(context),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
               ],
+            ),
+            child: ClipOval(
+              child: profile.imageUrl != null &&
+                      profile.imageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: profile.imageUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _avatarFallback(context),
+                      errorWidget: (_, __, ___) => _avatarFallback(context),
+                    )
+                  : _avatarFallback(context),
+            ),
+          ),
+          // Camera button
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: const Icon(Icons.camera_alt, size: 15, color: Colors.white),
             ),
           ),
         ],
@@ -335,23 +397,51 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showChangeProfileImageSheet(BuildContext context) {
+  Widget _avatarFallback(BuildContext context) {
+    return Container(
+      color: AppColors.primaryDark,
+      child: const Icon(Icons.person, size: 52, color: Colors.white70),
+    );
+  }
+
+  void _showImageSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: context.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: context.inputBorderColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
               ListTile(
-                leading: const Icon(Icons.person),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.person_outlined,
+                      color: AppColors.primaryColor),
+                ),
                 title: const Text('تغيير صورة الملف الشخصي'),
-                subtitle: const Text('حد أقصى 2 ميجابايت، jpg/png/webp'),
+                subtitle: const Text('حد أقصى 2 ميجابايت'),
                 onTap: () async {
                   Navigator.of(ctx).pop();
-                  final picker = ImagePicker();
-                  final xFile = await picker.pickImage(
+                  final xFile = await ImagePicker().pickImage(
                     source: ImageSource.gallery,
                     maxWidth: 1920,
                     maxHeight: 1920,
@@ -360,17 +450,27 @@ class UserProfileScreen extends StatelessWidget {
                   if (xFile == null || !context.mounted) return;
                   final file = File(xFile.path);
                   if (!file.existsSync()) return;
-                  await context.read<UserProfileCubit>().uploadProfileImages(profileImage: file);
+                  await context
+                      .read<UserProfileCubit>()
+                      .uploadProfileImages(profileImage: file);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library),
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.photo_library_outlined,
+                      color: AppColors.primaryColor),
+                ),
                 title: const Text('تغيير صورة الخلفية'),
-                subtitle: const Text('حد أقصى 4 ميجابايت، jpg/png/webp'),
+                subtitle: const Text('حد أقصى 4 ميجابايت'),
                 onTap: () async {
                   Navigator.of(ctx).pop();
-                  final picker = ImagePicker();
-                  final xFile = await picker.pickImage(
+                  final xFile = await ImagePicker().pickImage(
                     source: ImageSource.gallery,
                     maxWidth: 1920,
                     maxHeight: 1080,
@@ -379,7 +479,9 @@ class UserProfileScreen extends StatelessWidget {
                   if (xFile == null || !context.mounted) return;
                   final file = File(xFile.path);
                   if (!file.existsSync()) return;
-                  await context.read<UserProfileCubit>().uploadProfileImages(backgroundImage: file);
+                  await context
+                      .read<UserProfileCubit>()
+                      .uploadProfileImages(backgroundImage: file);
                 },
               ),
             ],
@@ -388,174 +490,314 @@ class UserProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildVendorSection(BuildContext context, VendorProfileData vendor) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(
-              Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.06,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+// ─────────────────────────────────────────────────────────────────────────────
+// Quick stats row
+// ─────────────────────────────────────────────────────────────────────────────
+class _StatsRow extends StatelessWidget {
+  final UserProfileModel profile;
+  const _StatsRow({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _StatChip(
+          icon: Icons.info_outline,
+          label: 'الحالة',
+          value: profile.status == 'active' ? 'نشط' : (profile.status ?? '—'),
+          valueColor:
+              profile.status == 'active' ? AppColors.success : context.textSecondary,
+        ),
+        const SizedBox(width: 12),
+        _StatChip(
+          icon: Icons.badge_outlined,
+          label: 'رقم المستخدم',
+          value: '#${profile.id}',
+        ),
+        if (profile.createdAt != null) ...[
+          const SizedBox(width: 12),
+          _StatChip(
+            icon: Icons.calendar_today_outlined,
+            label: 'العضوية منذ',
+            value:
+                '${profile.createdAt!.year}',
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color? valueColor;
+  const _StatChip(
+      {required this.icon,
+      required this.label,
+      required this.value,
+      this.valueColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.inputBorderColor),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, size: 18, color: AppColors.primaryColor),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: AppTextStyles.bodySmall.copyWith(
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? context.textPrimary,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: AppTextStyles.caption.copyWith(
+                  color: context.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Info card (phone, email)
+// ─────────────────────────────────────────────────────────────────────────────
+class _InfoCard extends StatelessWidget {
+  final UserProfileModel profile;
+  const _InfoCard({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
+        children: [
+          _InfoTile(
+            icon: Icons.phone_outlined,
+            label: 'رقم الهاتف',
+            value: profile.formattedPhone,
+            isFirst: true,
+            isLast: profile.email == null || profile.email!.isEmpty,
+          ),
+          if (profile.email != null && profile.email!.isNotEmpty)
+            _InfoTile(
+              icon: Icons.email_outlined,
+              label: 'البريد الإلكتروني',
+              value: profile.email!,
+              isFirst: false,
+              isLast: true,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final bool isFirst;
+  final bool isLast;
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.isFirst,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (!isFirst)
+          Divider(
+              height: 1, color: context.inputBorderColor, indent: 56),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child:
+                    Icon(icon, color: AppColors.primaryColor, size: 18),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.textSecondary)),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vendor section
+// ─────────────────────────────────────────────────────────────────────────────
+class _VendorSection extends StatelessWidget {
+  final VendorProfileData vendor;
+  const _VendorSection({required this.vendor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                'بيانات التاجر',
-                style: AppTextStyles.headingSmall,
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.store_outlined,
+                    color: AppColors.primaryColor, size: 18),
               ),
-              if (vendor.isVerified) ...[
-                const SizedBox(width: 8),
+              const SizedBox(width: 12),
+              Text('بيانات التاجر', style: AppTextStyles.headingSmall),
+              const Spacer(),
+              if (vendor.isVerified)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.2),
+                    color: AppColors.success.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.verified, size: 16, color: AppColors.success),
+                      Icon(Icons.verified, size: 14, color: AppColors.success),
                       const SizedBox(width: 4),
-                      Text(
-                        'معتمد',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      Text('معتمد',
+                          style: AppTextStyles.caption.copyWith(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
-              ],
-              if (vendor.isOnline) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, size: 8, color: AppColors.success),
-                      const SizedBox(width: 4),
-                      Text(
-                        'متصل',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
-          const SizedBox(height: 16),
-          if (vendor.description != null && vendor.description!.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                vendor.description!,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: context.textSecondary,
-                ),
-                textAlign: TextAlign.right,
-              ),
+          if (vendor.description != null &&
+              vendor.description!.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              vendor.description!,
+              style: AppTextStyles.bodySmall
+                  .copyWith(color: context.textSecondary),
             ),
-          // Metrics row
+          ],
+          const SizedBox(height: 16),
           Row(
             children: [
-              _buildVendorMetric(
-                context,
-                icon: Icons.star,
-                label: 'التقييم',
-                value: '${vendor.averageRating} (${vendor.ratingsCount})',
-              ),
-              const SizedBox(width: 16),
+              _VendorMetric(
+                  icon: Icons.star_rounded,
+                  label: 'التقييم',
+                  value:
+                      '${vendor.averageRating} (${vendor.ratingsCount})'),
               if (vendor.responseTimeHuman != null &&
-                  vendor.responseTimeHuman!.isNotEmpty)
-                _buildVendorMetric(
-                  context,
-                  icon: Icons.access_time,
-                  label: 'وقت الرد',
-                  value: vendor.responseTimeHuman!,
-                ),
+                  vendor.responseTimeHuman!.isNotEmpty) ...[
+                const SizedBox(width: 12),
+                _VendorMetric(
+                    icon: Icons.access_time_outlined,
+                    label: 'وقت الرد',
+                    value: vendor.responseTimeHuman!),
+              ],
             ],
           ),
-          const SizedBox(height: 16),
-          if (vendor.address != null && vendor.address!.isNotEmpty)
-            _buildInfoRow(
-              context,
-              icon: Icons.location_on,
-              label: 'العنوان',
-              value: [
-                vendor.address,
-                vendor.city,
-                vendor.governorate?.name,
-              ].whereType<String>().where((s) => s.isNotEmpty).join('، '),
+          if (vendor.governorate != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Icon(Icons.location_on_outlined,
+                    size: 16, color: context.textSecondary),
+                const SizedBox(width: 6),
+                Text(
+                  vendor.governorate!.name,
+                  style: AppTextStyles.bodySmall
+                      .copyWith(color: context.textSecondary),
+                ),
+              ],
             ),
-          if (vendor.address != null && vendor.address!.isNotEmpty)
-            const SizedBox(height: 12),
-          if (vendor.governorate != null)
-            _buildInfoRow(
-              context,
-              icon: Icons.map,
-              label: 'المحافظة',
-              value: vendor.governorate!.name,
-            ),
-          if (vendor.governorate != null) const SizedBox(height: 12),
+          ],
           if (vendor.brands.isNotEmpty) ...[
-            Text(
-              'العلامات التجارية',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: context.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: vendor.brands
-                  .map(
-                    (b) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        b.name,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryColor,
+                  .map((b) => Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                    ),
-                  )
+                        child: Text(b.name,
+                            style: AppTextStyles.caption.copyWith(
+                                color: AppColors.primaryColor,
+                                fontWeight: FontWeight.w600)),
+                      ))
                   .toList(),
             ),
-            const SizedBox(height: 16),
           ],
           if (vendor.googleMapsUrl != null &&
-              vendor.googleMapsUrl!.isNotEmpty)
+              vendor.googleMapsUrl!.isNotEmpty) ...[
+            const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: () async {
                 final uri = Uri.parse(vendor.googleMapsUrl!);
@@ -563,47 +805,46 @@ class UserProfileScreen extends StatelessWidget {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
               },
-              icon: const Icon(Icons.map),
+              icon: const Icon(Icons.map_outlined, size: 18),
               label: const Text('فتح في خرائط جوجل'),
             ),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildVendorMetric(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+class _VendorMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  const _VendorMetric(
+      {required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: context.surfaceBg,
+          color: context.inputBg,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: AppColors.primaryColor),
+            Icon(icon, size: 18, color: AppColors.primaryColor),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: context.textSecondary,
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  Text(label,
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.textSecondary)),
+                  Text(value,
+                      style: AppTextStyles.bodySmall
+                          .copyWith(fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -612,268 +853,133 @@ class UserProfileScreen extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildInfoRow(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required String value,
-    Color? valueColor,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: context.textSecondary,
-                ),
-                textAlign: TextAlign.right,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: valueColor ?? context.textPrimary,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.right,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Icon(icon, size: 20, color: context.textSecondary),
-      ],
-    );
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// Loyalty card
+// ─────────────────────────────────────────────────────────────────────────────
+class _LoyaltyCard extends StatelessWidget {
+  final UserProfileModel profile;
+  const _LoyaltyCard({required this.profile});
 
-  String _formatDate(DateTime date) {
-    // Format: يوم/شهر/سنة
-    return '${date.day}/${date.month}/${date.year}';
-  }
-
-  Widget _buildLoyaltyProgramCard(
-    BuildContext context,
-    UserProfileModel profile,
-  ) {
-    // Only show loyalty program if user has points or if it's a feature
-    if (profile.loyaltyPoints <= 0) {
-      return const SizedBox.shrink();
-    }
-
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0D2248), AppColors.primaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryColor.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.workspace_premium,
-                color: AppColors.primaryColor,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'برنامج الولاء',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.workspace_premium,
+                color: Colors.white, size: 28),
           ),
-          const SizedBox(height: 16),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: AppColors.primaryColor,
-                  shape: BoxShape.circle,
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('نقاط الولاء',
+                    style: AppTextStyles.bodySmall.copyWith(
+                        color: Colors.white.withOpacity(0.75))),
+                const SizedBox(height: 4),
+                Text(
+                  '${_formatPoints(profile.loyaltyPoints)} نقطة',
+                  style: AppTextStyles.headingSmall.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.bold),
                 ),
-                child: Icon(Icons.star, color: context.textPrimary, size: 32),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('نقاطي', style: AppTextStyles.headingSmall),
-                    const SizedBox(height: 4),
-                    Text(
-                      'رصيد النقاط الحالي: ${_formatPoints(profile.loyaltyPoints)} نقطة',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: context.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          PrimaryButton(
-            text: 'استبدال النقاط',
-            onPressed: () {
-              // TODO: Navigate to redeem points
-            },
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'استبدال',
+              style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.primaryDark,
+                  fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAccountSettingsSection(
-    BuildContext context,
-    UserProfileModel profile,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  String _formatPoints(int points) {
+    return points.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Section title
+// ─────────────────────────────────────────────────────────────────────────────
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  const _SectionTitle({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
       children: [
-        Text('إعدادات الحساب', style: AppTextStyles.headingSmall),
-        const SizedBox(height: 16),
-        _buildSettingItem(
-          context: context,
-          icon: Icons.person,
-          title: 'تعديل الملف الشخصي',
-          subtitle: 'الاسم، رقم الهاتف، العنوان',
-          onTap: () {
-            // TODO: Navigate to edit profile
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildSettingItem(
-          context: context,
-          icon: Icons.language,
-          title: 'اللغة',
-          subtitle: 'العربية (مصر)',
-          onTap: () {
-            // TODO: Navigate to lanqguage settings
-          },
-        ),
-        const SizedBox(height: 12),
-        _buildThemeSettingItem(context),
-        const SizedBox(height: 12),
-        _buildSettingItem(
-          context: context,
-          icon: Icons.help_outline,
-          title: 'المساعدة والدعم',
-          subtitle: 'الأسئلة الشائعة، تواصل معنا',
-          onTap: () {
-            // TODO: Navigate to help and support
-          },
-        ),
-        const SizedBox(height: 20),
-        Text('أخرى', style: AppTextStyles.headingSmall),
-        const SizedBox(height: 16),
-        if (StorageService.getAbilities().contains('permissions.view'))
-          _buildSettingItem(
-            context: context,
-            icon: Icons.security,
-            title: 'الصلاحيات',
-            subtitle: 'إدارة صلاحيات النظام',
-            onTap: () {
-              Navigator.of(context).pushNamed(AppRoutes.permissions);
-            },
+        Container(
+          width: 4,
+          height: 20,
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor,
+            borderRadius: BorderRadius.circular(2),
           ),
-        if (StorageService.getAbilities().contains('permissions.view')) const SizedBox(height: 12),
-        _buildSettingItem(
-          context: context,
-          icon: Icons.logout,
-          title: 'تسجيل الخروج',
-          subtitle: '',
-          iconColor: AppColors.error,
-          onTap: () {
-            _handleLogout(context);
-          },
         ),
+        const SizedBox(width: 10),
+        Text(title, style: AppTextStyles.headingSmall),
       ],
     );
   }
+}
 
-  Widget _buildThemeSettingItem(BuildContext context) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Theme toggle tile
+// ─────────────────────────────────────────────────────────────────────────────
+class _ThemeToggleTile extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     final themeCubit = context.read<ThemeCubit>();
-    final colorScheme = Theme.of(context).colorScheme;
     final subtitle = switch (themeCubit.state) {
       ThemeMode.light => 'فاتح',
       ThemeMode.dark => 'داكن',
       ThemeMode.system => 'تلقائي (حسب الجهاز)',
     };
-    return InkWell(
+    return _SettingTile(
+      icon: Icons.palette_outlined,
+      title: 'المظهر',
+      subtitle: subtitle,
       onTap: () => _showThemePicker(context, themeCubit),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.palette_outlined,
-                color: colorScheme.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'المظهر',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: colorScheme.onSurface.withOpacity(0.5),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -885,137 +991,155 @@ class UserProfileScreen extends StatelessWidget {
     ];
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: context.cardBg,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'اختر المظهر',
-                  style: Theme.of(
-                    ctx,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: context.inputBorderColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(height: 20),
-                ...options.map((e) {
-                  final (mode, label, icon) = e;
-                  final isSelected = themeCubit.state == mode;
-                  return ListTile(
-                    leading: Icon(
-                      icon,
+              ),
+              Text('اختر المظهر',
+                  style: AppTextStyles.headingSmall),
+              const SizedBox(height: 16),
+              ...options.map((e) {
+                final (mode, label, icon) = e;
+                final isSelected = themeCubit.state == mode;
+                return ListTile(
+                  leading: Icon(icon,
                       color: isSelected
-                          ? Theme.of(ctx).colorScheme.primary
-                          : Theme.of(
-                              ctx,
-                            ).colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                    title: Text(
-                      label,
-                      style: TextStyle(
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: Theme.of(ctx).colorScheme.onSurface,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? Icon(
-                            Icons.check_circle,
-                            color: Theme.of(ctx).colorScheme.primary,
-                            size: 24,
-                          )
-                        : null,
-                    onTap: () {
-                      themeCubit.setThemeMode(mode);
-                      Navigator.of(ctx).pop();
-                    },
-                  );
-                }),
-              ],
-            ),
+                          ? AppColors.primaryColor
+                          : context.textSecondary),
+                  title: Text(label,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal)),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle,
+                          color: AppColors.primaryColor)
+                      : null,
+                  onTap: () {
+                    themeCubit.setThemeMode(mode);
+                    Navigator.of(ctx).pop();
+                  },
+                );
+              }),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
+}
 
-  Widget _buildSettingItem({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-    Color? iconColor,
-  }) {
-    final colorScheme = Theme.of(context).colorScheme;
+// ─────────────────────────────────────────────────────────────────────────────
+// Generic setting tile
+// ─────────────────────────────────────────────────────────────────────────────
+class _SettingTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Color? iconColor;
+  const _SettingTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = iconColor ?? AppColors.primaryColor;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(
-                Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.05,
-              ),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.inputBorderColor),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: (iconColor ?? colorScheme.primary).withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                color: iconColor ?? colorScheme.primary,
-                size: 20,
-              ),
+              child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: colorScheme.onSurface,
-                    ),
-                  ),
+                  Text(title,
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(fontWeight: FontWeight.w600)),
                   if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.7),
-                      ),
-                    ),
+                    const SizedBox(height: 3),
+                    Text(subtitle,
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.textSecondary)),
                   ],
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              size: 16,
-              color: colorScheme.onSurface.withOpacity(0.5),
+            Icon(Icons.arrow_forward_ios,
+                size: 14, color: context.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Logout button
+// ─────────────────────────────────────────────────────────────────────────────
+class _LogoutButton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _handleLogout(context),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.error.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.error.withOpacity(0.3)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.logout_rounded,
+                color: AppColors.error, size: 20),
+            const SizedBox(width: 10),
+            Text(
+              'تسجيل الخروج',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.error,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -1026,37 +1150,28 @@ class UserProfileScreen extends StatelessWidget {
   void _handleLogout(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: context.cardBg,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Text('تسجيل الخروج', style: AppTextStyles.headingSmall),
-        content: Text(
-          'هل أنت متأكد من تسجيل الخروج؟',
-          style: AppTextStyles.bodyMedium,
-        ),
+        content: Text('هل أنت متأكد من تسجيل الخروج؟',
+            style: AppTextStyles.bodyMedium),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء', style: AppTextStyles.link),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('إلغاء',
+                style: AppTextStyles.bodySmall
+                    .copyWith(color: context.textSecondary)),
           ),
           TextButton(
-            onPressed: () {
-              NavigationService.navigateToLogout(context);
-            },
-            child: Text(
-              'تسجيل الخروج',
-              style: AppTextStyles.link.copyWith(color: AppColors.error),
-            ),
+            onPressed: () => NavigationService.navigateToLogout(context),
+            child: Text('تسجيل الخروج',
+                style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.error, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
-    );
-  }
-
-  String _formatPoints(int points) {
-    // Format points with thousand separators
-    return points.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]},',
     );
   }
 }

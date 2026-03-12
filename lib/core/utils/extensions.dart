@@ -37,6 +37,12 @@ extension AppThemeColors on BuildContext {
 
   /// Hint / placeholder text color
   Color get textHint => _isDark ? AppColors.textHint : AppColors.lightTextHint;
+
+  /// Input field fill color
+  Color get inputBg => _isDark ? AppColors.inputBackground : AppColors.lightInputBackground;
+
+  /// Input field border color
+  Color get inputBorderColor => _isDark ? AppColors.inputBorder : AppColors.lightInputBorder;
 }
 
 /// BuildContext Extensions
