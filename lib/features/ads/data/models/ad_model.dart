@@ -141,7 +141,15 @@ class AdModel {
     final imagesRaw = json['images'];
     List<String> imagesList = [];
     if (imagesRaw is List) {
-      imagesList = imagesRaw.map((e) => e.toString()).toList();
+      for (final e in imagesRaw) {
+        if (e == null) continue;
+        if (e is String && e.isNotEmpty) {
+          imagesList.add(e);
+        } else if (e is Map<String, dynamic>) {
+          final path = e['path'] as String? ?? e['url'] as String? ?? e['full_url'] as String? ?? e['image'] as String?;
+          if (path != null && path.isNotEmpty) imagesList.add(path);
+        }
+      }
     }
     final priceRaw = json['price'];
     double? price;

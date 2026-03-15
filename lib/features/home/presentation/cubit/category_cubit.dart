@@ -150,7 +150,9 @@ class CategoryCubit extends Cubit<CategoryState> {
   /// Load models for selected brand
   Future<void> loadModels(int brandId) async {
     final currentState = state;
-    
+    if (currentState is CategoryLoaded) {
+      emit(const CategoryLoading('models'));
+    }
     try {
       final models = await _categoryRepository.getModelsByBrand(brandId);
 

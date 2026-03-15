@@ -10,6 +10,7 @@ import '../../../../shared/widgets/common/supplier_card.dart';
 import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
+import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
 import '../../../chat/presentation/views/chat_list_screen.dart';
 import '../../../profile/presentation/views/user_profile_screen.dart';
 import '../cubit/search_cubit.dart';
@@ -277,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
           index: _currentNavIndex,
           children: [
             _buildHomeContent(),
+            const BrowseAdsScreen(),
             const MyAdsScreen(),
             const ChatListScreen(),
             const UserProfileScreen(isEmbeddedInTab: true),
@@ -292,6 +294,11 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'الرئيسية',
               icon: Icons.home,
               route: '/home',
+            ),
+            BottomNavItem(
+              label: 'الإعلانات',
+              icon: Icons.directions_car_outlined,
+              route: '/browse-ads',
             ),
             BottomNavItem(
               label: 'إعلاناتي',

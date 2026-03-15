@@ -7,9 +7,9 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/navigation_service.dart';
-import '../../../ads/presentation/cubit/my_ads_cubit.dart';
+import '../../../home/presentation/cubit/category_cubit.dart';
 import '../../../ads/presentation/cubit/ads_list_cubit.dart';
-import '../../../my_ads/presentation/views/my_ads_screen.dart';
+import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
@@ -1104,10 +1104,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 MaterialPageRoute(
                   builder: (_) => MultiBlocProvider(
                     providers: [
-                      BlocProvider(create: (_) => MyAdsCubit()),
+                      BlocProvider(create: (_) => CategoryCubit()),
                       BlocProvider(create: (_) => AdsListCubit()),
                     ],
-                    child: const MyAdsScreen(initialTabIndex: 1),
+                    child: const BrowseAdsScreen(),
                   ),
                 ),
               );

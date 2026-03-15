@@ -18,11 +18,20 @@ class BrandModel {
   });
 
   factory BrandModel.fromJson(Map<String, dynamic> json) {
+    final logoStr = json['logo'] as String? ?? json['image'] as String?;
+    final logoFromMeta = json['meta'] is Map<String, dynamic>
+        ? (json['meta'] as Map<String, dynamic>)['image'] as String?
+        : null;
+    final imageObj = json['image'];
+    String? logoFromObj;
+    if (imageObj is Map<String, dynamic>) {
+      logoFromObj = imageObj['url'] as String? ?? imageObj['path'] as String? ?? imageObj['full_url'] as String?;
+    }
     return BrandModel(
       id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name'] as String? ?? json['brand_name'] as String? ?? '',
       nameAr: json['name_ar'] as String? ?? json['brand_name_ar'] as String?,
-      logo: json['logo'] as String? ?? json['image'] as String?,
+      logo: logoStr ?? logoFromMeta ?? logoFromObj,
       slug: json['slug'] as String?,
       meta: json['meta'] is Map<String, dynamic> ? json['meta'] as Map<String, dynamic> : null,
     );

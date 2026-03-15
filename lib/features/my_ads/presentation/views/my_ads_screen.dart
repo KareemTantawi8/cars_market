@@ -9,7 +9,6 @@ import '../../../../core/utils/constants.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/presentation/cubit/my_ads_cubit.dart';
-import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 
 /// Filter chip type for My Ads list
 enum MyAdsFilter {
@@ -18,12 +17,9 @@ enum MyAdsFilter {
   underReview, // pending
 }
 
-/// My Ads screen - إعلاناتي (customer's ad management)
+/// My Ads screen - إعلاناتي (customer's own ads only)
 class MyAdsScreen extends StatefulWidget {
-  const MyAdsScreen({super.key, this.initialTabIndex = 0});
-
-  /// 0 = "My Ads", 1 = "All Ads"
-  final int initialTabIndex;
+  const MyAdsScreen({super.key});
 
   @override
   State<MyAdsScreen> createState() => _MyAdsScreenState();
@@ -32,8 +28,6 @@ class MyAdsScreen extends StatefulWidget {
 class _MyAdsScreenState extends State<MyAdsScreen> {
   final _searchController = TextEditingController();
   MyAdsFilter _selectedFilter = MyAdsFilter.all;
-  String? _allAdsSearch;
-  int _currentTabIndex = 0;
   String? _myAdsSearch;
 
   @override
@@ -77,63 +71,31 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      initialIndex: widget.initialTabIndex.clamp(0, 1),
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.pushNamed(context, AppRoutes.createAd),
-          backgroundColor: AppColors.primaryColor,
-          icon: const Icon(Icons.add, color: Colors.white),
-          label: Text(
-            'إضافة إعلان',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        body: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildHeader(),
-              _buildTabs(),
-              _buildSearchBar(),
-              _buildFilterChips(),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    _buildMyAdsList(),
-                    _buildAllAdsList(),
-                  ],
-                ),
-              ),
-            ],
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.pushNamed(context, AppRoutes.createAd),
+        backgroundColor: AppColors.primaryColor,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          'إضافة إعلان',
+          style: AppTextStyles.bodyMedium.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTabs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: TabBar(
-        labelColor: AppColors.primaryColor,
-        unselectedLabelColor: context.textSecondary,
-        indicatorColor: AppColors.primaryColor,
-        onTap: (index) {
-          setState(() {
-            _currentTabIndex = index;
-          });
-        },
-        tabs: const [
-          Tab(text: 'إعلاناتي'),
-          Tab(text: 'كل الإعلانات'),
-        ],
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(),
+            _buildSearchBar(),
+            _buildFilterChips(),
+            Expanded(child: _buildMyAdsList()),
+          ],
+        ),
       ),
     );
   }
@@ -186,68 +148,6 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             itemBuilder: (context, index) => Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: _MyAdCard(ad: filtered[index]),
-            ),
-          );
-        }
-        return const Center(child: CircularProgressIndicator());
-      },
-    );
-  }
-
-  Widget _buildAllAdsList() {
-    return BlocConsumer<AdsListCubit, AdsListState>(
-      listener: (context, state) {
-        if (state is AdsListError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: AppColors.error),
-          );
-        }
-      },
-      builder: (context, state) {
-        if (state is AdsListInitial) {
-          // Trigger initial load of all ads (respect current search filter if any)
-          context.read<AdsListCubit>().loadAds(search: _allAdsSearch);
-          return const Center(child: LoadingIndicator());
-        }
-        if (state is AdsListLoading) {
-          return const Center(child: LoadingIndicator());
-        }
-        if (state is AdsListError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  state.message,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.read<AdsListCubit>().loadAds(search: _allAdsSearch),
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
-          );
-        }
-        if (state is AdsListLoaded) {
-          // Apply same status filter used for "My Ads"
-          final ads = _filterList(state.ads);
-          if (ads.isEmpty) {
-            return Center(
-              child: Text(
-                'لا توجد إعلانات متاحة حالياً',
-                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-              ),
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-            itemCount: ads.length,
-            itemBuilder: (context, index) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _MyAdCard(ad: ads[index]),
             ),
           );
         }
@@ -372,20 +272,9 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
 
   void _onSearchPressed() {
     final text = _searchController.text.trim();
-    final search = text.isEmpty ? null : text;
-    if (_currentTabIndex == 0) {
-      // My Ads tab: apply local filter by title
-      setState(() {
-        _myAdsSearch = search;
-      });
-      return;
-    } else {
-      // All Ads tab: call /ads with search filter
-      setState(() {
-        _allAdsSearch = search;
-      });
-      context.read<AdsListCubit>().loadAds(search: search);
-    }
+    setState(() {
+      _myAdsSearch = text.isEmpty ? null : text;
+    });
   }
 
   Widget _buildFilterChips() {
