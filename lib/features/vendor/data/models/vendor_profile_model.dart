@@ -22,6 +22,35 @@ class VendorProfileModel {
   final String? imageUrl;
   final String? backgroundImageUrl;
 
+  VendorProfileModel copyWith({
+    bool? isOpen,
+    String? openUntil,
+  }) {
+    return VendorProfileModel(
+      id: id,
+      name: name,
+      description: description,
+      isVerified: isVerified,
+      isOpen: isOpen ?? this.isOpen,
+      openUntil: openUntil ?? this.openUntil,
+      responseTimeMinutes: responseTimeMinutes,
+      responseTimeHuman: responseTimeHuman,
+      rating: rating,
+      ratingCount: ratingCount,
+      supportedBrands: supportedBrands,
+      availableServices: availableServices,
+      phone: phone,
+      whatsapp: whatsapp,
+      address: address,
+      governorate: governorate,
+      latitude: latitude,
+      longitude: longitude,
+      googleMapsUrl: googleMapsUrl,
+      imageUrl: imageUrl,
+      backgroundImageUrl: backgroundImageUrl,
+    );
+  }
+
   VendorProfileModel({
     required this.id,
     required this.name,

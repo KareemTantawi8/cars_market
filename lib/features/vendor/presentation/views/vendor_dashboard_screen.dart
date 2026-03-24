@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -219,8 +220,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              // Open / Closed pill
-              _buildStatusPill(profile),
+              // Open / Closed pill (tappable to toggle)
+              _buildStatusPill(context, profile),
             ],
           ),
         ),
@@ -228,41 +229,44 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _buildStatusPill(VendorProfileModel profile) {
+  Widget _buildStatusPill(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isOpen
-            ? AppColors.success.withOpacity(0.9)
-            : AppColors.error.withOpacity(0.85),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: () => _toggleOnlineStatus(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isOpen
+              ? AppColors.success.withOpacity(0.9)
+              : AppColors.error.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            isOpen
-                ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-                    ? 'مفتوح حتى ${profile.openUntil}'
-                    : 'مفتوح الآن')
-                : 'مغلق الآن',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
+            const SizedBox(width: 5),
+            Text(
+              isOpen
+                  ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
+                      ? 'مفتوح حتى ${profile.openUntil}'
+                      : 'متصل')
+                  : 'غير متصل',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -294,7 +298,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             ],
 
             // Stats row
-            _buildStatsRow(profile),
+            _buildStatsRow(context, profile),
             const SizedBox(height: 28),
 
             // Brands
@@ -333,7 +337,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   // ─── Stats row ────────────────────────────────────────────────────────────
 
-  Widget _buildStatsRow(VendorProfileModel profile) {
+  Widget _buildStatsRow(BuildContext context, VendorProfileModel profile) {
     final hasResponseTime = profile.responseTimeMinutes != null ||
         (profile.responseTimeHuman != null &&
             profile.responseTimeHuman!.isNotEmpty);
@@ -365,9 +369,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         Expanded(
           child: _buildStatCard(
             icon: Icons.storefront_outlined,
-            iconColor: AppColors.success,
-            value: profile.isOpen ? 'مفتوح' : 'مغلق',
+            iconColor: profile.isOpen ? AppColors.success : AppColors.error,
+            value: profile.isOpen ? 'متصل' : 'غير متصل',
             label: 'الحالة',
+            onTap: () => _toggleOnlineStatus(context),
           ),
         ),
       ],
@@ -379,8 +384,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     required Color iconColor,
     required String value,
     required String label,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
       decoration: BoxDecoration(
         color: context.cardBg,
@@ -425,6 +431,45 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         ],
       ),
     );
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: card,
+        ),
+      );
+    }
+    return card;
+  }
+
+  Future<void> _toggleOnlineStatus(BuildContext context) async {
+    try {
+      await context.read<VendorDashboardCubit>().toggleOnline();
+      if (!context.mounted) return;
+      final state = context.read<VendorDashboardCubit>().state;
+      final isNowOnline =
+          state is VendorDashboardLoaded && state.profile.isOpen;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isNowOnline ? 'أنت الآن متصل وتستلم طلبات البحث' : 'أنت الآن غير متصل',
+          ),
+          backgroundColor: isNowOnline ? AppColors.success : AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // ─── Section header ───────────────────────────────────────────────────────
@@ -589,28 +634,88 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     Positioned(
                       top: 12,
                       left: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.45),
-                          borderRadius: BorderRadius.circular(20),
+                      child: GestureDetector(
+                        onTap: () => _openGoogleMaps(
+                          profile.googleMapsUrl,
+                          profile.latitude,
+                          profile.longitude,
+                          profile.address,
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.open_in_new_rounded,
-                                color: Colors.white, size: 13),
-                            SizedBox(width: 5),
-                            Text(
-                              'فتح الخريطة',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.45),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.open_in_new_rounded,
+                                  color: Colors.white, size: 13),
+                              SizedBox(width: 5),
+                              Text(
+                                'فتح الخريطة',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Set Address button - prominent CTA
+                    Positioned(
+                      bottom: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _showSetLocationDialog(context, profile),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor,
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryColor.withOpacity(0.4),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_on_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'تحديد الموقع',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -756,17 +861,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Row(
               children: [
-                // Phone
-                Expanded(
-                  child: _buildActionButton(
-                    icon: Icons.phone_rounded,
-                    label: 'اتصال',
-                    color: AppColors.success,
-                    onTap: () =>
-                        _openPhone(profile.phone ?? profile.whatsapp),
-                  ),
-                ),
-                const SizedBox(width: 12),
                 // Directions
                 Expanded(
                   child: _buildActionButton(
@@ -823,11 +917,114 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Future<void> _openPhone(String? phone) async {
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+  Future<void> _showSetLocationDialog(
+    BuildContext context,
+    VendorProfileModel profile,
+  ) async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => _SetLocationDialog(
+        onSetLocation: () async {
+          Navigator.of(dialogContext).pop();
+          await _performSetLocation(context, profile);
+        },
+        onCancel: () => Navigator.of(dialogContext).pop(),
+      ),
+    );
+  }
+
+  Future<void> _performSetLocation(
+    BuildContext context,
+    VendorProfileModel profile,
+  ) async {
+    final cubit = context.read<VendorDashboardCubit>();
+
+    // Check & request location permission
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يجب السماح بالوصول إلى الموقع لتحديد موقع المحل'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    // Check if location services are enabled
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('يرجى تفعيل خدمة الموقع في إعدادات الجهاز'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    // Show loading
+    if (!context.mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('جاري تحديد موقعك...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      final repo = VendorProfileRepository();
+      await repo.updateVendorLocation(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث موقع المحل بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await cubit.refresh();
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context).pop(); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
     }
   }
 
@@ -1180,6 +1377,100 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Set Location Dialog ────────────────────────────────────────────────────
+
+class _SetLocationDialog extends StatelessWidget {
+  final VoidCallback onSetLocation;
+  final VoidCallback onCancel;
+
+  const _SetLocationDialog({
+    required this.onSetLocation,
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Icon
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.location_on_rounded,
+                color: AppColors.primaryColor,
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Title
+            Text(
+              'تحديد موقع المحل',
+              style: AppTextStyles.headingSmall.copyWith(
+                color: context.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+
+            // Subtitle
+            Text(
+              'سيتم استخدام موقعك الحالي كموقع للمحل وسيظهر للعملاء على الخريطة',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: context.textSecondary,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 28),
+
+            // Set location button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onSetLocation,
+                icon: const Icon(Icons.my_location_rounded, size: 20),
+                label: const Text('تحديد موقعي الحالي'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Cancel
+            TextButton(
+              onPressed: onCancel,
+              child: Text(
+                'إلغاء',
+                style: TextStyle(color: context.textSecondary),
+              ),
+            ),
+          ],
         ),
       ),
     );

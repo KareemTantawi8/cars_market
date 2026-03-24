@@ -29,6 +29,8 @@ class ApiEndpoints {
   static const String updateProfile = '$basePath/user/profile';
   // POST /api/v1/profile/images - Upload profile and/or background image (multipart: profile_image, background_image). 200/401/422
   static const String profileImages = '$basePath/profile/images';
+  // PUT /api/v1/profile/location - Update vendor GPS location (latitude, longitude). Vendors only.
+  static const String profileLocation = '$basePath/profile/location';
 
   // Vendor
   // GET /api/v1/vendors

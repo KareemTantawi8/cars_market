@@ -30,6 +30,8 @@
 	<string>نحتاج الوصول لمعرض الصور لاختيار صور لإعلاناتك</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>نحتاج الإذن لحفظ الصور في معرض الصور</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>نحتاج الوصول لموقعك لتحديد موقع المحل على الخريطة</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>

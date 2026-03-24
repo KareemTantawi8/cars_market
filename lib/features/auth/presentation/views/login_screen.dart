@@ -471,27 +471,28 @@ class _LoginScreenState extends State<LoginScreen> {
     required BuildContext context,
     Widget? suffix,
   }) {
+    final borderColor = context.inputBorderColor;
     return InputDecoration(
       hintText: hint,
-      hintStyle: AppTextStyles.inputHint,
+      hintStyle: AppTextStyles.inputHint.copyWith(color: context.textHint),
       prefixIcon: Icon(prefix, color: context.textSecondary, size: 22),
       suffixIcon: suffix,
       filled: true,
-      fillColor: AppColors.inputBackground,
+      fillColor: context.inputBg,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: borderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: borderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide:
-            const BorderSide(color: AppColors.inputBorderFocused, width: 2),
+            const BorderSide(color: AppColors.primaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

@@ -4,6 +4,30 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_endpoints.dart';
 import '../models/vendor_profile_model.dart';
 
+/// Response model for location update
+class LocationUpdateResponse {
+  final double latitude;
+  final double longitude;
+  final String? googleMapsUrl;
+
+  const LocationUpdateResponse({
+    required this.latitude,
+    required this.longitude,
+    this.googleMapsUrl,
+  });
+
+  factory LocationUpdateResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map<String, dynamic>
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    return LocationUpdateResponse(
+      latitude: (data['latitude'] as num).toDouble(),
+      longitude: (data['longitude'] as num).toDouble(),
+      googleMapsUrl: data['google_maps_url'] as String?,
+    );
+  }
+}
+
 /// Vendor Profile Repository - Handles vendor profile API calls
 class VendorProfileRepository {
   final ApiClient _apiClient;
@@ -80,6 +104,47 @@ class VendorProfileRepository {
           ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'فشل في جلب بيانات التاجر'
           : 'فشل في جلب بيانات التاجر';
       throw Exception(msg);
+    }
+  }
+
+  /// Update vendor GPS location.
+  /// PUT /api/v1/profile/location - Body: { latitude, longitude }. Vendors only.
+  Future<LocationUpdateResponse> updateVendorLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    _log('📍 Updating vendor location: $latitude, $longitude');
+    try {
+      final response = await _apiClient.put(
+        ApiEndpoints.profileLocation,
+        data: {
+          'latitude': latitude,
+          'longitude': longitude,
+        },
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final result = LocationUpdateResponse.fromJson(data);
+          _log('✅ Location updated successfully');
+          return result;
+        }
+        throw Exception('Invalid response format');
+      }
+      throw Exception('Failed to update location: ${response.statusCode}');
+    } on DioException catch (e) {
+      _log('❌ updateVendorLocation: ${e.message}');
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        final errorMessage = errorData is Map<String, dynamic>
+            ? errorData['message']?.toString() ?? 'فشل في تحديث الموقع'
+            : 'فشل في تحديث الموقع';
+        throw Exception(errorMessage);
+      }
+      throw Exception('خطأ في الشبكة: ${e.message}');
+    } catch (e) {
+      _log('❌ Unexpected error updating location: $e');
+      rethrow;
     }
   }
 

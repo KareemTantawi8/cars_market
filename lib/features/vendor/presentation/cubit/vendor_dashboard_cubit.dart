@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import '../../../profile/data/repositories/user_profile_repository.dart';
 import '../../../profile/data/models/user_profile_model.dart';
 import '../../data/models/vendor_profile_model.dart';
+import '../../data/repositories/vendor_repository.dart';
 
 /// Vendor Dashboard State
 abstract class VendorDashboardState extends Equatable {
@@ -37,9 +38,14 @@ class VendorDashboardError extends VendorDashboardState {
 /// Vendor Dashboard Cubit - Fetches auth/me and maps to vendor profile display
 class VendorDashboardCubit extends Cubit<VendorDashboardState> {
   final UserProfileRepository _userProfileRepository;
+  final VendorRepository _vendorRepository;
 
-  VendorDashboardCubit({UserProfileRepository? userProfileRepository})
-      : _userProfileRepository = userProfileRepository ?? UserProfileRepository(),
+  VendorDashboardCubit({
+    UserProfileRepository? userProfileRepository,
+    VendorRepository? vendorRepository,
+  })  : _userProfileRepository =
+            userProfileRepository ?? UserProfileRepository(),
+        _vendorRepository = vendorRepository ?? VendorRepository(),
         super(VendorDashboardInitial());
 
   /// Fetch vendor profile from auth/me
@@ -111,5 +117,24 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
 
   Future<void> refresh() async {
     await fetchVendorProfile();
+  }
+
+  /// Toggle vendor online/offline status via POST /api/v1/vendor/online
+  Future<void> toggleOnline() async {
+    final current = state;
+    if (current is! VendorDashboardLoaded) return;
+
+    try {
+      final response = await _vendorRepository.toggleOnline();
+      final isOnline = response['is_online'] as bool? ?? !current.profile.isOpen;
+      emit(VendorDashboardLoaded(
+        current.profile.copyWith(
+          isOpen: isOnline,
+          openUntil: isOnline ? 'متصل' : null,
+        ),
+      ));
+    } catch (e) {
+      rethrow;
+    }
   }
 }
