@@ -223,7 +223,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
           color: context.cardBg.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: canAdd ? AppColors.primaryColor : AppColors.inputBorder,
+            color: canAdd ? AppColors.primaryColor : context.inputBorderColor,
             width: 2,
             strokeAlign: BorderSide.strokeAlignInside,
           ),
@@ -262,7 +262,7 @@ class _CreateAdPhotosScreenState extends State<CreateAdPhotosScreen> {
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.inputBorder),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Row(
         children: [

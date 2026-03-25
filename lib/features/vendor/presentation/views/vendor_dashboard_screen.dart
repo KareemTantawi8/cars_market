@@ -565,7 +565,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 color: context.cardBg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                    color: AppColors.inputBorder,
+                    color: context.inputBorderColor,
                     style: BorderStyle.solid,
                     width: 1.5),
               ),

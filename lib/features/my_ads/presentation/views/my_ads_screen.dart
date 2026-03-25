@@ -239,7 +239,7 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
               decoration: BoxDecoration(
                 color: context.cardBg,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.inputBorder),
+                border: Border.all(color: context.inputBorderColor),
               ),
               child: Row(
                 textDirection: TextDirection.rtl,
@@ -617,7 +617,7 @@ class _MyAdCard extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.inputBorder,
+                  color: ctx.inputBorderColor,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

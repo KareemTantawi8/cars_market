@@ -245,7 +245,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         height: 4,
                                         margin: const EdgeInsets.only(bottom: 28),
                                         decoration: BoxDecoration(
-                                          color: AppColors.inputBorder,
+                                          color: context.inputBorderColor,
                                           borderRadius: BorderRadius.circular(2),
                                         ),
                                       ),

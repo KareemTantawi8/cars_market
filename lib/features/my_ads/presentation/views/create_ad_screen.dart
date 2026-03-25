@@ -348,11 +348,11 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       fillColor: AppColors.inputBackground,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -375,9 +375,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.inputBackground,
+          color: context.inputBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.inputBorder),
+          border: Border.all(color: context.inputBorderColor),
         ),
         child: Row(
           children: [

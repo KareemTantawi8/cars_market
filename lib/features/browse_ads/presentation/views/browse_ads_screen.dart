@@ -15,7 +15,7 @@ import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 /// Step in the browse flow: brands → models → ads
 enum _BrowseStep { brands, models, ads }
 
-/// Browse Ads tab: show all brands → on tap show models → on tap show ads for that model
+/// Browse Ads tab: brands → models → ads
 class BrowseAdsScreen extends StatefulWidget {
   const BrowseAdsScreen({super.key});
 
@@ -27,6 +27,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
   _BrowseStep _step = _BrowseStep.brands;
   BrandModel? _selectedBrand;
   CarModelModel? _selectedModel;
+  int _stepIndex = 0;
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     setState(() {
       _selectedBrand = brand;
       _step = _BrowseStep.models;
+      _stepIndex++;
     });
     context.read<CategoryCubit>().loadModels(brand.id);
   }
@@ -51,6 +53,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     setState(() {
       _selectedModel = model;
       _step = _BrowseStep.ads;
+      _stepIndex++;
     });
     context.read<AdsListCubit>().loadAds(modelId: model.id);
   }
@@ -60,12 +63,14 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
       setState(() {
         _step = _BrowseStep.models;
         _selectedModel = null;
+        _stepIndex--;
       });
     } else if (_step == _BrowseStep.models) {
       setState(() {
         _step = _BrowseStep.brands;
         _selectedBrand = null;
         _selectedModel = null;
+        _stepIndex--;
       });
     }
   }
@@ -75,15 +80,19 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(
-          _step == _BrowseStep.brands
-              ? 'تصفح الإعلانات'
-              : _step == _BrowseStep.models
-                  ? (_selectedBrand?.displayName ?? 'اختر الموديل')
-                  : (_selectedModel?.displayName ?? 'الإعلانات'),
-          style: AppTextStyles.headingMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: context.textPrimary,
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Text(
+            _step == _BrowseStep.brands
+                ? 'تصفح الإعلانات'
+                : _step == _BrowseStep.models
+                    ? (_selectedBrand?.displayName ?? 'اختر الموديل')
+                    : (_selectedModel?.displayName ?? 'الإعلانات'),
+            key: ValueKey<_BrowseStep>(_step),
+            style: AppTextStyles.headingMedium.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.textPrimary,
+            ),
           ),
         ),
         centerTitle: true,
@@ -97,14 +106,32 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             : null,
       ),
       body: SafeArea(
-        child: _step == _BrowseStep.brands
-            ? _buildBrandsList()
-            : _step == _BrowseStep.models
-                ? _buildModelsList()
-                : _buildAdsList(),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          transitionBuilder: (child, animation) {
+            final slide = Tween<Offset>(
+              begin: const Offset(0.06, 0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+            return FadeTransition(
+              opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+              child: SlideTransition(position: slide, child: child),
+            );
+          },
+          child: KeyedSubtree(
+            key: ValueKey<int>(_stepIndex),
+            child: _step == _BrowseStep.brands
+                ? _buildBrandsList()
+                : _step == _BrowseStep.models
+                    ? _buildModelsList()
+                    : _buildAdsList(),
+          ),
+        ),
       ),
     );
   }
+
+  // ── Brands ────────────────────────────────────────────────────────────────
 
   Widget _buildBrandsList() {
     return BlocBuilder<CategoryCubit, CategoryState>(
@@ -113,53 +140,39 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
           return const Center(child: LoadingIndicator());
         }
         if (state is CategoryError && state.errorType == 'brands') {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  state.message,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => context.read<CategoryCubit>().loadBrands(),
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
+          return _buildError(
+            state.message,
+            () => context.read<CategoryCubit>().loadBrands(),
           );
         }
         List<BrandModel> brands = [];
-        if (state is CategoryLoaded) {
-          brands = state.brands;
-        }
+        if (state is CategoryLoaded) brands = state.brands;
         if (brands.isEmpty) {
           return Center(
-            child: Text(
-              'لا توجد ماركات',
-              style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-            ),
+            child: Text('لا توجد ماركات',
+                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary)),
           );
         }
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.95,
+            mainAxisSpacing: 14,
+            crossAxisSpacing: 14,
+            childAspectRatio: 0.92,
           ),
           itemCount: brands.length,
           itemBuilder: (context, index) => _BrandTile(
             brand: brands[index],
+            index: index,
             onTap: () => _onBrandTap(brands[index]),
           ),
         );
       },
     );
   }
+
+  // ── Models ────────────────────────────────────────────────────────────────
 
   Widget _buildModelsList() {
     return BlocBuilder<CategoryCubit, CategoryState>(
@@ -168,38 +181,21 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
           return const Center(child: LoadingIndicator());
         }
         if (state is CategoryError && state.errorType == 'models') {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  state.message,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    if (_selectedBrand != null) {
-                      context.read<CategoryCubit>().loadModels(_selectedBrand!.id);
-                    }
-                  },
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
+          return _buildError(
+            state.message,
+            () {
+              if (_selectedBrand != null) {
+                context.read<CategoryCubit>().loadModels(_selectedBrand!.id);
+              }
+            },
           );
         }
         List<CarModelModel> models = [];
-        if (state is CategoryLoaded) {
-          models = state.models;
-        }
+        if (state is CategoryLoaded) models = state.models;
         if (models.isEmpty) {
           return Center(
-            child: Text(
-              'لا توجد موديلات لهذه الماركة',
-              style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-            ),
+            child: Text('لا توجد موديلات لهذه الماركة',
+                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary)),
           );
         }
         return ListView.builder(
@@ -209,6 +205,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             padding: const EdgeInsets.only(bottom: 10),
             child: _ModelTile(
               model: models[index],
+              index: index,
               onTap: () => _onModelTap(models[index]),
             ),
           ),
@@ -216,6 +213,8 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
       },
     );
   }
+
+  // ── Ads ───────────────────────────────────────────────────────────────────
 
   Widget _buildAdsList() {
     return BlocConsumer<AdsListCubit, AdsListState>(
@@ -231,36 +230,21 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
           return const Center(child: LoadingIndicator());
         }
         if (state is AdsListError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  state.message,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    if (_selectedModel != null) {
-                      context.read<AdsListCubit>().loadAds(modelId: _selectedModel!.id);
-                    }
-                  },
-                  child: const Text('إعادة المحاولة'),
-                ),
-              ],
-            ),
+          return _buildError(
+            state.message,
+            () {
+              if (_selectedModel != null) {
+                context.read<AdsListCubit>().loadAds(modelId: _selectedModel!.id);
+              }
+            },
           );
         }
         if (state is AdsListLoaded) {
           final ads = state.ads;
           if (ads.isEmpty) {
             return Center(
-              child: Text(
-                'لا توجد إعلانات لهذا الموديل',
-                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-              ),
+              child: Text('لا توجد إعلانات لهذا الموديل',
+                  style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary)),
             );
           }
           return ListView.builder(
@@ -268,7 +252,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             itemCount: ads.length,
             itemBuilder: (context, index) => Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _BrowseAdCard(ad: ads[index]),
+              child: _AdCard(ad: ads[index], index: index),
             ),
           );
         }
@@ -276,16 +260,64 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
       },
     );
   }
+
+  Widget _buildError(String message, VoidCallback onRetry) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(message,
+              style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+              textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          TextButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+        ],
+      ),
+    );
+  }
 }
 
-class _BrandTile extends StatelessWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// Brand Tile – staggered entrance + press scale
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BrandTile extends StatefulWidget {
   final BrandModel brand;
+  final int index;
   final VoidCallback onTap;
 
-  const _BrandTile({required this.brand, required this.onTap});
+  const _BrandTile({required this.brand, required this.index, required this.onTap});
+
+  @override
+  State<_BrandTile> createState() => _BrandTileState();
+}
+
+class _BrandTileState extends State<_BrandTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pressCtrl;
+  late final Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _pressCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.93).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pressCtrl.dispose();
+    super.dispose();
+  }
 
   String? get _imageUrl {
-    final path = brand.logo;
+    final path = widget.brand.logo;
     if (path == null || path.isEmpty) return null;
     if (path.startsWith('http')) return path;
     return '${AppConstants.storageBaseUrl}/$path';
@@ -293,19 +325,67 @@ class _BrandTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: context.cardBg,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    // Staggered entrance: each tile cascades 55 ms after the previous (capped)
+    final staggerMs = (widget.index * 55).clamp(0, 550);
+    final totalMs = 380 + staggerMs;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: totalMs),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        // Apply individual delay: animation only starts after stagger fraction
+        final delayFrac = staggerMs / totalMs;
+        final animated = ((value - delayFrac) / (1.0 - delayFrac)).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: animated,
+          child: Transform.translate(
+            offset: Offset(0, 28.0 * (1.0 - animated)),
+            child: child,
+          ),
+        );
+      },
+      child: GestureDetector(
+        onTapDown: (_) => _pressCtrl.forward(),
+        onTapUp: (_) {
+          _pressCtrl.reverse();
+          widget.onTap();
+        },
+        onTapCancel: () => _pressCtrl.reverse(),
+        child: AnimatedBuilder(
+          animation: _scaleAnim,
+          builder: (context, child) =>
+              Transform.scale(scale: _scaleAnim.value, child: child),
+          child: _buildCard(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(17),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // Logo area
             Expanded(
               flex: 3,
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 child: _imageUrl != null
                     ? CachedNetworkImage(
                         imageUrl: _imageUrl!,
@@ -316,13 +396,24 @@ class _BrandTile extends StatelessWidget {
                     : _placeholder(context),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
+            // Label bar
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.07),
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.primaryColor.withOpacity(0.12),
+                  ),
+                ),
+              ),
               child: Text(
-                brand.displayName,
+                widget.brand.displayName,
                 style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: context.textPrimary,
+                  fontSize: 13,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 1,
@@ -337,47 +428,130 @@ class _BrandTile extends StatelessWidget {
 
   Widget _placeholder(BuildContext context) {
     return Center(
-      child: Icon(Icons.directions_car_outlined, size: 48, color: context.textHint),
-    );
-  }
-}
-
-class _ModelTile extends StatelessWidget {
-  final CarModelModel model;
-  final VoidCallback onTap;
-
-  const _ModelTile({required this.model, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: context.cardBg,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        title: Text(
-          model.displayName,
-          style: AppTextStyles.bodyLarge.copyWith(
-            fontWeight: FontWeight.w600,
-            color: context.textPrimary,
-          ),
-          textAlign: TextAlign.right,
-        ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: context.textHint),
-        onTap: onTap,
+      child: Icon(
+        Icons.directions_car_outlined,
+        size: 44,
+        color: AppColors.primaryColor.withOpacity(0.25),
       ),
     );
   }
 }
 
-class _BrowseAdCard extends StatelessWidget {
-  final AdModel ad;
+// ─────────────────────────────────────────────────────────────────────────────
+// Model Tile – staggered slide-in + press scale
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const _BrowseAdCard({required this.ad});
+class _ModelTile extends StatefulWidget {
+  final CarModelModel model;
+  final int index;
+  final VoidCallback onTap;
+
+  const _ModelTile({required this.model, required this.index, required this.onTap});
+
+  @override
+  State<_ModelTile> createState() => _ModelTileState();
+}
+
+class _ModelTileState extends State<_ModelTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final staggerMs = (widget.index * 40).clamp(0, 480);
+    final totalMs = 350 + staggerMs;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: totalMs),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final delayFrac = staggerMs / totalMs;
+        final animated = ((value - delayFrac) / (1.0 - delayFrac)).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: animated,
+          child: Transform.translate(
+            offset: Offset(18.0 * (1.0 - animated), 0),
+            child: child,
+          ),
+        );
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            widget.onTap();
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: context.inputBorderColor.withOpacity(0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                title: Text(
+                  widget.model.displayName,
+                  style: AppTextStyles.bodyLarge.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: context.textPrimary,
+                  ),
+                  textAlign: TextAlign.right,
+                ),
+                trailing: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryColor.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: AppColors.primaryColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ad Card – staggered fade-up + press scale
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdCard extends StatefulWidget {
+  final AdModel ad;
+  final int index;
+
+  const _AdCard({required this.ad, required this.index});
+
+  @override
+  State<_AdCard> createState() => _AdCardState();
+}
+
+class _AdCardState extends State<_AdCard> {
+  bool _pressed = false;
 
   String? get _imageUrl {
-    final path = ad.firstImageUrl;
+    final path = widget.ad.firstImageUrl;
     if (path == null || path.isEmpty) return null;
     if (path.startsWith('http')) return path;
     return '${AppConstants.storageBaseUrl}/$path';
@@ -385,35 +559,64 @@ class _BrowseAdCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        AppRoutes.adDetails,
-        arguments: {'adId': ad.id},
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: SizedBox(
-            height: 120,
-            child: Row(
-              textDirection: TextDirection.rtl,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildImage(context),
-                Expanded(child: _buildInfo(context)),
+    final staggerMs = (widget.index * 45).clamp(0, 450);
+    final totalMs = 380 + staggerMs;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: totalMs),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final delayFrac = staggerMs / totalMs;
+        final animated = ((value - delayFrac) / (1.0 - delayFrac)).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: animated,
+          child: Transform.translate(
+            offset: Offset(0, 16.0 * (1.0 - animated)),
+            child: child,
+          ),
+        );
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeInOut,
+        child: GestureDetector(
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) {
+            setState(() => _pressed = false);
+            Navigator.pushNamed(
+              context,
+              AppRoutes.adDetails,
+              arguments: {'adId': widget.ad.id},
+            );
+          },
+          onTapCancel: () => setState(() => _pressed = false),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
               ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: SizedBox(
+                height: 120,
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildImage(context),
+                    Expanded(child: _buildInfo(context)),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -444,7 +647,7 @@ class _BrowseAdCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            ad.title,
+            widget.ad.title,
             style: AppTextStyles.bodyLarge.copyWith(
               fontWeight: FontWeight.bold,
               color: context.textPrimary,
@@ -462,7 +665,7 @@ class _BrowseAdCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Text(
-              ad.priceFormatted,
+              widget.ad.priceFormatted,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.primaryColor,
                 fontWeight: FontWeight.w700,

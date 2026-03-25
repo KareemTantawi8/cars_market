@@ -547,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
             color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: AppColors.inputBorder,
+              color: context.inputBorderColor,
             ),
           ),
           child: Row(

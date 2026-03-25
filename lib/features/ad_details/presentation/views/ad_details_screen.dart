@@ -406,7 +406,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inputBorder),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -491,7 +491,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.inputBorder),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -644,7 +644,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             decoration: BoxDecoration(
               color: context.cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.inputBorder),
+              border: Border.all(color: context.inputBorderColor),
             ),
             child: Row(
               children: [
@@ -709,7 +709,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             decoration: BoxDecoration(
               color: context.cardBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.inputBorder),
+              border: Border.all(color: context.inputBorderColor),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -794,7 +794,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 label: const Text('اتصال'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: context.textPrimary,
-                  side: const BorderSide(color: AppColors.inputBorder),
+                  side: BorderSide(color: context.inputBorderColor),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -868,7 +868,7 @@ class _SimilarAdCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.inputBorder),
+            border: Border.all(color: context.inputBorderColor),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

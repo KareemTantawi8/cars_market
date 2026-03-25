@@ -338,7 +338,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                         hintText: 'أكتب رسالة...',
                         hintStyle: AppTextStyles.inputHint,
                         filled: true,
-                        fillColor: AppColors.inputBackground,
+                        fillColor: context.inputBg,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
                           borderSide: BorderSide.none,

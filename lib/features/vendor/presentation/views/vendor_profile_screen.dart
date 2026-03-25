@@ -360,7 +360,7 @@ class VendorProfileScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.surfaceBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.inputBorder),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Text(
         serviceName,
@@ -561,7 +561,7 @@ class VendorProfileScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: context.surfaceBg,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.inputBorder),
+              border: Border.all(color: context.inputBorderColor),
             ),
             child: Stack(
               children: [

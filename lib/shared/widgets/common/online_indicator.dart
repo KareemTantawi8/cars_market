@@ -21,7 +21,7 @@ class OnlineIndicator extends StatelessWidget {
         color: isOnline ? AppColors.online : AppColors.offline,
         shape: BoxShape.circle,
         border: Border.all(
-          color: AppColors.backgroundColor,
+          color: Theme.of(context).scaffoldBackgroundColor,
           width: 2,
         ),
       ),

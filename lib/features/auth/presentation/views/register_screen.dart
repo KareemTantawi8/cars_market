@@ -349,7 +349,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         margin:
                                             const EdgeInsets.only(bottom: 24),
                                         decoration: BoxDecoration(
-                                          color: AppColors.inputBorder,
+                                          color: context.inputBorderColor,
                                           borderRadius:
                                               BorderRadius.circular(2),
                                         ),
@@ -390,11 +390,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        color: AppColors.inputBackground,
+                                        color: context.inputBg,
                                         borderRadius:
                                             BorderRadius.circular(14),
                                         border: Border.all(
-                                            color: AppColors.inputBorder),
+                                            color: context.inputBorderColor),
                                       ),
                                       child: SegmentControl<String>(
                                         segments: const [
@@ -973,16 +973,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       prefixIcon: Icon(icon, color: context.textSecondary, size: 22),
       suffixIcon: suffix,
       filled: true,
-      fillColor: AppColors.inputBackground,
+      fillColor: context.inputBg,
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

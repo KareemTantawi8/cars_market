@@ -427,9 +427,9 @@ class _EditAdScreenState extends State<EditAdScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: AppColors.inputBackground,
+          color: context.inputBg,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.inputBorder),
+          border: Border.all(color: context.inputBorderColor),
         ),
         child: Row(
           children: [
@@ -451,14 +451,14 @@ class _EditAdScreenState extends State<EditAdScreen> {
       hintText: hint,
       hintStyle: AppTextStyles.inputHint,
       filled: true,
-      fillColor: AppColors.inputBackground,
+      fillColor: context.inputBg,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBorder),
+        borderSide: BorderSide(color: context.inputBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

@@ -104,17 +104,17 @@ class _SendMessageDialogState extends State<SendMessageDialog> {
                   hintText: 'اكتب تفاصيل العرض أو استفسار للعميل...',
                   hintStyle: AppTextStyles.inputHint,
                   filled: true,
-                  fillColor: AppColors.inputBackground,
+                  fillColor: context.inputBg,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.inputBorder,
+                    borderSide: BorderSide(
+                      color: context.inputBorderColor,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: AppColors.inputBorder,
+                    borderSide: BorderSide(
+                      color: context.inputBorderColor,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(

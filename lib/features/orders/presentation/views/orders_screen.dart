@@ -90,7 +90,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
               decoration: BoxDecoration(
                 color: context.cardBg,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.inputBorder),
+                border: Border.all(color: context.inputBorderColor),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
