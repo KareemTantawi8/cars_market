@@ -140,6 +140,7 @@ class RegisterCubit extends Cubit<RegisterState> {
     required String companyName,
     required int governorateId,
     String deviceName = 'Mobile',
+    String? shopPhone,
   }) async {
     emit(RegisterLoading());
 
@@ -205,6 +206,7 @@ class RegisterCubit extends Cubit<RegisterState> {
         companyName: companyName.trim(),
         governorateId: governorateId,
         deviceName: deviceName,
+        shopPhone: shopPhone?.trim().isEmpty == true ? null : shopPhone?.trim(),
       );
 
       // Call API

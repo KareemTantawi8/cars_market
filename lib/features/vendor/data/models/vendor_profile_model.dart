@@ -13,6 +13,8 @@ class VendorProfileModel {
   final List<String> supportedBrands;
   final List<String> availableServices;
   final String? phone;
+  /// رقم المحل / التواصل (قد يختلف عن رقم الحساب)
+  final String? shopPhone;
   final String? whatsapp;
   final String? address;
   final String? governorate;
@@ -40,6 +42,7 @@ class VendorProfileModel {
       supportedBrands: supportedBrands,
       availableServices: availableServices,
       phone: phone,
+      shopPhone: shopPhone,
       whatsapp: whatsapp,
       address: address,
       governorate: governorate,
@@ -65,6 +68,7 @@ class VendorProfileModel {
     required this.supportedBrands,
     required this.availableServices,
     this.phone,
+    this.shopPhone,
     this.whatsapp,
     this.address,
     this.governorate,
@@ -184,10 +188,12 @@ class VendorProfileModel {
                    (json['review_count'] as num?)?.toInt() ?? 0,
       supportedBrands: brands,
       availableServices: services,
-      phone: json['phone'] as String? ?? 
-             json['mobile'] as String? ?? 
+      phone: json['phone'] as String? ??
+             json['mobile'] as String? ??
              json['phone_number'] as String?,
-      whatsapp: json['whatsapp'] as String? ?? 
+      shopPhone: json['shop_phone'] as String? ??
+                 json['shop_mobile'] as String?,
+      whatsapp: json['whatsapp'] as String? ??
                 json['whatsapp_number'] as String? ?? 
                 json['phone'], // Fallback to phone if whatsapp not available
       address: addressStr,
@@ -222,6 +228,7 @@ class VendorProfileModel {
       'supported_brands': supportedBrands,
       'available_services': availableServices,
       if (phone != null) 'phone': phone,
+      if (shopPhone != null) 'shop_phone': shopPhone,
       if (whatsapp != null) 'whatsapp': whatsapp,
       if (address != null) 'address': address,
       if (governorate != null) 'governorate': governorate,

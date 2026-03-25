@@ -175,13 +175,6 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 return const SizedBox.shrink();
               },
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Create new chat
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: Icon(Icons.add, color: context.textPrimary),
-      ),
     );
   }
 }

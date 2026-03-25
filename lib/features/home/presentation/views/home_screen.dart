@@ -17,6 +17,7 @@ import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
 import '../../data/models/supplier_model.dart';
+import '../../../../shared/widgets/common/notification_bell.dart';
 
 /// Home Screen (User)
 class HomeScreen extends StatefulWidget {
@@ -358,31 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Notification Bell
-          Stack(
-            children: [
-              IconButton(
-                icon: Icon(
-                  Icons.notifications_outlined,
-                  color: context.textPrimary,
-                ),
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.notifications);
-                },
-              ),
-              Positioned(
-                right: 8,
-                top: 8,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.notificationDot,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          NotificationBell(iconColor: context.textPrimary),
           // Title
           Text(
             'سوق القطع',

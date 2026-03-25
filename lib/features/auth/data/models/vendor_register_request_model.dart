@@ -1,6 +1,7 @@
 /// Vendor Register Request Model
 /// API: name, phone, password, password_confirmation, device_name,
-///      company_name, governorate_id, address (optional), category_ids (optional)
+///      company_name, governorate_id, address (optional), category_ids (optional),
+///      shop_phone (optional)
 class VendorRegisterRequestModel {
   final String name;
   final String phone;
@@ -11,6 +12,8 @@ class VendorRegisterRequestModel {
   final int governorateId;
   final String? address;
   final List<int>? categoryIds;
+  /// رقم المحل / رقم التواصل المختلف عن رقم التسجيل
+  final String? shopPhone;
 
   VendorRegisterRequestModel({
     required this.name,
@@ -22,6 +25,7 @@ class VendorRegisterRequestModel {
     this.deviceName = 'Mobile',
     this.address,
     this.categoryIds,
+    this.shopPhone,
   });
 
   /// Convert to JSON for API request (snake_case)
@@ -37,6 +41,7 @@ class VendorRegisterRequestModel {
     };
     if (address != null && address!.trim().isNotEmpty) map['address'] = address!.trim();
     if (categoryIds != null && categoryIds!.isNotEmpty) map['category_ids'] = categoryIds;
+    if (shopPhone != null && shopPhone!.trim().isNotEmpty) map['shop_phone'] = shopPhone!.trim();
     return map;
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -298,10 +299,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                     return Container(
                     color: context.cardBg,
                     child: url != null
-                        ? Image.network(
-                            url,
+                        ? CachedNetworkImage(
+                            imageUrl: url,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                            placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+                            errorWidget: (_, __, ___) => _imagePlaceholder(),
                           )
                         : _imagePlaceholder(),
                   );
@@ -625,7 +627,19 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             style: AppTextStyles.headingSmall,
           ),
           const SizedBox(height: 12),
-          Container(
+          InkWell(
+            onTap: ad.sellerId != null
+                ? () => Navigator.pushNamed(
+                      context,
+                      AppRoutes.vendorProfile,
+                      arguments: {
+                        'vendorId': ad.sellerId,
+                        'vendorName': ad.sellerName,
+                      },
+                    )
+                : null,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: context.cardBg,
@@ -651,6 +665,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                         rating: ad.sellerRating,
                         size: 16,
                         reviewCount: ad.sellerReviewCount,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'عرض البروفايل',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primaryColor,
+                        ),
                       ),
                     ],
                   ),
@@ -680,6 +701,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 ),
               ],
             ),
+          ),
           ),
           const SizedBox(height: 12),
           Container(

@@ -187,7 +187,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
 
           if (state is NotificationsLoaded) {
-            if (state.notifications.isEmpty) {
+            // Separate chat messages from other notifications
+            final notifications = state.notifications
+                .where((n) => n['type']?.toString() != 'new_message')
+                .toList();
+            if (notifications.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -216,7 +220,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             final yesterdayNotifications = <Map<String, dynamic>>[];
             final olderNotifications = <Map<String, dynamic>>[];
 
-            for (final notification in state.notifications) {
+            for (final notification in notifications) {
               final createdAt = notification['created_at']?.toString();
               if (createdAt == null) continue;
 
@@ -297,13 +301,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           return const SizedBox.shrink();
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Create new notification or action
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: Icon(Icons.add, color: context.textPrimary),
       ),
     );
   }

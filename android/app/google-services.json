@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "223042277147",
+    "project_id": "w4slinder",
+    "storage_bucket": "w4slinder.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223042277147:android:0e4f6f0e1496d3e9cc8dbe",
+        "android_client_info": {
+          "package_name": "com.washslender.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZayyBv3wn2DR74K1yND52nc8bRPnBAl4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

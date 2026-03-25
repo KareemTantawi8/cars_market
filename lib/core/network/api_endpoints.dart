@@ -23,6 +23,8 @@ class ApiEndpoints {
   // User
   // GET /api/v1/user/profile
   static const String userProfile = '$basePath/user/profile';
+  // POST /api/v1/user/fcm-token - Update FCM device token for push notifications
+  static const String updateFcmToken = '$basePath/user/fcm-token';
   // GET /api/v1/users/:id - Get user/vendor profile by ID
   static String userProfileById(int userId) => '$basePath/users/$userId';
   // PUT /api/v1/user/profile

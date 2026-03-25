@@ -14,13 +14,19 @@ class NotificationsLoaded extends NotificationsState {
   final int lastPage;
   final int total;
   final bool hasMore;
-  
+
   NotificationsLoaded({
     required this.notifications,
     required this.currentPage,
     required this.lastPage,
     required this.total,
   }) : hasMore = currentPage < lastPage;
+
+  /// Count of unread notifications (excluding chat messages)
+  int get unreadCount => notifications
+      .where((n) =>
+          n['read_at'] == null && n['type']?.toString() != 'new_message')
+      .length;
 }
 
 class NotificationsError extends NotificationsState {

@@ -109,6 +109,12 @@ class VendorProfileScreen extends StatelessWidget {
                 if (profile.availableServices.isNotEmpty)
                   _buildAvailableServicesSection(context, profile.availableServices),
                 if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
+                // Shop phone (if different from account phone)
+                if (profile.shopPhone != null &&
+                    profile.shopPhone!.isNotEmpty) ...[
+                  _buildShopPhoneRow(context, profile.shopPhone!),
+                  const SizedBox(height: 16),
+                ],
                 // Action Buttons (WhatsApp only)
                 _buildActionButtons(context, profile),
                 const SizedBox(height: 24),
@@ -359,6 +365,69 @@ class VendorProfileScreen extends StatelessWidget {
       child: Text(
         serviceName,
         style: AppTextStyles.bodySmall,
+      ),
+    );
+  }
+
+  Widget _buildShopPhoneRow(BuildContext context, String shopPhone) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.success.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.phone_outlined,
+                color: AppColors.success, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'رقم المحل',
+                  style: AppTextStyles.caption
+                      .copyWith(color: context.textSecondary),
+                ),
+                Text(
+                  shopPhone,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              final uri = Uri.parse('tel:$shopPhone');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.success,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text(
+                'اتصال',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

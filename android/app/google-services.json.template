@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "YOUR_PROJECT_ID",
+    "storage_bucket": "YOUR_PROJECT_ID.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "YOUR_MOBILESDK_APP_ID",
+        "android_client_info": {
+          "package_name": "com.washslender.app"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "YOUR_API_KEY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+
+// ============================================================
+// HOW TO GET THE REAL FILE:
+// 1. Go to https://console.firebase.google.com
+// 2. Create project → name it "wesh-sylinder"
+// 3. Click "Add app" → Android
+// 4. Android package name: com.washslender.app
+// 5. Download google-services.json
+// 6. Copy it here (same folder) as: google-services.json
+// 7. Delete this template file
+// ============================================================

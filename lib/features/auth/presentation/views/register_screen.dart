@@ -27,6 +27,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   final _companyNameController = TextEditingController();
+  final _shopPhoneController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirmation = true;
   String _selectedUserType = AppConstants.userTypeCustomer;
@@ -39,6 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _passwordConfirmationController.dispose();
     _companyNameController.dispose();
+    _shopPhoneController.dispose();
     super.dispose();
   }
 
@@ -65,6 +67,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           passwordConfirmation: _passwordConfirmationController.text,
           companyName: _companyNameController.text,
           governorateId: _selectedGovernorate!.id,
+          shopPhone: _shopPhoneController.text.trim().isEmpty
+              ? null
+              : _shopPhoneController.text.trim(),
         );
       }
     }
@@ -677,6 +682,25 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           }
                                           return null;
                                         },
+                                      ),
+                                      const SizedBox(height: 18),
+
+                                      // ── Shop phone (optional) ─────────────
+                                      _FieldLabel(label: 'رقم المحل (اختياري)'),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        controller: _shopPhoneController,
+                                        keyboardType: TextInputType.phone,
+                                        textInputAction: TextInputAction.next,
+                                        inputFormatters: [
+                                          FilteringTextInputFormatter.digitsOnly
+                                        ],
+                                        style: AppTextStyles.input,
+                                        decoration: _inputDeco(
+                                          hint: 'رقم للتواصل يختلف عن رقم التسجيل',
+                                          icon: Icons.store_outlined,
+                                          context: context,
+                                        ),
                                       ),
                                       const SizedBox(height: 18),
 

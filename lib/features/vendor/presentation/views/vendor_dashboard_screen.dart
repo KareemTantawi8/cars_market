@@ -13,6 +13,7 @@ import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
+import '../../../../shared/widgets/common/notification_bell.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
 import '../../data/repositories/vendor_profile_repository.dart';
@@ -85,15 +86,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       pinned: true,
       backgroundColor: AppColors.primaryDark,
       elevation: 0,
-      // Only notification bell — share / settings / favorite removed
       actions: [
-        Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () =>
-                Navigator.pushNamed(context, AppRoutes.notifications),
-          ),
+        const Padding(
+          padding: EdgeInsets.only(left: 8),
+          child: NotificationBell(iconColor: Colors.white),
         ),
       ],
       automaticallyImplyLeading: false,
@@ -301,13 +297,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             _buildStatsRow(context, profile),
             const SizedBox(height: 28),
 
-            // Brands
-            if (profile.supportedBrands.isNotEmpty) ...[
-              _buildSectionHeader('الماركات المدعومة'),
-              const SizedBox(height: 14),
-              _buildBrandsRow(profile.supportedBrands),
-              const SizedBox(height: 28),
-            ],
+            // Brands — always visible so vendor knows where to manage them
+            _buildBrandsSectionWithManage(context, profile.supportedBrands),
+            const SizedBox(height: 28),
 
             // Services
             if (profile.availableServices.isNotEmpty) ...[
@@ -325,6 +317,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
             // Performance
             _buildPerformanceCard(context, profile),
+            const SizedBox(height: 16),
+
+            // Messaging
+            _buildMessagingCard(context),
             const SizedBox(height: 28),
 
             // Account
@@ -497,6 +493,101 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 
   // ─── Brands ───────────────────────────────────────────────────────────────
+
+  Widget _buildBrandsSectionWithManage(
+      BuildContext context, List<String> brands) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildSectionHeader('ماركاتي')),
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.edit_outlined,
+                        size: 14, color: AppColors.primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'تعديل',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: AppColors.primaryColor.withOpacity(0.15), width: 1),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline,
+                  size: 15, color: AppColors.primaryColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'الإشعارات ستصلك فقط للطلبات المتعلقة بماركاتك',
+                  style: AppTextStyles.caption
+                      .copyWith(color: AppColors.primaryColor),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (brands.isEmpty)
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppColors.inputBorder,
+                    style: BorderStyle.solid,
+                    width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.add_circle_outline,
+                      color: context.textSecondary, size: 30),
+                  const SizedBox(height: 8),
+                  Text(
+                    'أضف الماركات التي تتعامل معها',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: context.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          _buildBrandsRow(brands),
+      ],
+    );
+  }
 
   Widget _buildBrandsRow(List<String> brands) {
     return SizedBox(
@@ -844,6 +935,54 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       ),
                       child: const Icon(Icons.navigation_outlined,
                           color: AppColors.primaryColor, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(
+                height: 1,
+                indent: 16,
+                endIndent: 16,
+                color: context.textSecondary.withOpacity(0.1)),
+          ],
+
+          // ── Shop phone ─────────────────────────────────────────────────
+          if (profile.shopPhone != null &&
+              profile.shopPhone!.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.phone_outlined,
+                        color: AppColors.success, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'رقم المحل',
+                          style: AppTextStyles.caption.copyWith(
+                            color: context.textSecondary,
+                          ),
+                        ),
+                        Text(
+                          profile.shopPhone!,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: context.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1259,6 +1398,79 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         .trim();
   }
 
+  // ─── Messaging card ───────────────────────────────────────────────────────
+
+  Widget _buildMessagingCard(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.chatList),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: context.cardBg,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.chat_bubble_outline_rounded,
+                    color: AppColors.primaryColor, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'الرسائل',
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'تواصل مع العملاء',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.arrow_forward_ios,
+                    color: AppColors.primaryColor, size: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ─── Account card ─────────────────────────────────────────────────────────
   // Removed: edit profile, change password, theme toggle (white/dark)
   // Kept: notifications, logout
@@ -1285,6 +1497,18 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             title: 'الإشعارات',
             isFirst: true,
             onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
+          ),
+          Divider(
+            height: 1,
+            indent: 68,
+            color: context.textSecondary.withOpacity(0.1),
+          ),
+          _buildAccountTile(
+            icon: Icons.chat_bubble_outline_rounded,
+            iconBg: AppColors.primaryColor.withOpacity(0.1),
+            iconColor: AppColors.primaryColor,
+            title: 'الرسائل',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.chatList),
           ),
           Divider(
             height: 1,
