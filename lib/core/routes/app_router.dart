@@ -34,6 +34,8 @@ import '../../features/ads/data/models/ad_model.dart';
 import '../../features/orders/presentation/views/orders_screen.dart';
 import '../../features/permissions/presentation/views/permissions_screen.dart';
 import '../../features/permissions/presentation/cubit/permissions_cubit.dart';
+import '../../features/home/presentation/views/my_search_requests_screen.dart';
+import '../../features/home/presentation/cubit/search_requests_cubit.dart';
 
 /// Application Router
 class AppRouter {
@@ -226,6 +228,14 @@ class AppRouter {
           builder: (_) => BlocProvider(
             create: (_) => PermissionsCubit(),
             child: const PermissionsScreen(),
+          ),
+        );
+
+      case AppRoutes.mySearchRequests:
+        return MaterialPageRoute(
+          builder: (_) => BlocProvider(
+            create: (_) => SearchRequestsCubit()..getMySearchRequests(),
+            child: const MySearchRequestsScreen(),
           ),
         );
 

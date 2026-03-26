@@ -12,6 +12,9 @@ import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../cubit/vendor_profile_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
+import '../../../chat/data/repositories/chat_repository.dart';
+import '../../../home/data/repositories/search_requests_repository.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
 
 /// Vendor Profile Screen
 class VendorProfileScreen extends StatelessWidget {
@@ -444,17 +447,7 @@ class VendorProfileScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                // Navigate to chat - if chat doesn't exist, it will be created
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.chatRoom,
-                  arguments: {
-                    'chatId': profile.id.toString(),
-                    'chatName': profile.name,
-                  },
-                );
-              },
+              onPressed: () => _openChatWithVendor(context, profile),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
                 foregroundColor: context.textPrimary,
@@ -509,6 +502,27 @@ class VendorProfileScreen extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          // Rate Vendor Button
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _showRatingDialog(context, profile),
+              icon: const Icon(Icons.star_outline, size: 20),
+              label: const Text(
+                'تقييم التاجر',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.ratingStar,
+                side: const BorderSide(color: AppColors.ratingStar),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ],
       );
     } else {
@@ -553,97 +567,148 @@ class VendorProfileScreen extends StatelessWidget {
           style: AppTextStyles.headingSmall,
         ),
         const SizedBox(height: 16),
-        // Map Placeholder (can be replaced with Google Maps widget)
-        GestureDetector(
-          onTap: () => _openGoogleMaps(profile.latitude, profile.longitude, profile.address),
-          child: Container(
-            height: 150,
-            decoration: BoxDecoration(
-              color: context.surfaceBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.inputBorderColor),
-            ),
-            child: Stack(
-              children: [
-                Center(
-                  child: Icon(
-                    Icons.map,
-                    size: 48,
-                    color: context.textSecondary,
-                  ),
-                ),
-                if (profile.latitude != null && profile.longitude != null)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        Icons.location_on,
-                        color: context.textPrimary,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+        // Address card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: context.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.inputBorderColor),
           ),
-        ),
-        if (profile.address != null) ...[
-          const SizedBox(height: 16),
-          // Address
-          Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: context.surfaceBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_forward,
-                    color: AppColors.primaryColor,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.location_on_outlined,
+                      color: AppColors.primaryColor,
+                      size: 22,
+                    ),
                   ),
-                  onPressed: () => _openGoogleMaps(
-                    profile.latitude,
-                    profile.longitude,
-                    profile.address,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (profile.governorate != null && profile.governorate!.isNotEmpty)
+                          Text(
+                            profile.governorate!,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        if (profile.address != null && profile.address!.isNotEmpty) ...[
+                          if (profile.governorate != null) const SizedBox(height: 4),
+                          Text(
+                            profile.address!,
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: context.textSecondary,
+                            ),
+                          ),
+                        ],
+                        if (profile.latitude != null && profile.longitude != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '${profile.latitude!.toStringAsFixed(5)}, ${profile.longitude!.toStringAsFixed(5)}',
+                            style: AppTextStyles.caption.copyWith(
+                              color: context.textHint,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (profile.governorate != null)
-                      Text(
-                        profile.governorate!,
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.bold,
+              const SizedBox(height: 16),
+              // Map & Directions buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _openGoogleMaps(
+                        profile.latitude,
+                        profile.longitude,
+                        profile.address,
+                      ),
+                      icon: const Icon(Icons.map_outlined, size: 18),
+                      label: const Text('الخريطة'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryColor,
+                        side: BorderSide(color: AppColors.primaryColor),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                    const SizedBox(height: 4),
-                    Text(
-                      profile.address!,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: context.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openGoogleMapsDirections(
+                        profile.latitude,
+                        profile.longitude,
+                        profile.address,
+                      ),
+                      icon: const Icon(Icons.directions_outlined, size: 18),
+                      label: const Text('الاتجاهات'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryColor,
+                        foregroundColor: context.textPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ],
     );
+  }
+
+  Future<void> _openChatWithVendor(
+      BuildContext context, VendorProfileModel profile) async {
+    try {
+      final chatId = await ChatRepository().findChatIdForVendor(profile.id);
+
+      if (!context.mounted) return;
+
+      if (chatId != null) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.chatRoom,
+          arguments: {
+            'chatId': chatId.toString(),
+            'chatName': profile.name,
+          },
+        );
+      } else {
+        CustomToast.showInfo(
+          context,
+          'لا توجد محادثة مع هذا التاجر بعد. أرسل طلباً وسيتواصل معك التاجر.',
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
+      }
+    }
   }
 
   Future<void> _openWhatsApp(String? phoneNumber) async {
@@ -665,15 +730,153 @@ class VendorProfileScreen extends StatelessWidget {
 
   Future<void> _openGoogleMaps(double? lat, double? lng, String? address) async {
     if (lat != null && lng != null) {
-      // Open Google Maps with coordinates
       final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     } else if (address != null && address.isNotEmpty) {
-      // Open Google Maps with address search
       final encodedAddress = Uri.encodeComponent(address);
       final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedAddress');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    }
+  }
+
+  Future<void> _showRatingDialog(
+      BuildContext context, VendorProfileModel profile) async {
+    // Fetch customer's search requests, find one for this vendor
+    List<Map<String, dynamic>> requests;
+    try {
+      requests = await SearchRequestsRepository().getMySearchRequests();
+    } catch (_) {
+      if (context.mounted) {
+        CustomToast.showError(context, 'تعذّر تحميل الطلبات، حاول مرة أخرى.');
+      }
+      return;
+    }
+
+    // Find accepted/unrated request for this vendor
+    final target = requests.firstWhere(
+      (r) {
+        final status = r['status'] as String?;
+        final hasRating = r['rating'] != null;
+        final vendorId = (r['vendor'] as Map?)?['id'] ??
+            (r['accepted_by'] as Map?)?['id'];
+        final vendorUserId = vendorId is num ? vendorId.toInt() : int.tryParse(vendorId?.toString() ?? '');
+        return (status == 'accepted' || status == 'completed') &&
+            !hasRating &&
+            vendorUserId == profile.id;
+      },
+      orElse: () => {},
+    );
+
+    if (target.isEmpty) {
+      if (context.mounted) {
+        CustomToast.showInfo(
+            context, 'لا توجد طلبات مكتملة مع هذا التاجر للتقييم.');
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    int selectedRating = 0;
+    final reviewController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text('تقييم ${profile.name}',
+              style: AppTextStyles.headingSmall),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Stars
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (i) {
+                  final star = i + 1;
+                  return GestureDetector(
+                    onTap: () => setDialogState(() => selectedRating = star),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(
+                        star <= selectedRating
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: AppColors.ratingStar,
+                        size: 36,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: reviewController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'أضف تعليقاً (اختياري)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: selectedRating == 0
+                  ? null
+                  : () async {
+                      Navigator.of(dialogContext).pop();
+                      try {
+                        await SearchRequestsRepository().rateSearchRequest(
+                          requestId: target['id'] as int,
+                          rating: selectedRating,
+                          review: reviewController.text.trim().isEmpty
+                              ? null
+                              : reviewController.text.trim(),
+                        );
+                        if (context.mounted) {
+                          CustomToast.showSuccess(
+                              context, 'تم إرسال التقييم بنجاح!');
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          CustomToast.showError(
+                              context, 'تعذّر إرسال التقييم: $e');
+                        }
+                      } finally {
+                        reviewController.dispose();
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryColor,
+              ),
+              child: const Text('إرسال'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openGoogleMapsDirections(double? lat, double? lng, String? address) async {
+    if (lat != null && lng != null) {
+      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      }
+    } else if (address != null && address.isNotEmpty) {
+      final encodedAddress = Uri.encodeComponent(address);
+      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$encodedAddress');
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }

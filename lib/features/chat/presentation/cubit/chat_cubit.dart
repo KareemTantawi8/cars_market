@@ -59,14 +59,16 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
-  /// Get chat details
-  Future<void> getChatDetails(int chatId) async {
+  /// Get chat details — returns true on success, false on failure
+  Future<bool> getChatDetails(int chatId) async {
     emit(ChatLoading());
     try {
       final chat = await _repository.getChatDetails(chatId);
       emit(ChatDetailsLoaded(chat));
+      return true;
     } catch (e) {
       emit(ChatError(e.toString().replaceAll('Exception: ', '')));
+      return false;
     }
   }
 

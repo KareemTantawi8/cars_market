@@ -556,32 +556,69 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         ),
         const SizedBox(height: 14),
         if (brands.isEmpty)
-          GestureDetector(
-            onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              decoration: BoxDecoration(
-                color: context.cardBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: context.inputBorderColor,
-                    style: BorderStyle.solid,
-                    width: 1.5),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.add_circle_outline,
-                      color: context.textSecondary, size: 30),
-                  const SizedBox(height: 8),
-                  Text(
-                    'أضف الماركات التي تتعامل معها',
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: context.textSecondary),
+          Row(
+            children: [
+              // Profile button
+              Expanded(
+                child: GestureDetector(
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.profile),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: context.cardBg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: context.inputBorderColor, width: 1.5),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.person_outline,
+                            color: AppColors.primaryColor, size: 28),
+                        const SizedBox(height: 6),
+                        Text(
+                          'الملف الشخصي',
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              // Add brand button
+              Expanded(
+                child: GestureDetector(
+                  onTap: () =>
+                      Navigator.pushNamed(context, AppRoutes.profile),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: AppColors.primaryColor.withOpacity(0.25),
+                          width: 1.5),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            color: AppColors.primaryColor, size: 28),
+                        const SizedBox(height: 6),
+                        Text(
+                          'إضافة ماركة',
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.primaryColor,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           )
         else
           _buildBrandsRow(brands),

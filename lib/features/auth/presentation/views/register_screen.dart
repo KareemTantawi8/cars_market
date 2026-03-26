@@ -83,12 +83,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
+      builder: (sheetContext) => Theme(
+        data: Theme.of(context),
+        child: DraggableScrollableSheet(
         initialChildSize: 0.5,
         minChildSize: 0.3,
         maxChildSize: 0.8,
         expand: false,
-        builder: (context, scrollController) => Column(
+        builder: (sheetContext2, scrollController) => Column(
           children: [
             Container(
               margin: const EdgeInsets.only(top: 12),
@@ -143,6 +145,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 

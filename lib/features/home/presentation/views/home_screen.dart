@@ -12,6 +12,7 @@ import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
 import '../../../chat/presentation/views/chat_list_screen.dart';
+import '../../../chat/presentation/cubit/chat_cubit.dart';
 import '../../../profile/presentation/views/user_profile_screen.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
@@ -31,6 +32,14 @@ class _HomeScreenState extends State<HomeScreen> {
   final _partNameController = TextEditingController();
   int _currentNavIndex = 0;
 
+  // Rate limiting: max 3 requests per 5 minutes
+  static const int _maxRequests = 3;
+  static const Duration _window = Duration(minutes: 5);
+  final List<DateTime> _requestTimestamps = [];
+
+  /// Bottom nav order: الرئيسية، الإعلانات، إعلاناتي، المحادثات، حسابي
+  static const int _chatsTabIndex = 3;
+
   @override
   void initState() {
     super.initState();
@@ -47,10 +56,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearch() {
+    // --- Rate limiting ---
+    final now = DateTime.now();
+    _requestTimestamps.removeWhere(
+        (t) => now.difference(t) > _window);
+    if (_requestTimestamps.length >= _maxRequests) {
+      final oldest = _requestTimestamps.first;
+      final waitSeconds =
+          _window.inSeconds - now.difference(oldest).inSeconds;
+      final waitMin = (waitSeconds / 60).ceil();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'لقد تجاوزت الحد المسموح به (٣ طلبات كل ٥ دقائق). '
+            'انتظر $waitMin دقيقة قبل الإرسال.',
+          ),
+          backgroundColor: AppColors.warning,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+    // --- End rate limiting ---
+
     final categoryState = context.read<CategoryCubit>().state;
     final searchCubit = context.read<SearchCubit>();
 
     if (categoryState is CategoryLoaded) {
+      _requestTimestamps.add(now);
       searchCubit.searchSuppliers(
         partName: _partNameController.text.trim().isEmpty
             ? null
@@ -281,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildHomeContent(),
             const BrowseAdsScreen(),
             const MyAdsScreen(),
-            const ChatListScreen(),
+            const ChatListScreen(loadOnInit: false),
             const UserProfileScreen(isEmbeddedInTab: true),
           ],
         ),
@@ -289,6 +322,9 @@ class _HomeScreenState extends State<HomeScreen> {
           currentIndex: _currentNavIndex,
           onTap: (index) {
             setState(() => _currentNavIndex = index);
+            if (index == _chatsTabIndex) {
+              context.read<ChatCubit>().getChats();
+            }
           },
           items: const [
             BottomNavItem(

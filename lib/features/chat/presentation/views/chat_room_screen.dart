@@ -37,22 +37,25 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void initState() {
     super.initState();
     _currentUserId = int.tryParse(StorageService.getUserId() ?? '');
-    _loadChatData();
+    // Defer until the widget is fully mounted so context.read is safe
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadChatData();
+    });
   }
 
-  void _loadChatData() {
+  Future<void> _loadChatData() async {
     final chatId = int.tryParse(widget.chatId);
     if (chatId == null) return;
 
     final cubit = context.read<ChatCubit>();
-    
-    // Load chat details
-    cubit.getChatDetails(chatId).then((_) {
-      // Load messages
-      cubit.getChatMessages(chatId: chatId);
-      // Mark as read
-      cubit.markAsRead(chatId);
-    });
+
+    // Load chat details first; only proceed if successful
+    final success = await cubit.getChatDetails(chatId);
+    if (!success || !mounted) return;
+
+    // Load messages and mark as read only if chat exists
+    await cubit.getChatMessages(chatId: chatId);
+    if (mounted) cubit.markAsRead(chatId);
   }
 
   @override
@@ -106,6 +109,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       chatId: chatId,
       body: messageText,
     );
+  }
+
+  bool _isMessageFromMe(Map<String, dynamic> message) {
+    final sid = message['sender_id'];
+    final me = _currentUserId;
+    if (me == null) return false;
+    if (sid is int) return sid == me;
+    if (sid is num) return sid.toInt() == me;
+    return sid?.toString() == me.toString();
   }
 
   String _formatTimestamp(String? timestamp) {
@@ -273,11 +285,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
-                              final senderId = message['sender_id'] as int?;
-                              final isSentByMe = senderId == _currentUserId;
+                              final isSentByMe = _isMessageFromMe(message);
                               final body = message['body']?.toString() ?? '';
                               final timestamp = message['created_at']?.toString() ?? '';
-                              final isSystem = message['is_system'] as bool? ?? false;
+                              final isSystemRaw = message['is_system'];
+                              final isSystem = isSystemRaw == true ||
+                                  isSystemRaw == 1 ||
+                                  isSystemRaw == '1';
 
                               if (isSystem) {
                                 return Center(

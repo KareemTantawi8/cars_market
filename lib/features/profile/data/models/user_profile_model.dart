@@ -153,24 +153,14 @@ class UserProfileModel {
     };
   }
 
-  /// Format phone number for display
+  /// Format phone number for display (LTR, international format)
   String get formattedPhone {
-    // Format: 5678 234 101 20+
-    if (phone.length >= 10) {
-      final cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
-      if (cleaned.length >= 10) {
-        // Format as: XXXX XXX XXX XX+
-        final parts = [
-          cleaned.substring(0, 4),
-          cleaned.substring(4, 7),
-          cleaned.substring(7, 10),
-          cleaned.length > 10 ? cleaned.substring(10) : '',
-        ];
-        return parts.where((p) => p.isNotEmpty).join(' ') + 
-               (cleaned.length > 10 ? '+' : '');
-      }
-    }
-    return phone;
+    if (phone.isEmpty) return phone;
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    // Already has + prefix — return as-is
+    if (cleaned.startsWith('+')) return cleaned;
+    // Treat as Egyptian number: prepend +
+    return '+$cleaned';
   }
 }
 

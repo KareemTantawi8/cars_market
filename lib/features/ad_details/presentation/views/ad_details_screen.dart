@@ -14,6 +14,8 @@ import '../../data/models/public_ad_details_model.dart';
 import '../../../ads/presentation/cubit/ad_details_cubit.dart';
 import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/data/repositories/ads_repository.dart';
+import '../../../chat/data/repositories/chat_repository.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
 
 /// Public Ad Details Screen
 class AdDetailsScreen extends StatefulWidget {
@@ -296,29 +298,23 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 onPageChanged: (i) => setState(() => _currentImageIndex = i),
                 itemBuilder: (context, index) {
                   final url = images[index];
-                    return Container(
-                    color: context.cardBg,
-                    child: url != null
-                        ? CachedNetworkImage(
-                            imageUrl: url,
-                            fit: BoxFit.cover,
-                            placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
-                            errorWidget: (_, __, ___) => _imagePlaceholder(),
-                          )
-                        : _imagePlaceholder(),
+                  return GestureDetector(
+                    onTap: url != null
+                        ? () => _openFullScreenImage(context, imageUrls, index)
+                        : null,
+                    child: Container(
+                      color: context.cardBg,
+                      child: url != null
+                          ? CachedNetworkImage(
+                              imageUrl: url,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+                              errorWidget: (_, __, ___) => _imagePlaceholder(),
+                            )
+                          : _imagePlaceholder(),
+                    ),
                   );
                 },
-              ),
-            ),
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Row(
-                children: [
-                  _overlayIcon(Icons.favorite_border, () {}),
-                  const SizedBox(width: 8),
-                  _overlayIcon(Icons.share_outlined, () {}),
-                ],
               ),
             ),
             if (images.length > 1) ...[
@@ -385,6 +381,14 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           padding: const EdgeInsets.all(8),
           child: Icon(icon, color: Colors.white, size: 22),
         ),
+      ),
+    );
+  }
+
+  void _openFullScreenImage(BuildContext context, List<String> urls, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullScreenImageViewer(urls: urls, initialIndex: initialIndex),
       ),
     );
   }
@@ -834,16 +838,38 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     }
   }
 
-  void _openChat(PublicAdDetailsModel ad) {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.chatRoom,
-      arguments: {
-        'chatId': ad.sellerId ?? ad.id,
-        'chatName': ad.sellerName,
-        'vendorName': ad.sellerName,
-      },
-    );
+  Future<void> _openChat(PublicAdDetailsModel ad) async {
+    final vendorId = int.tryParse(ad.sellerId ?? '');
+    if (vendorId == null) {
+      if (mounted) {
+        CustomToast.showError(context, 'تعذّر تحديد التاجر');
+      }
+      return;
+    }
+    try {
+      final chatId = await ChatRepository().findChatIdForVendor(vendorId);
+      if (!mounted) return;
+      if (chatId != null) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.chatRoom,
+          arguments: {
+            'chatId': chatId.toString(),
+            'chatName': ad.sellerName,
+            'vendorName': ad.sellerName,
+          },
+        );
+      } else {
+        CustomToast.showInfo(
+          context,
+          'لا توجد محادثة مع هذا التاجر بعد. أرسل طلباً وسيتواصل معك التاجر.',
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
+      }
+    }
   }
 }
 
@@ -924,6 +950,66 @@ class _SimilarAdCard extends StatelessWidget {
         Icons.directions_car_outlined,
         size: 36,
         color: context.textHint,
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-screen image viewer
+// ─────────────────────────────────────────────────────────────────────────────
+class _FullScreenImageViewer extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  const _FullScreenImageViewer({required this.urls, required this.initialIndex});
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  late final PageController _ctrl;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _ctrl = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text('${_current + 1} / ${widget.urls.length}',
+            style: const TextStyle(color: Colors.white)),
+      ),
+      body: PageView.builder(
+        controller: _ctrl,
+        itemCount: widget.urls.length,
+        onPageChanged: (i) => setState(() => _current = i),
+        itemBuilder: (_, index) => InteractiveViewer(
+          child: Center(
+            child: CachedNetworkImage(
+              imageUrl: widget.urls[index],
+              fit: BoxFit.contain,
+              placeholder: (_, __) =>
+                  const Center(child: CircularProgressIndicator(color: Colors.white)),
+              errorWidget: (_, __, ___) =>
+                  const Icon(Icons.broken_image, color: Colors.white, size: 64),
+            ),
+          ),
+        ),
       ),
     );
   }

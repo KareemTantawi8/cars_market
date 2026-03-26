@@ -51,6 +51,25 @@ class ChatRepository {
     }
   }
 
+  /// Resolves an existing inbox row from [GET /api/v1/chats] whose vendor matches [vendorUserId].
+  /// Chat ids from this list are the only valid path ids for [GET /api/v1/chats/:id] and related routes.
+  Future<int?> findChatIdForVendor(int vendorUserId) async {
+    final chats = await getChats();
+    for (final c in chats) {
+      final vendor = c['vendor'];
+      final vendorId = vendor is Map<String, dynamic>
+          ? vendor['id']
+          : c['vendor_id'];
+      if (vendorId != null && vendorId.toString() == vendorUserId.toString()) {
+        final id = c['id'];
+        if (id is int) return id;
+        if (id is num) return id.toInt();
+        return int.tryParse(id?.toString() ?? '');
+      }
+    }
+    return null;
+  }
+
   /// GET /api/v1/chats/{id} - Chat details with customer, vendor, linked search request. Must be participant. 403 Forbidden.
   Future<Map<String, dynamic>> getChatDetails(int chatId) async {
     _log('📄 Getting chat details: $chatId');
@@ -71,6 +90,12 @@ class ChatRepository {
     } on DioException catch (e) {
       _log('❌ Error getting chat details: ${e.message}');
       if (e.response != null) {
+        if (e.response!.statusCode == 401) {
+          final msg = e.response!.data is Map<String, dynamic>
+              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthenticated.'
+              : 'Unauthenticated.';
+          throw Exception(msg);
+        }
         if (e.response!.statusCode == 403) {
           final msg = e.response!.data is Map<String, dynamic>
               ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthorized action.'

@@ -135,6 +135,20 @@ class _ProfileContent extends StatelessWidget {
 
                     const SizedBox(height: 28),
 
+                    // My Requests (customer only)
+                    if (profile.userType != AppConstants.userTypeVendor) ...[
+                      _SectionTitle(title: 'طلباتي'),
+                      const SizedBox(height: 14),
+                      _SettingTile(
+                        icon: Icons.receipt_long_outlined,
+                        title: 'طلبات البحث',
+                        subtitle: 'عرض طلباتك وتقييم التجار',
+                        onTap: () => Navigator.of(context)
+                            .pushNamed(AppRoutes.mySearchRequests),
+                      ),
+                      const SizedBox(height: 28),
+                    ],
+
                     // Settings section
                     _SectionTitle(title: 'الإعدادات'),
                     const SizedBox(height: 14),
@@ -662,6 +676,7 @@ class _InfoTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       value,
+                      textDirection: TextDirection.ltr,
                       style: AppTextStyles.bodyMedium.copyWith(
                           fontWeight: FontWeight.w600),
                     ),
@@ -759,17 +774,43 @@ class _VendorSection extends StatelessWidget {
               ],
             ],
           ),
-          if (vendor.governorate != null) ...[
+          if (vendor.governorate != null ||
+              (vendor.address != null && vendor.address!.isNotEmpty) ||
+              (vendor.city != null && vendor.city!.isNotEmpty)) ...[
             const SizedBox(height: 14),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(Icons.location_on_outlined,
                     size: 16, color: context.textSecondary),
                 const SizedBox(width: 6),
-                Text(
-                  vendor.governorate!.name,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: context.textSecondary),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (vendor.governorate != null)
+                        Text(
+                          vendor.governorate!.name,
+                          style: AppTextStyles.bodySmall
+                              .copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      if ((vendor.address != null && vendor.address!.isNotEmpty) ||
+                          (vendor.city != null && vendor.city!.isNotEmpty)) ...[
+                        if (vendor.governorate != null)
+                          const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (vendor.address != null && vendor.address!.isNotEmpty)
+                              vendor.address!,
+                            if (vendor.city != null && vendor.city!.isNotEmpty)
+                              vendor.city!,
+                          ].join('، '),
+                          style: AppTextStyles.caption
+                              .copyWith(color: context.textSecondary),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

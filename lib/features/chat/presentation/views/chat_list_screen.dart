@@ -13,7 +13,12 @@ import '../cubit/chat_cubit.dart';
 
 /// Chat List Screen
 class ChatListScreen extends StatefulWidget {
-  const ChatListScreen({super.key});
+  /// When false (e.g. inside [HomeScreen]'s [IndexedStack]), the parent should
+  /// call [ChatCubit.getChats] when the tab becomes visible — otherwise the API
+  /// would only run once at app launch while another tab is shown.
+  final bool loadOnInit;
+
+  const ChatListScreen({super.key, this.loadOnInit = true});
 
   @override
   State<ChatListScreen> createState() => _ChatListScreenState();
@@ -23,27 +28,82 @@ class _ChatListScreenState extends State<ChatListScreen> {
   @override
   void initState() {
     super.initState();
-    // Load chats when screen loads
+    if (!widget.loadOnInit) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ChatCubit>().getChats();
     });
   }
 
+  int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? 0;
+  }
+
+  Map<String, dynamic>? _asChatMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
+  }
+
   String _formatTimestamp(String? timestamp) {
-    if (timestamp == null) return '';
-    // TODO: Implement proper date formatting
-    return 'منذ قليل';
+    if (timestamp == null || timestamp.isEmpty) return '';
+    try {
+      final date = DateTime.parse(timestamp);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+      if (difference.inMinutes < 1) return 'الآن';
+      if (difference.inHours < 1) return 'منذ ${difference.inMinutes} د';
+      if (difference.inDays < 1) return 'منذ ${difference.inHours} س';
+      if (difference.inDays == 1) return 'أمس';
+      return '${date.day}/${date.month}';
+    } catch (_) {
+      return '';
+    }
   }
 
   String _getChatName(Map<String, dynamic> chat) {
     final userType = StorageService.getUserType();
     if (userType == AppConstants.userTypeVendor) {
       // Vendor sees customer name
-      return chat['customer']?['name'] ?? 'عميل';
+      return chat['customer']?['name']?.toString() ?? 'عميل';
     } else {
       // Customer sees vendor company name
-      return chat['vendor']?['company_name'] ?? 'تاجر';
+      return chat['vendor']?['company_name']?.toString() ?? 'تاجر';
     }
+  }
+
+  String _inboxPreviewLastMessage(Map<String, dynamic> chat) {
+    final last = _asChatMap(chat['last_message']);
+    final body = last?['body']?.toString();
+    if (body != null && body.isNotEmpty) return body;
+    return '';
+  }
+
+  String _inboxLastActivityAt(Map<String, dynamic> chat) {
+    final direct = chat['last_message_at']?.toString();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final last = _asChatMap(chat['last_message']);
+    final nested = last?['created_at']?.toString();
+    return nested ?? '';
+  }
+
+  bool _inboxPeerOnline(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) {
+      return chat['customer']?['is_online'] == true;
+    }
+    return chat['vendor']?['is_online'] == true;
+  }
+
+  String? _inboxAvatarUrl(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) {
+      return chat['customer']?['avatar']?.toString();
+    }
+    return chat['vendor']?['avatar']?.toString();
   }
 
   @override
@@ -119,11 +179,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         final chat = chats[index];
                         final chatId = chat['id']?.toString() ?? '';
                         final chatName = _getChatName(chat);
-                        final lastMessage = chat['last_message'] as Map<String, dynamic>?;
-                        final lastMessageBody = lastMessage?['body']?.toString() ?? '';
-                        final lastMessageAt = chat['last_message_at']?.toString() ?? '';
-                        final unreadCount = chat['unread_count'] as int? ?? 0;
-                        final isOnline = chat['vendor']?['is_online'] ?? false;
+                        final lastMessageBody = _inboxPreviewLastMessage(chat);
+                        final lastMessageAt = _inboxLastActivityAt(chat);
+                        final unreadCount = _toInt(chat['unread_count']);
+                        final isOnline = _inboxPeerOnline(chat);
 
                         return ChatItem(
                           name: chatName,
@@ -132,7 +191,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           isOnline: isOnline,
                           unreadCount: unreadCount > 0 ? unreadCount : null,
                           isRead: unreadCount == 0,
-                  imageUrl: null,
+                  imageUrl: _inboxAvatarUrl(chat),
                   onTap: () {
                     Navigator.pushNamed(
                       context,

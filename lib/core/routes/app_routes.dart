@@ -38,6 +38,9 @@ class AppRoutes {
   static const String vendorDashboard = '/vendor-dashboard';
   static const String vendorIncomingRequests = '/vendor-incoming-requests';
 
+  // Customer Search Requests
+  static const String mySearchRequests = '/my-search-requests';
+
   // Notifications Routes
   static const String notifications = '/notifications';
 
