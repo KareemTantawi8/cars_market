@@ -51,16 +51,36 @@ class ChatRepository {
     }
   }
 
-  /// Resolves an existing inbox row from [GET /api/v1/chats] whose vendor matches [vendorUserId].
-  /// Chat ids from this list are the only valid path ids for [GET /api/v1/chats/:id] and related routes.
-  Future<int?> findChatIdForVendor(int vendorUserId) async {
+  /// Resolves an existing inbox row from [GET /api/v1/chats] whose participant (vendor OR customer) matches [targetUserId].
+  Future<int?> findChatIdForVendor(int targetUserId) async {
     final chats = await getChats();
     for (final c in chats) {
+      // Check vendor field
       final vendor = c['vendor'];
       final vendorId = vendor is Map<String, dynamic>
           ? vendor['id']
           : c['vendor_id'];
-      if (vendorId != null && vendorId.toString() == vendorUserId.toString()) {
+      if (vendorId != null && vendorId.toString() == targetUserId.toString()) {
+        final id = c['id'];
+        if (id is int) return id;
+        if (id is num) return id.toInt();
+        return int.tryParse(id?.toString() ?? '');
+      }
+      // Check customer field
+      final customer = c['customer'];
+      final customerId = customer is Map<String, dynamic>
+          ? customer['id']
+          : c['customer_id'];
+      if (customerId != null && customerId.toString() == targetUserId.toString()) {
+        final id = c['id'];
+        if (id is int) return id;
+        if (id is num) return id.toInt();
+        return int.tryParse(id?.toString() ?? '');
+      }
+      // Check generic user field
+      final user = c['user'];
+      final userId = user is Map<String, dynamic> ? user['id'] : c['user_id'];
+      if (userId != null && userId.toString() == targetUserId.toString()) {
         final id = c['id'];
         if (id is int) return id;
         if (id is num) return id.toInt();
@@ -216,6 +236,33 @@ class ChatRepository {
         throw Exception(errorMessage);
       }
       throw Exception('خطأ في الشبكة: ${e.message}');
+    }
+  }
+
+  /// POST /api/v1/chats - Create/start a new chat with a user. Body: { user_id }.
+  /// Returns the new chat id, or null if not supported.
+  Future<int?> createChatWithUser(int userId) async {
+    _log('🆕 Creating chat with user: $userId');
+    try {
+      final response = await _apiClient.post(
+        '/chats',
+        data: {'user_id': userId},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          final chatData = inner is Map<String, dynamic> ? inner : data;
+          final id = chatData['id'];
+          if (id is int) return id;
+          if (id is num) return id.toInt();
+          return int.tryParse(id?.toString() ?? '');
+        }
+      }
+      return null;
+    } on DioException catch (e) {
+      _log('❌ Error creating chat: ${e.message}');
+      return null;
     }
   }
 

@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
 

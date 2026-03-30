@@ -8,6 +8,7 @@ import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/message_bubble.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../core/services/realtime_service.dart';
 import '../cubit/chat_cubit.dart';
 
 /// Chat Room Screen
@@ -56,10 +57,61 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     // Load messages and mark as read only if chat exists
     await cubit.getChatMessages(chatId: chatId);
     if (mounted) cubit.markAsRead(chatId);
+
+    if (!mounted) return;
+    RealtimeService.instance.activeChatId = chatId;
+    await RealtimeService.instance.start();
+    RealtimeService.instance.subscribeChat(
+      chatId,
+      onMessage: (data) {
+        if (!mounted) return;
+        final row = _mapRealtimeMessageRow(data);
+        final mid = row['id'];
+        if (mid != null && _messages.any((m) => m['id'] == mid)) return;
+        setState(() => _messages.insert(0, row));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.animateTo(
+              0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      },
+    );
+  }
+
+  Map<String, dynamic> _mapRealtimeMessageRow(Map<String, dynamic> data) {
+    final sender = data['sender'] is Map<String, dynamic>
+        ? data['sender'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    return {
+      'id': data['id'],
+      'chat_id': data['chat_id'],
+      'sender_id': data['sender_id'],
+      'body': data['body']?.toString() ?? '',
+      'is_system': false,
+      'is_read': 0,
+      'read_at': null,
+      'created_at': data['created_at']?.toString(),
+      'updated_at': data['updated_at']?.toString() ?? data['created_at']?.toString(),
+      'sender': {
+        'id': sender['id'],
+        'name': sender['name']?.toString() ?? '',
+      },
+    };
   }
 
   @override
   void dispose() {
+    final chatId = int.tryParse(widget.chatId);
+    if (chatId != null) {
+      RealtimeService.instance.unsubscribeChat(chatId);
+      if (RealtimeService.instance.activeChatId == chatId) {
+        RealtimeService.instance.activeChatId = null;
+      }
+    }
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -8,6 +9,8 @@ import '../../data/models/register_response_model.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/services/realtime_service.dart';
 
 /// Register State
 abstract class RegisterState extends Equatable {
@@ -125,6 +128,9 @@ class RegisterCubit extends Cubit<RegisterState> {
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
 
+      unawaited(RealtimeService.instance.start());
+      unawaited(PushNotificationService().resendFcmToken());
+
       emit(RegisterSuccess(response));
     } catch (e) {
       emit(RegisterError(e.toString().replaceAll('Exception: ', '')));
@@ -141,6 +147,8 @@ class RegisterCubit extends Cubit<RegisterState> {
     required int governorateId,
     String deviceName = 'Mobile',
     String? shopPhone,
+    String? address,
+    List<int>? brandIds,
   }) async {
     emit(RegisterLoading());
 
@@ -207,6 +215,8 @@ class RegisterCubit extends Cubit<RegisterState> {
         governorateId: governorateId,
         deviceName: deviceName,
         shopPhone: shopPhone?.trim().isEmpty == true ? null : shopPhone?.trim(),
+        address: address?.trim().isEmpty == true ? null : address?.trim(),
+        categoryIds: brandIds,
       );
 
       // Call API
@@ -221,6 +231,9 @@ class RegisterCubit extends Cubit<RegisterState> {
 
       // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
+
+      unawaited(RealtimeService.instance.start());
+      unawaited(PushNotificationService().resendFcmToken());
 
       emit(RegisterSuccess(response));
     } catch (e) {

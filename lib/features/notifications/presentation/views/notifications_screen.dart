@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/notification_navigation.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../cubit/notifications_cubit.dart';
@@ -72,22 +73,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  String _getTimeOfDay(String? timestamp) {
-    if (timestamp == null) return '';
-    try {
-      final date = DateTime.parse(timestamp);
-      final hour = date.hour;
-      if (hour < 12) {
-        return '${hour}:${date.minute.toString().padLeft(2, '0')} ص';
-      } else {
-        return '${hour - 12}:${date.minute.toString().padLeft(2, '0')} مساءً';
-      }
-    } catch (e) {
-      return '';
-    }
-  }
-
   IconData _getNotificationIcon(String? type) {
+    final t = type ?? '';
+    if (t == 'search_approved' ||
+        t == 'search_request_accepted' ||
+        t.contains('accept')) {
+      return Icons.check_circle;
+    }
+    if (t == 'search_request_rejected' || t.contains('reject')) {
+      return Icons.cancel;
+    }
+    if (t == 'new_message' || t.contains('message')) {
+      return Icons.chat_bubble;
+    }
     switch (type) {
       case 'search_request_accepted':
         return Icons.check_circle;
@@ -101,6 +99,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Color _getNotificationColor(String? type) {
+    final t = type ?? '';
+    if (t == 'search_approved' ||
+        t == 'search_request_accepted' ||
+        t.contains('accept')) {
+      return AppColors.success;
+    }
+    if (t == 'search_request_rejected' || t.contains('reject')) {
+      return AppColors.error;
+    }
+    if (t == 'new_message' || t.contains('message')) {
+      return AppColors.primaryColor;
+    }
     switch (type) {
       case 'search_request_accepted':
         return AppColors.success;
@@ -114,42 +124,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _handleNotificationTap(Map<String, dynamic> notification) {
-    final notificationId = notification['id'] as int?;
+    unawaited(_handleNotificationTapAsync(notification));
+  }
+
+  Future<void> _handleNotificationTapAsync(Map<String, dynamic> notification) async {
+    final notificationId = notificationRowId(notification);
     if (notificationId != null) {
-      context.read<NotificationsCubit>().markAsRead(notificationId);
+      try {
+        await context.read<NotificationsCubit>().markAsRead(notificationId);
+      } catch (_) {}
     }
 
-    final type = notification['type']?.toString();
-    final meta = notification['meta'] as Map<String, dynamic>?;
-
-    if (type == 'search_request_accepted' || type == 'new_message') {
-      final chatId = meta?['chat_id'];
-      if (chatId != null) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.chatRoom,
-          arguments: {
-            'chatId': chatId.toString(),
-            'chatName': notification['title']?.toString() ?? '',
-          },
-        );
-      }
-    } else if (type == 'search_request_rejected') {
-      // Navigate to My Ads or show details
-      // TODO: Navigate to My Ads screen
-    } else if (type == 'order_pending' || type == 'new_order') {
-      final orderId = meta?['order_id'];
-      if (orderId != null) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.orders,
-          arguments: {
-            'orderId': orderId is int ? orderId : (orderId is num ? orderId.toInt() : int.tryParse(orderId.toString())),
-            'orderTitle': notification['title']?.toString(),
-          },
-        );
-      }
-    }
+    if (!mounted) return;
+    await navigateFromNotificationMap(context, notification);
   }
 
   @override
@@ -187,10 +174,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           }
 
           if (state is NotificationsLoaded) {
-            // Separate chat messages from other notifications
-            final notifications = state.notifications
-                .where((n) => n['type']?.toString() != 'new_message')
-                .toList();
+            final notifications = state.notifications;
             if (notifications.isEmpty) {
               return Center(
                 child: Column(
@@ -318,12 +302,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationCard(Map<String, dynamic> notification) {
-    final isUnread = notification['read_at'] == null;
+    final isUnread = isNotificationUnread(notification);
     final type = notification['type']?.toString();
     final title = notification['title']?.toString() ?? '';
     final body = notification['body']?.toString() ?? '';
     final createdAt = notification['created_at']?.toString();
-    final vendor = notification['meta']?['vendor_name']?.toString();
+    final meta = parseNotificationMeta(notification['meta']);
+    final vendor = meta?['vendor_name']?.toString() ??
+        meta?['company_name']?.toString();
 
     return InkWell(
       onTap: () => _handleNotificationTap(notification),

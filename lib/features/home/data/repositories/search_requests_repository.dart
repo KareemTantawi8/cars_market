@@ -119,14 +119,14 @@ class SearchRequestsRepository {
   /// POST /api/v1/search-requests/{id}/accept
   Future<Map<String, dynamic>> acceptSearchRequest({
     required int requestId,
-    required String comment,
+    required String note,
   }) async {
     _log('✅ Accepting search request: $requestId');
     try {
       final response = await _apiClient.post(
         ApiEndpoints.acceptSearchRequest(requestId),
         data: {
-          'comment': comment,
+          'note': note,
         },
       );
 

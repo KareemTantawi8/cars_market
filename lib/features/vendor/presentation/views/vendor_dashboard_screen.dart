@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,6 +10,10 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/navigation_service.dart';
+import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/utils/constants.dart';
+import '../../../../core/services/storage_service.dart';
 import '../../../home/presentation/cubit/category_cubit.dart';
 import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
@@ -27,6 +33,22 @@ class VendorDashboardScreen extends StatefulWidget {
 }
 
 class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startVendorRealtime();
+    });
+  }
+
+  void _startVendorRealtime() {
+    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
+    unawaited(RealtimeService.instance.start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PushNotificationService.tryNavigateToPendingChat();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -155,31 +177,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         // Avatar
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: AppColors.primaryDark,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.25), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: CachedNetworkImage(
-                    imageUrl: profile.imageUrl!,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : const Icon(Icons.storefront,
-                  size: 36, color: AppColors.primaryLight),
+        CircleAvatar(
+          radius: 36,
+          backgroundColor: AppColors.primaryDark,
+          backgroundImage: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+              ? CachedNetworkImageProvider(profile.imageUrl!)
+              : null,
+          child: profile.imageUrl == null || profile.imageUrl!.isEmpty
+              ? const Icon(Icons.storefront, size: 36, color: AppColors.primaryLight)
+              : null,
         ),
         const SizedBox(width: 14),
         Expanded(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../routes/app_routes.dart';
 import '../utils/constants.dart';
 import '../services/storage_service.dart';
+import '../services/realtime_service.dart';
+import '../services/push_notification_service.dart';
 import '../controllers/user_type_controller.dart';
 
 /// Navigation Service for handling user type-based routing
@@ -83,6 +85,8 @@ class NavigationService {
 
   /// Navigate to logout
   static void navigateToLogout(BuildContext context) {
+    RealtimeService.instance.stop();
+    PushNotificationService.clearPendingNavigation();
     // Clear storage
     StorageService.clearAll();
     

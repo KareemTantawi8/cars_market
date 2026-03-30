@@ -11,6 +11,7 @@ import 'core/routes/app_routes.dart';
 import 'core/routes/app_router.dart';
 import 'core/controllers/user_type_controller.dart';
 import 'core/network/api_client.dart';
+import 'core/navigation/root_navigator.dart';
 import 'core/services/push_notification_service.dart';
 
 void main() async {
@@ -19,7 +20,6 @@ void main() async {
   // Initialize Firebase
   try {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    // Register background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   } catch (_) {
     // Continue without push notifications if Firebase fails
@@ -54,6 +54,7 @@ class MyApp extends StatelessWidget {
     return BlocBuilder<ThemeCubit, ThemeMode>(
       builder: (context, themeMode) {
         return MaterialApp(
+          navigatorKey: rootNavigatorKey,
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
 
@@ -73,11 +74,18 @@ class MyApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
 
-          // RTL Support
+          // RTL — `child` can be null briefly before the navigator exists.
+          // Do not call Theme.of(context) here: this [context] sits *above*
+          // [MaterialApp]'s [Theme], so Theme.of throws and the app exits (iOS white screen).
           builder: (context, child) {
+            final placeholderBg = AppTheme.lightTheme.scaffoldBackgroundColor;
             return Directionality(
               textDirection: TextDirection.rtl,
-              child: child!,
+              child: child ??
+                  ColoredBox(
+                    color: placeholderBg,
+                    child: const SizedBox.expand(),
+                  ),
             );
           },
 

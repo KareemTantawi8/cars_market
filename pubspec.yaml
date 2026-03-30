@@ -34,8 +34,10 @@ dependencies:
   intl: ^0.20.2
   uuid: ^4.3.3
 
-  # Real-time Chat (WebSocket)
+  # Real-time Chat (WebSocket) — legacy; Reverb uses Pusher protocol below
   web_socket_channel: ^2.4.0
+  # Laravel Reverb (custom host/port for self-hosted)
+  pusher_reverb_flutter: ^0.0.4
 
   # Image Loading
   cached_network_image: ^3.3.1

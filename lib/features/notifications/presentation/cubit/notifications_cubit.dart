@@ -22,11 +22,9 @@ class NotificationsLoaded extends NotificationsState {
     required this.total,
   }) : hasMore = currentPage < lastPage;
 
-  /// Count of unread notifications (excluding chat messages)
-  int get unreadCount => notifications
-      .where((n) =>
-          n['read_at'] == null && n['type']?.toString() != 'new_message')
-      .length;
+  /// Count of unread notifications (includes chat — same as bell + list).
+  int get unreadCount =>
+      notifications.where((n) => isNotificationUnread(n)).length;
 }
 
 class NotificationsError extends NotificationsState {
@@ -119,5 +117,11 @@ class NotificationsCubit extends Cubit<NotificationsState> {
       emit(NotificationsError(e.toString().replaceAll('Exception: ', '')));
     }
   }
+}
+
+bool isNotificationUnread(Map<String, dynamic> n) {
+  if (n['is_read'] == true) return false;
+  if (n['read_at'] != null) return false;
+  return true;
 }
 

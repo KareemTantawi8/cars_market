@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -7,6 +8,8 @@ import '../../data/models/login_response_model.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/services/realtime_service.dart';
 
 /// Login State
 abstract class LoginState extends Equatable {
@@ -116,6 +119,9 @@ class LoginCubit extends Cubit<LoginState> {
       } catch (_) {
         // Keep login response user data if auth/me fails
       }
+
+      unawaited(RealtimeService.instance.start());
+      unawaited(PushNotificationService().resendFcmToken());
 
       emit(LoginSuccess(response));
     } catch (e) {

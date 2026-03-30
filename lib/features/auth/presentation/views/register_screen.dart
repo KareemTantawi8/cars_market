@@ -32,6 +32,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _obscurePasswordConfirmation = true;
   String _selectedUserType = AppConstants.userTypeCustomer;
   GovernorateModel? _selectedGovernorate;
+  final _addressController = TextEditingController();
+  List<BrandModel> _selectedBrands = [];
 
   @override
   void dispose() {
@@ -41,6 +43,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordConfirmationController.dispose();
     _companyNameController.dispose();
     _shopPhoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -70,6 +73,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
           shopPhone: _shopPhoneController.text.trim().isEmpty
               ? null
               : _shopPhoneController.text.trim(),
+          address: _addressController.text.trim().isEmpty
+              ? null
+              : _addressController.text.trim(),
+          brandIds: _selectedBrands.isEmpty
+              ? null
+              : _selectedBrands.map((b) => b.id).toList(),
         );
       }
     }
@@ -146,6 +155,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
     ),
+    );
+  }
+
+  void _showBrandsMultiSelectDialog(CategoryLoaded state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      isScrollControlled: true,
+      builder: (sheetContext) => Theme(
+        data: Theme.of(context),
+        child: DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (_, scrollController) => Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: context.textHint,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('اختر الماركات', style: AppTextStyles.headingSmall),
+              ),
+              const Divider(color: AppColors.dividerColor),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  itemCount: state.brands.length,
+                  itemBuilder: (_, index) {
+                    final brand = state.brands[index];
+                    final isSelected = _selectedBrands.any((b) => b.id == brand.id);
+                    return CheckboxListTile(
+                      value: isSelected,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            _selectedBrands = [..._selectedBrands, brand];
+                          } else {
+                            _selectedBrands = _selectedBrands.where((b) => b.id != brand.id).toList();
+                          }
+                        });
+                      },
+                      title: Text(brand.displayName, style: AppTextStyles.bodyMedium.copyWith(color: context.textPrimary)),
+                      activeColor: AppColors.primaryColor,
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.only(left: 16, right: 16, bottom: MediaQuery.of(context).viewInsets.bottom + 16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('تأكيد (${_selectedBrands.length} ماركات)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -704,6 +790,72 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           icon: Icons.store_outlined,
                                           context: context,
                                         ),
+                                      ),
+                                      const SizedBox(height: 18),
+
+                                      // Address field
+                                      _FieldLabel(label: 'العنوان التفصيلي (اختياري)'),
+                                      const SizedBox(height: 8),
+                                      TextFormField(
+                                        controller: _addressController,
+                                        keyboardType: TextInputType.streetAddress,
+                                        textInputAction: TextInputAction.next,
+                                        style: AppTextStyles.input,
+                                        decoration: _inputDeco(
+                                          hint: 'مثال: شارع التحرير، القاهرة',
+                                          icon: Icons.location_on_outlined,
+                                          context: context,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 18),
+
+                                      // Brands multi-select
+                                      BlocBuilder<CategoryCubit, CategoryState>(
+                                        builder: (context, catState) {
+                                          if (catState is! CategoryLoaded || catState.brands.isEmpty) {
+                                            return const SizedBox.shrink();
+                                          }
+                                          return Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              _FieldLabel(label: 'الماركات التي تعمل بها (اختياري)'),
+                                              const SizedBox(height: 8),
+                                              InkWell(
+                                                onTap: () => _showBrandsMultiSelectDialog(catState),
+                                                borderRadius: BorderRadius.circular(14),
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.inputBackground,
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    border: Border.all(
+                                                      color: _selectedBrands.isEmpty ? AppColors.inputBorder : AppColors.inputBorderFocused,
+                                                      width: _selectedBrands.isEmpty ? 1 : 2,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(Icons.directions_car_outlined,
+                                                          color: _selectedBrands.isEmpty ? context.textSecondary : AppColors.primaryColor,
+                                                          size: 22),
+                                                      const SizedBox(width: 12),
+                                                      Expanded(
+                                                        child: Text(
+                                                          _selectedBrands.isEmpty
+                                                              ? 'اختر الماركات'
+                                                              : _selectedBrands.map((b) => b.displayName).join('، '),
+                                                          style: _selectedBrands.isEmpty ? AppTextStyles.inputHint : AppTextStyles.input,
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                      Icon(Icons.keyboard_arrow_down_rounded, color: context.textSecondary),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       ),
                                       const SizedBox(height: 18),
 

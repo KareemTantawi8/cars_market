@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -6,8 +7,6 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
-import '../../../../shared/widgets/common/supplier_card.dart';
-import '../../../../shared/widgets/common/app_logo.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
@@ -19,6 +18,10 @@ import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
 import '../../data/models/supplier_model.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
+import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/storage_service.dart';
+import '../../../../core/utils/constants.dart';
 
 /// Home Screen (User)
 class HomeScreen extends StatefulWidget {
@@ -32,10 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final _partNameController = TextEditingController();
   int _currentNavIndex = 0;
 
-  // Rate limiting: max 3 requests per 5 minutes
-  static const int _maxRequests = 3;
-  static const Duration _window = Duration(minutes: 5);
+  // Rate limiting: max 10 requests total, 30s cooldown between each
+  static const int _maxRequests = 10;
+  static const Duration _cooldown = Duration(seconds: 30);
   final List<DateTime> _requestTimestamps = [];
+  Timer? _countdownTimer;
+  int _countdownSeconds = 0;
 
   /// Bottom nav order: الرئيسية، الإعلانات، إعلاناتي، المحادثات، حسابي
   static const int _chatsTabIndex = 3;
@@ -46,44 +51,76 @@ class _HomeScreenState extends State<HomeScreen> {
     // Load initial data (brands and governorates)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CategoryCubit>().loadInitialData();
+      _bindCustomerRealtime();
     });
+  }
+
+  void _bindCustomerRealtime() {
+    if (StorageService.getUserType() == AppConstants.userTypeVendor) return;
+    RealtimeService.instance.onCustomerSearchAccepted = _onSearchRequestAccepted;
+    RealtimeService.instance.onCustomerNewMessage = _onNewMessageFromReverb;
+    unawaited(RealtimeService.instance.start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PushNotificationService.tryNavigateToPendingChat();
+    });
+  }
+
+  Future<void> _onSearchRequestAccepted(Map<String, dynamic> data) async {
+    await PushNotificationService().showSearchAcceptedFromReverb(data);
+  }
+
+  Future<void> _onNewMessageFromReverb(Map<String, dynamic> data) async {
+    await PushNotificationService().showNewMessageFromReverb(
+      data,
+      activeChatId: RealtimeService.instance.activeChatId,
+    );
+    if (!mounted) return;
+    if (_currentNavIndex == _chatsTabIndex) {
+      try {
+        context.read<ChatCubit>().getChats();
+      } catch (_) {}
+    }
   }
 
   @override
   void dispose() {
+    if (StorageService.getUserType() != AppConstants.userTypeVendor) {
+      RealtimeService.instance.onCustomerSearchAccepted = null;
+      RealtimeService.instance.onCustomerNewMessage = null;
+    }
     _partNameController.dispose();
+    _countdownTimer?.cancel();
     super.dispose();
   }
 
   void _handleSearch() {
-    // --- Rate limiting ---
-    final now = DateTime.now();
-    _requestTimestamps.removeWhere(
-        (t) => now.difference(t) > _window);
+    // --- Check max requests ---
     if (_requestTimestamps.length >= _maxRequests) {
-      final oldest = _requestTimestamps.first;
-      final waitSeconds =
-          _window.inSeconds - now.difference(oldest).inSeconds;
-      final waitMin = (waitSeconds / 60).ceil();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'لقد تجاوزت الحد المسموح به (٣ طلبات كل ٥ دقائق). '
-            'انتظر $waitMin دقيقة قبل الإرسال.',
-          ),
-          backgroundColor: AppColors.warning,
-          duration: const Duration(seconds: 4),
+        const SnackBar(
+          content: Text('لقد وصلت للحد الأقصى (١٠ طلبات). يرجى التواصل مع الدعم.'),
+          backgroundColor: AppColors.error,
+          duration: Duration(seconds: 4),
         ),
       );
       return;
     }
-    // --- End rate limiting ---
+
+    // --- Check cooldown ---
+    if (_requestTimestamps.isNotEmpty) {
+      final lastRequest = _requestTimestamps.last;
+      final diff = DateTime.now().difference(lastRequest);
+      if (diff < _cooldown) {
+        // Already counting down, don't restart
+        return;
+      }
+    }
 
     final categoryState = context.read<CategoryCubit>().state;
     final searchCubit = context.read<SearchCubit>();
 
     if (categoryState is CategoryLoaded) {
-      _requestTimestamps.add(now);
+      _requestTimestamps.add(DateTime.now());
       searchCubit.searchSuppliers(
         partName: _partNameController.text.trim().isEmpty
             ? null
@@ -97,8 +134,38 @@ class _HomeScreenState extends State<HomeScreen> {
         yearName: categoryState.selectedYear?.displayName,
         governorateName: categoryState.selectedGovernorate?.displayName,
       );
+      // Start countdown for next request
+      _startCountdown();
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم إرسال طلبك (${_requestTimestamps.length}/$_maxRequests). سيتواصل معك التجار قريباً.'),
+          backgroundColor: AppColors.success,
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
+
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    setState(() => _countdownSeconds = _cooldown.inSeconds);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _countdownSeconds--;
+        if (_countdownSeconds <= 0) {
+          _countdownSeconds = 0;
+          timer.cancel();
+        }
+      });
+    });
+  }
+
+  bool get _isInCooldown => _countdownSeconds > 0;
 
   void _showBrandSelectionDialog(CategoryLoaded state) {
     _showSelectionBottomSheet<BrandModel>(
@@ -563,15 +630,61 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
         const SizedBox(height: 24),
-        // Submit Button
+        // Submit Button with countdown
         BlocBuilder<SearchCubit, SearchState>(
           builder: (context, state) {
             final isLoading = state is SearchLoading;
-            return PrimaryButton(
-              text: 'إرسال الطلب الآن',
-              icon: Icons.arrow_forward,
-              onPressed: isLoading ? null : _handleSearch,
-              isLoading: isLoading,
+            final requestCount = _requestTimestamps.length;
+            return Column(
+              children: [
+                if (_isInCooldown) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 18, color: AppColors.warning),
+                        const SizedBox(width: 8),
+                        Text(
+                          'يمكنك الإرسال بعد $_countdownSeconds ثانية  ($requestCount/$_maxRequests طلبات)',
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ] else if (requestCount >= _maxRequests) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.error.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      'وصلت للحد الأقصى ($requestCount/$_maxRequests طلبات)',
+                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.error, fontWeight: FontWeight.w600),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                PrimaryButton(
+                  text: _isInCooldown
+                      ? 'انتظر $_countdownSeconds ث...'
+                      : requestCount >= _maxRequests
+                          ? 'تم الوصول للحد الأقصى'
+                          : 'إرسال الطلب الآن',
+                  icon: Icons.arrow_forward,
+                  onPressed: (isLoading || _isInCooldown || requestCount >= _maxRequests) ? null : _handleSearch,
+                  isLoading: isLoading,
+                ),
+              ],
             );
           },
         ),
@@ -814,40 +927,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : _buildImagePlaceholder(),
               ),
-              // Online Badge
-              Positioned(
-                top: 12,
-                right: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: supplier.isOnline ? AppColors.success : AppColors.offline,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 6,
-                        height: 6,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                        ),
-        ),
-                      const SizedBox(width: 6),
-                      Text(
-                        supplier.isOnline ? 'أونلاين' : 'أوفلاين',
-                        style: AppTextStyles.captionSmall.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+              // Online dot indicator (green dot only when online)
+              if (supplier.isOnline)
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: AppColors.success,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           // Content

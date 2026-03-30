@@ -45,6 +45,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: true,
+      child: _buildScreen(context),
+    );
+  }
+
+  Widget _buildScreen(BuildContext context) {
     if (widget.ad != null) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,

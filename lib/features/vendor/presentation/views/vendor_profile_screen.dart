@@ -68,30 +68,13 @@ class VendorProfileScreen extends StatelessWidget {
       slivers: [
         // App Bar with Background Image
         SliverAppBar(
-          expandedHeight: 250,
+          expandedHeight: 0,
           pinned: true,
-          backgroundColor: Colors.transparent,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           elevation: 0,
           leading: IconButton(
             icon: Icon(Icons.arrow_forward, color: context.textPrimary),
             onPressed: () => Navigator.of(context).pop(),
-          ),
-          actions: [
-            IconButton(
-              icon: Icon(Icons.favorite_border, color: context.textPrimary),
-              onPressed: () {
-                // TODO: Add to favorites
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.share, color: context.textPrimary),
-              onPressed: () {
-                // TODO: Share vendor
-              },
-            ),
-          ],
-          flexibleSpace: FlexibleSpaceBar(
-            background: _buildBackgroundImage(profile.backgroundImageUrl),
           ),
         ),
         // Content
@@ -121,9 +104,9 @@ class VendorProfileScreen extends StatelessWidget {
                 // Action Buttons (WhatsApp only)
                 _buildActionButtons(context, profile),
                 const SizedBox(height: 24),
-                // Location Section
-                if (profile.address != null || profile.latitude != null)
-                  _buildLocationSection(context, profile),
+                // Location Section - only show if profile has actual location data and show as text only
+                if (profile.address != null && profile.address!.isNotEmpty)
+                  _buildTextAddressSection(context, profile),
                 const SizedBox(height: 32),
               ],
             ),
@@ -189,6 +172,20 @@ class VendorProfileScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Circular avatar
+          Center(
+            child: CircleAvatar(
+              radius: 42,
+              backgroundColor: context.surfaceBg,
+              backgroundImage: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                  ? CachedNetworkImageProvider(profile.imageUrl!)
+                  : null,
+              child: profile.imageUrl == null || profile.imageUrl!.isEmpty
+                  ? Icon(Icons.storefront, size: 42, color: AppColors.primaryColor)
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 12),
           // Name and Verification
           Row(
             children: [
@@ -682,6 +679,53 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildTextAddressSection(BuildContext context, VendorProfileModel profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('العنوان', style: AppTextStyles.headingSmall),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: context.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.inputBorderColor),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.location_on_outlined, color: AppColors.primaryColor, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (profile.governorate != null && profile.governorate!.isNotEmpty)
+                      Text(profile.governorate!, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.bold)),
+                    if (profile.address != null && profile.address!.isNotEmpty)
+                      Text(profile.address!, style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary)),
+                  ],
+                ),
+              ),
+              if (profile.latitude != null && profile.longitude != null)
+                GestureDetector(
+                  onTap: () => _openGoogleMaps(profile.latitude, profile.longitude, profile.address),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('خريطة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Future<void> _openChatWithVendor(
       BuildContext context, VendorProfileModel profile) async {
     try {
@@ -699,10 +743,30 @@ class VendorProfileScreen extends StatelessWidget {
           },
         );
       } else {
-        CustomToast.showInfo(
-          context,
-          'لا توجد محادثة مع هذا التاجر بعد. أرسل طلباً وسيتواصل معك التاجر.',
-        );
+        // Try to create new chat
+        try {
+          final newChatId = await ChatRepository().createChatWithUser(profile.id);
+          if (!context.mounted) return;
+          if (newChatId != null) {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.chatRoom,
+              arguments: {
+                'chatId': newChatId.toString(),
+                'chatName': profile.name,
+              },
+            );
+          } else {
+            CustomToast.showInfo(
+              context,
+              'لا يمكن بدء محادثة الآن. يمكنك التواصل عبر واتساب.',
+            );
+          }
+        } catch (_) {
+          if (context.mounted) {
+            CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
+          }
+        }
       }
     } catch (_) {
       if (context.mounted) {

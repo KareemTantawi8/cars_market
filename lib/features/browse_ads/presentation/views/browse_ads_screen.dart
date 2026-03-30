@@ -34,7 +34,9 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cat = context.read<CategoryCubit>().state;
-      if (cat is! CategoryLoaded || cat.brands.isEmpty) {
+      if (cat is CategoryInitial) {
+        context.read<CategoryCubit>().loadInitialData();
+      } else if (cat is CategoryLoaded && cat.brands.isEmpty) {
         context.read<CategoryCubit>().loadBrands();
       }
     });

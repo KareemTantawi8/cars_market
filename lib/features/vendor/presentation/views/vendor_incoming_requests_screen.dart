@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/realtime_service.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
@@ -13,7 +14,13 @@ import '../../../home/data/repositories/search_requests_repository.dart';
 /// Vendor Incoming Requests Screen
 /// Shows pending search requests that match vendor's profile
 class VendorIncomingRequestsScreen extends StatefulWidget {
-  const VendorIncomingRequestsScreen({super.key});
+  const VendorIncomingRequestsScreen({
+    super.key,
+    this.initialHighlightSearchRequestId,
+  });
+
+  /// When opened from a notification / realtime tap, emphasize this request card.
+  final int? initialHighlightSearchRequestId;
 
   @override
   State<VendorIncomingRequestsScreen> createState() =>
@@ -29,8 +36,34 @@ class _VendorIncomingRequestsScreenState
     super.initState();
     // Load incoming requests when screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VendorRequestsCubit>().getIncomingRequests();
+      final cubit = context.read<VendorRequestsCubit>();
+      RealtimeService.instance.onVendorFeedCard = (m) => cubit.applyFeedCard(m);
+      RealtimeService.instance.onVendorFeedExpired = (m) {
+        final id = _parseSearchRequestId(m);
+        if (id != null) cubit.removeBySearchRequestId(id);
+      };
+      RealtimeService.instance.onVendorSearchRequestCreated = (_) => cubit.getIncomingRequests();
+      RealtimeService.instance.onVendorSearchRejected = (m) {
+        final id = _parseSearchRequestId(m);
+        if (id != null) cubit.removeBySearchRequestId(id);
+      };
+      cubit.getIncomingRequests();
     });
+  }
+
+  int? _parseSearchRequestId(Map<String, dynamic> m) {
+    final v = m['search_request_id'] ?? m['id'];
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '');
+  }
+
+  @override
+  void dispose() {
+    RealtimeService.instance.onVendorFeedCard = null;
+    RealtimeService.instance.onVendorFeedExpired = null;
+    RealtimeService.instance.onVendorSearchRequestCreated = null;
+    RealtimeService.instance.onVendorSearchRejected = null;
+    super.dispose();
   }
 
   @override
@@ -229,12 +262,25 @@ class _VendorIncomingRequestsScreenState
     required bool isUrgent,
     required IconData icon,
     bool isCertified = false,
+    bool highlight = false,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: context.cardBg,
         borderRadius: BorderRadius.circular(12),
+        border: highlight
+            ? Border.all(color: AppColors.primaryColor, width: 2)
+            : null,
+        boxShadow: highlight
+            ? [
+                BoxShadow(
+                  color: AppColors.primaryColor.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,14 +511,16 @@ class _VendorIncomingRequestsScreenState
 
   Widget _buildRequestCardFromData(Map<String, dynamic> request) {
     final requestId = request['id']?.toString() ?? '';
+    final rid = int.tryParse(requestId);
+    final highlight = widget.initialHighlightSearchRequestId != null &&
+        rid == widget.initialHighlightSearchRequestId;
     final customer = request['customer'] as Map<String, dynamic>? ?? {};
     final customerName = customer['name']?.toString() ?? 'عميل';
     final partText = request['part_text']?.toString() ?? '';
     final brand = request['brand'] as Map<String, dynamic>?;
     final model = request['model'] as Map<String, dynamic>?;
     final carDetails = '${brand?['name'] ?? ''} ${model?['name'] ?? ''}';
-    final createdAt = request['created_at']?.toString() ?? '';
-    
+
     // Calculate time ago (simplified - you might want to use a date package)
     final timeAgo = 'منذ قليل';
     
@@ -487,50 +535,54 @@ class _VendorIncomingRequestsScreenState
       remainingTime: '05:00', // You can calculate this from created_at
       isUrgent: true,
       icon: Icons.build,
+      highlight: highlight,
     );
   }
 
   void _handleAccept(String requestId) {
-    // Show accept modal with message input
+    final rootNav = Navigator.of(this.context, rootNavigator: true);
+    final cubit = this.context.read<VendorRequestsCubit>();
+    final scaffoldCtx = this.context;
+
     showModalBottomSheet(
-      context: context,
-      backgroundColor: context.cardBg,
+      context: this.context,
+      backgroundColor: this.context.cardBg,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => _AcceptRequestModal(
+      builder: (sheetContext) => _AcceptRequestModal(
         requestId: requestId,
         onAccept: (message) async {
-          Navigator.pop(context);
+          Navigator.pop(sheetContext);
           try {
             final response = await _searchRequestsRepo.acceptSearchRequest(
               requestId: int.parse(requestId),
-              comment: message,
+              note: message,
             );
-            
-            // Show success toast
-            CustomToast.showSuccess(context, 'تم قبول الطلب بنجاح');
-            
-            // Refresh requests list
-            context.read<VendorRequestsCubit>().getIncomingRequests();
-            
-            // Navigate to chat room if chat_id is in response
-            final chatId = response['data']?['chat']?['id'];
+
+            if (mounted) {
+              CustomToast.showSuccess(scaffoldCtx, 'تم قبول الطلب بنجاح');
+              cubit.getIncomingRequests();
+            }
+
+            final chatId = response['chat']?['id'] ?? response['data']?['chat']?['id'];
             if (chatId != null) {
-              Navigator.pushNamed(
-                context,
+              rootNav.pushNamed(
                 AppRoutes.chatRoom,
                 arguments: {
                   'chatId': chatId.toString(),
+                  'chatName': '',
                 },
               );
             }
           } catch (e) {
-            CustomToast.showError(
-              context,
-              e.toString().replaceAll('Exception: ', ''),
-            );
+            if (mounted) {
+              CustomToast.showError(
+                scaffoldCtx,
+                e.toString().replaceAll('Exception: ', ''),
+              );
+            }
           }
         },
       ),
@@ -538,11 +590,13 @@ class _VendorIncomingRequestsScreenState
   }
 
   void _handleReject(String requestId) {
-    // Show confirmation dialog
+    final scaffoldCtx = this.context;
+    final cubit = this.context.read<VendorRequestsCubit>();
+
     showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: context.cardBg,
+      context: this.context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: dialogCtx.cardBg,
         title: Text(
           'تجاهل الطلب',
           style: AppTextStyles.headingSmall,
@@ -553,7 +607,7 @@ class _VendorIncomingRequestsScreenState
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogCtx),
             child: Text(
               'إلغاء',
               style: AppTextStyles.link,
@@ -562,17 +616,20 @@ class _VendorIncomingRequestsScreenState
           PrimaryButton(
             text: 'تجاهل',
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(dialogCtx);
               try {
                 await _searchRequestsRepo.rejectSearchRequest(int.parse(requestId));
-                CustomToast.showSuccess(context, 'تم تجاهل الطلب');
-                // Refresh requests list
-                context.read<VendorRequestsCubit>().getIncomingRequests();
+                if (mounted) {
+                  CustomToast.showSuccess(scaffoldCtx, 'تم تجاهل الطلب');
+                  cubit.getIncomingRequests();
+                }
               } catch (e) {
-                CustomToast.showError(
-                  context,
-                  e.toString().replaceAll('Exception: ', ''),
-                );
+                if (mounted) {
+                  CustomToast.showError(
+                    scaffoldCtx,
+                    e.toString().replaceAll('Exception: ', ''),
+                  );
+                }
               }
             },
           ),

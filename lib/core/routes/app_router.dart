@@ -149,10 +149,17 @@ class AppRouter {
         );
 
       case AppRoutes.vendorIncomingRequests:
+        final incomingArgs = settings.arguments as Map<String, dynamic>?;
+        final rawSr = incomingArgs?['searchRequestId'];
+        final highlightId = rawSr is int
+            ? rawSr
+            : int.tryParse(rawSr?.toString() ?? '');
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (_) => VendorRequestsCubit(),
-            child: const VendorIncomingRequestsScreen(),
+            child: VendorIncomingRequestsScreen(
+              initialHighlightSearchRequestId: highlightId,
+            ),
           ),
         );
 

@@ -14,6 +14,25 @@ class AppConstants {
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 
+  /// HTTP origin without `/api/v1` (e.g. broadcasting auth: `{apiOrigin}/broadcasting/auth`).
+  static String get apiOrigin {
+    final u = baseUrl.trim();
+    const suffix = '/api/v1';
+    if (u.endsWith(suffix)) {
+      return u.substring(0, u.length - suffix.length);
+    }
+    return u;
+  }
+
+  static String get broadcastingAuthUrl => '$apiOrigin/api/broadcasting/auth';
+
+  // Laravel Reverb — match server `.env` (`REVERB_APP_KEY`, `REVERB_PORT`, etc.)
+  /// WebSocket host (defaults to API host).
+  static String get reverbHost => Uri.parse(apiOrigin).host;
+  static const int reverbPort = 8080;
+  static const String reverbAppKey = 'juc1rbrua6fd6qlcubm0';
+  static const bool reverbUseTls = false;
+
   // Storage Keys
   static const String authTokenKey = 'auth_token';
   static const String userTypeKey = 'user_type';
