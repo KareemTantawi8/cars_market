@@ -78,6 +78,21 @@ class StorageService {
     return await prefs.clear();
   }
 
+  /// Save FCM token
+  static Future<bool> saveFcmToken(String token) async {
+    return await prefs.setString(AppConstants.fcmTokenKey, token);
+  }
+
+  /// Get FCM token
+  static String? getFcmToken() {
+    return prefs.getString(AppConstants.fcmTokenKey);
+  }
+
+  /// Remove FCM token
+  static Future<bool> removeFcmToken() async {
+    return await prefs.remove(AppConstants.fcmTokenKey);
+  }
+
   /// Save any string value
   static Future<bool> saveString(String key, String value) async {
     return await prefs.setString(key, value);
@@ -101,6 +116,23 @@ class StorageService {
   /// Remove any key
   static Future<bool> remove(String key) async {
     return await prefs.remove(key);
+  }
+
+  /// Vendor: watermark for GET /notifications sync (see PushNotificationService).
+  static int getLastNotifiedNotificationApiId() {
+    return prefs.getInt(AppConstants.lastNotifiedNotificationApiIdKey) ?? 0;
+  }
+
+  static Future<void> saveLastNotifiedNotificationApiId(int id) async {
+    await prefs.setInt(AppConstants.lastNotifiedNotificationApiIdKey, id);
+  }
+
+  static bool isNotificationApiBaselineDone() {
+    return prefs.getBool(AppConstants.notificationApiBaselineDoneKey) ?? false;
+  }
+
+  static Future<void> setNotificationApiBaselineDone() async {
+    await prefs.setBool(AppConstants.notificationApiBaselineDoneKey, true);
   }
 }
 

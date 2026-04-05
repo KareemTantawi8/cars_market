@@ -11,6 +11,7 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/navigation_service.dart';
 import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/in_app_notification_service.dart';
 import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
@@ -43,10 +44,29 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   void _startVendorRealtime() {
     if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
+    RealtimeService.instance.onVendorSearchRequestCreated =
+        _onVendorSearchRequestCreated;
+    RealtimeService.instance.onVendorNewMessage = _onVendorNewMessage;
     unawaited(RealtimeService.instance.start());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      PushNotificationService.tryNavigateToPendingChat();
-    });
+    unawaited(
+      PushNotificationService.instance
+          .syncMissedSearchRequestNotificationsFromApiOnResume(),
+    );
+  }
+
+  void _onVendorSearchRequestCreated(Map<String, dynamic> data) {
+    unawaited(InAppNotificationService.showVendorNewSearchRequest(data));
+  }
+
+  void _onVendorNewMessage(Map<String, dynamic> data) {
+    InAppNotificationService.showNewMessageReverb(data);
+  }
+
+  @override
+  void dispose() {
+    RealtimeService.instance.onVendorSearchRequestCreated = null;
+    RealtimeService.instance.onVendorNewMessage = null;
+    super.dispose();
   }
 
   @override

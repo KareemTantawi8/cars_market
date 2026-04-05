@@ -1,9 +1,8 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_cubit.dart';
 import 'core/utils/constants.dart';
@@ -12,31 +11,21 @@ import 'core/routes/app_router.dart';
 import 'core/controllers/user_type_controller.dart';
 import 'core/network/api_client.dart';
 import 'core/navigation/root_navigator.dart';
-import 'core/services/push_notification_service.dart';
+import 'core/services/push_notification_service.dart'
+    show firebaseMessagingBackgroundHandler, PushNotificationService;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
-  try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  } catch (_) {
-    // Continue without push notifications if Firebase fails
-  }
+  await Firebase.initializeApp();
 
-  // Initialize storage and user type controller
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   await UserTypeController().initialize();
 
-  // Ensure API client has the correct base URL
   ApiClient().updateBaseUrl();
 
-  // Initialize push notifications (after storage is ready)
-  try {
-    await PushNotificationService().initialize();
-  } catch (_) {
-    // Silently fail if Firebase not configured
-  }
+  await PushNotificationService.instance.initialize();
 
   runApp(
     BlocProvider(
@@ -58,15 +47,13 @@ class MyApp extends StatelessWidget {
           title: AppConstants.appName,
           debugShowCheckedModeBanner: false,
 
-          // Theme — light as default, user can switch to dark or system
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: themeMode,
 
-          // Localization
           locale: const Locale(AppConstants.defaultLanguage, 'EG'),
           supportedLocales: const [
-            Locale(AppConstants.defaultLanguage, 'EG'), // Arabic (Egypt)
+            Locale(AppConstants.defaultLanguage, 'EG'),
           ],
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
@@ -74,9 +61,6 @@ class MyApp extends StatelessWidget {
             GlobalCupertinoLocalizations.delegate,
           ],
 
-          // RTL — `child` can be null briefly before the navigator exists.
-          // Do not call Theme.of(context) here: this [context] sits *above*
-          // [MaterialApp]'s [Theme], so Theme.of throws and the app exits (iOS white screen).
           builder: (context, child) {
             final placeholderBg = AppTheme.lightTheme.scaffoldBackgroundColor;
             return Directionality(
@@ -89,7 +73,6 @@ class MyApp extends StatelessWidget {
             );
           },
 
-          // Routing
           initialRoute: AppRoutes.splash,
           onGenerateRoute: AppRouter.generateRoute,
         );

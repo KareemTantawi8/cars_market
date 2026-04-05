@@ -18,9 +18,9 @@ import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
 import '../../data/models/supplier_model.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
-import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/services/in_app_notification_service.dart';
 import '../../../../core/utils/constants.dart';
 
 /// Home Screen (User)
@@ -60,20 +60,14 @@ class _HomeScreenState extends State<HomeScreen> {
     RealtimeService.instance.onCustomerSearchAccepted = _onSearchRequestAccepted;
     RealtimeService.instance.onCustomerNewMessage = _onNewMessageFromReverb;
     unawaited(RealtimeService.instance.start());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      PushNotificationService.tryNavigateToPendingChat();
-    });
   }
 
   Future<void> _onSearchRequestAccepted(Map<String, dynamic> data) async {
-    await PushNotificationService().showSearchAcceptedFromReverb(data);
+    InAppNotificationService.showSearchAcceptedReverb(data);
   }
 
   Future<void> _onNewMessageFromReverb(Map<String, dynamic> data) async {
-    await PushNotificationService().showNewMessageFromReverb(
-      data,
-      activeChatId: RealtimeService.instance.activeChatId,
-    );
+    InAppNotificationService.showNewMessageReverb(data);
     if (!mounted) return;
     if (_currentNavIndex == _chatsTabIndex) {
       try {

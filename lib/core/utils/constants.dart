@@ -40,6 +40,13 @@ class AppConstants {
   static const String userDataKey = 'user_data';
   static const String abilitiesKey = 'abilities'; // e.g. ['ads.update'] for admin
   static const String themeModeKey = 'theme_mode'; // 'light', 'dark', 'system'
+  static const String fcmTokenKey = 'fcm_token';
+  /// Max API `notifications.data[].id` already surfaced via local tray (vendor API sync).
+  static const String lastNotifiedNotificationApiIdKey =
+      'last_notified_notification_api_id';
+  /// True after first GET /notifications baseline (vendor) so `id==0` is valid watermark.
+  static const String notificationApiBaselineDoneKey =
+      'notification_api_baseline_done';
 
   // User Types
   static const String userTypeCustomer = 'customer';

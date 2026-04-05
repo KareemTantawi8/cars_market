@@ -7,7 +7,6 @@ import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
-import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/utils/extensions.dart';
 import '../cubit/login_cubit.dart';
 import '../views/register_screen.dart';
@@ -59,9 +58,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   Navigator.pushNamedAndRemoveUntil(
                       context, AppRoutes.home, (r) => false);
                 }
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  PushNotificationService.tryNavigateToPendingChat();
-                });
               }
             });
           } else if (state is LoginError) {

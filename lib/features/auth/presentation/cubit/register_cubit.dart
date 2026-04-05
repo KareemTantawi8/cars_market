@@ -9,8 +9,8 @@ import '../../data/models/register_response_model.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 
 /// Register State
 abstract class RegisterState extends Equatable {
@@ -51,12 +51,10 @@ class RegisterCubit extends Cubit<RegisterState> {
   final AuthRepository _authRepository;
   final ApiClient _apiClient;
 
-  RegisterCubit({
-    AuthRepository? authRepository,
-    ApiClient? apiClient,
-  })  : _authRepository = authRepository ?? AuthRepository(),
-        _apiClient = apiClient ?? ApiClient(),
-        super(RegisterInitial());
+  RegisterCubit({AuthRepository? authRepository, ApiClient? apiClient})
+    : _authRepository = authRepository ?? AuthRepository(),
+      _apiClient = apiClient ?? ApiClient(),
+      super(RegisterInitial());
 
   /// Register as user (customer)
   Future<void> registerAsUser({
@@ -96,40 +94,47 @@ class RegisterCubit extends Cubit<RegisterState> {
       }
 
       if (password.length < AppConstants.minPasswordLength) {
-        emit(RegisterError(
-            'كلمة المرور يجب أن تكون ${AppConstants.minPasswordLength} أحرف على الأقل'));
+        emit(
+          RegisterError(
+            'كلمة المرور يجب أن تكون ${AppConstants.minPasswordLength} أحرف على الأقل',
+          ),
+        );
         return;
       }
 
       if (password != passwordConfirmation) {
-        emit(const RegisterError('كلمة المرور وتأكيد كلمة المرور غير متطابقين'));
+        emit(
+          const RegisterError('كلمة المرور وتأكيد كلمة المرور غير متطابقين'),
+        );
         return;
       }
 
-      // Create request model
+      final fcmToken = await PushNotificationService.instance.getToken();
+
       final request = RegisterRequestModel(
         name: name.trim(),
         phone: phone.trim(),
         password: password,
         passwordConfirmation: passwordConfirmation,
         deviceName: deviceName,
+        deviceToken: fcmToken,
       );
 
-      // Call API
       final response = await _authRepository.registerAsUser(request);
 
-      // Save token, user data, and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
       await StorageService.saveAbilities(response.abilities);
 
-      // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
 
       unawaited(RealtimeService.instance.start());
-      unawaited(PushNotificationService().resendFcmToken());
+      await PushNotificationService.instance.registerToken();
+      unawaited(
+        PushNotificationService.instance.establishNotificationSyncBaseline(),
+      );
 
       emit(RegisterSuccess(response));
     } catch (e) {
@@ -180,13 +185,18 @@ class RegisterCubit extends Cubit<RegisterState> {
       }
 
       if (password.length < AppConstants.minPasswordLength) {
-        emit(RegisterError(
-            'كلمة المرور يجب أن تكون ${AppConstants.minPasswordLength} أحرف على الأقل'));
+        emit(
+          RegisterError(
+            'كلمة المرور يجب أن تكون ${AppConstants.minPasswordLength} أحرف على الأقل',
+          ),
+        );
         return;
       }
 
       if (password != passwordConfirmation) {
-        emit(const RegisterError('كلمة المرور وتأكيد كلمة المرور غير متطابقين'));
+        emit(
+          const RegisterError('كلمة المرور وتأكيد كلمة المرور غير متطابقين'),
+        );
         return;
       }
 
@@ -205,7 +215,8 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      // Create vendor request model
+      final fcmToken = await PushNotificationService.instance.getToken();
+
       final request = VendorRegisterRequestModel(
         name: name.trim(),
         phone: phone.trim(),
@@ -217,23 +228,24 @@ class RegisterCubit extends Cubit<RegisterState> {
         shopPhone: shopPhone?.trim().isEmpty == true ? null : shopPhone?.trim(),
         address: address?.trim().isEmpty == true ? null : address?.trim(),
         categoryIds: brandIds,
+        deviceToken: fcmToken,
       );
 
-      // Call API
       final response = await _authRepository.registerAsVendor(request);
 
-      // Save token, user data, and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
       await StorageService.saveAbilities(response.abilities);
 
-      // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
 
       unawaited(RealtimeService.instance.start());
-      unawaited(PushNotificationService().resendFcmToken());
+      await PushNotificationService.instance.registerToken();
+      unawaited(
+        PushNotificationService.instance.establishNotificationSyncBaseline(),
+      );
 
       emit(RegisterSuccess(response));
     } catch (e) {
@@ -246,4 +258,3 @@ class RegisterCubit extends Cubit<RegisterState> {
     emit(RegisterInitial());
   }
 }
-

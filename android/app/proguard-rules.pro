@@ -10,6 +10,12 @@
 ## Google Play Core (referenced by Flutter deferred components — not used in this app)
 -dontwarn com.google.android.play.core.**
 
+## Firebase / FCM
+-keep class com.google.firebase.** { *; }
+-keep class com.google.android.gms.** { *; }
+-dontwarn com.google.firebase.**
+-dontwarn com.google.android.gms.**
+
 ## Shorebird updater
 -keep class dev.shorebird.** { *; }
 

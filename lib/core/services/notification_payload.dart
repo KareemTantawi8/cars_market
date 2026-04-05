@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'package:firebase_messaging/firebase_messaging.dart';
-
-/// Extracts `chat_id` from FCM `data`, local-notification JSON, or Reverb `new-message.sent` payload.
+/// Extracts `chat_id` from notification/realtime payload maps (e.g. Reverb `new-message.sent`).
 int? parseChatIdFromMap(Map<String, dynamic> data) {
   final direct = data['chat_id'] ?? data['chatId'];
   if (direct != null) {
@@ -82,6 +80,50 @@ int? parseChatIdFromMap(Map<String, dynamic> data) {
   return null;
 }
 
-Map<String, dynamic> remoteMessageDataToMap(RemoteMessage message) {
-  return Map<String, dynamic>.from(message.data);
+/// Reverb `private-vendor.*` / `search-request.created` → same shape as API notification rows.
+Map<String, dynamic> vendorSearchRequestNavigationMap(
+  Map<String, dynamic> data,
+) {
+  final sr = data['search_request'];
+  Map<String, dynamic>? srMap;
+  if (sr is Map<String, dynamic>) {
+    srMap = sr;
+  } else if (sr is Map) {
+    srMap = Map<String, dynamic>.from(sr);
+  }
+
+  final id = srMap?['id'];
+  final searchRequestId =
+      id is int ? id : int.tryParse(id?.toString() ?? '');
+
+  final customer = srMap?['customer'];
+  final customerName =
+      customer is Map ? customer['name']?.toString() : null;
+  final partText = srMap?['part_text']?.toString() ?? '';
+
+  const title = 'طلب بحث جديد';
+  final body = [
+    if (customerName != null && customerName.isNotEmpty) customerName,
+    if (partText.isNotEmpty) partText,
+  ].join(' — ');
+
+  return <String, dynamic>{
+    'type': 'search_request',
+    'title': title,
+    'body': body.isEmpty ? partText : body,
+    if (searchRequestId != null)
+      'meta': {'search_request_id': searchRequestId},
+    if (searchRequestId != null) 'search_request_id': searchRequestId,
+    'search_request': srMap,
+    ...data,
+  };
+}
+
+/// Stable positive id for [FlutterLocalNotificationsPlugin.show] / [cancel].
+int vendorSearchLocalNotificationId(Map<String, dynamic> navMap) {
+  final sid = navMap['search_request_id'];
+  if (sid is int && sid > 0) return sid;
+  final p = int.tryParse(sid?.toString() ?? '');
+  if (p != null && p > 0) return p;
+  return navMap.hashCode.abs() % 0x7fffffff;
 }

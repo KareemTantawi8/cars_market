@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -10,62 +11,63 @@ import 'push_notification_service.dart';
 import 'storage_service.dart';
 
 /// Laravel Reverb (Pusher protocol): connects after login, subscribes to role channels,
-/// and exposes hooks for chat + vendor feed. See backend realtime / broadcasting docs.
+/// and exposes hooks for chat + vendor feed.
 class RealtimeService with WidgetsBindingObserver {
   RealtimeService._() {
     WidgetsBinding.instance.addObserver(this);
   }
+
   static final RealtimeService instance = RealtimeService._();
 
   ReverbClient? _client;
   bool _starting = false;
+  Timer? _disconnectApiSyncTimer;
 
   bool get isConnected =>
       _client != null && _client!.connectionState == ConnectionState.connected;
+
+  int? activeChatId;
+
+  void Function(Map<String, dynamic> data)? onCustomerSearchAccepted;
+  void Function(Map<String, dynamic> data)? onCustomerNewMessage;
+
+  void Function(Map<String, dynamic> data)? onVendorFeedCard;
+  void Function(Map<String, dynamic> data)? onVendorFeedExpired;
+  void Function(Map<String, dynamic> data)? onVendorSearchRequestCreated;
+  void Function(Map<String, dynamic> data)? onVendorSearchRejected;
+  void Function(Map<String, dynamic> data)? onVendorNewMessage;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       final token = StorageService.getAuthToken();
       if (token != null && token.isNotEmpty && !isConnected && !_starting) {
-        if (kDebugMode) debugPrint('[Realtime] app resumed → reconnecting');
+        if (kDebugMode) {
+          debugPrint('[Realtime] app resumed -> reconnecting');
+        }
         unawaited(start());
       }
+      // Reverb disconnects in background — catch missed vendor search rows from REST.
+      unawaited(
+        PushNotificationService.instance
+            .syncMissedSearchRequestNotificationsFromApiOnResume(),
+      );
     }
   }
-
-  /// When non-null, `new-message.sent` should not surface as a global snack (user is in that chat).
-  int? activeChatId;
-
-  // —— Customer UI hooks (set from HomeScreen) ——
-  void Function(Map<String, dynamic> data)? onCustomerSearchAccepted;
-  void Function(Map<String, dynamic> data)? onCustomerNewMessage;
-
-  // —— Vendor incoming-requests UI (set from VendorIncomingRequestsScreen) ——
-  void Function(Map<String, dynamic> data)? onVendorFeedCard;
-  void Function(Map<String, dynamic> data)? onVendorFeedExpired;
-  void Function(Map<String, dynamic> data)? onVendorSearchRequestCreated;
-  void Function(Map<String, dynamic> data)? onVendorSearchRejected;
-
-  // —— Vendor personal (new messages on private-user.{userId}) ——
-  void Function(Map<String, dynamic> data)? onVendorNewMessage;
 
   Future<void> start() async {
     final token = StorageService.getAuthToken();
     if (token == null || token.isEmpty) return;
 
-    if (_client?.connectionState == ConnectionState.connected) {
-      return;
-    }
-
+    if (_client?.connectionState == ConnectionState.connected) return;
     if (_starting) return;
     _starting = true;
 
     try {
-      // Singleton must be cleared so a new session picks up the latest Sanctum token.
       // ignore: invalid_use_of_visible_for_testing_member
       ReverbClient.resetInstance();
       final ready = Completer<void>();
+
       _client = ReverbClient.instance(
         host: AppConstants.reverbHost,
         port: AppConstants.reverbPort,
@@ -76,26 +78,19 @@ class RealtimeService with WidgetsBindingObserver {
           'Authorization': 'Bearer $token',
         },
         onConnecting: () {
-          if (kDebugMode) {
-            debugPrint('[Realtime] connecting…');
-          }
+          if (kDebugMode) debugPrint('[Realtime] connecting...');
         },
         onConnected: (socketId) {
-          if (kDebugMode) {
-            debugPrint('[Realtime] connected socket=$socketId');
-          }
+          if (kDebugMode) debugPrint('[Realtime] connected socket=$socketId');
           if (!ready.isCompleted) ready.complete();
           _subscribeForRole();
         },
         onDisconnected: () {
-          if (kDebugMode) {
-            debugPrint('[Realtime] disconnected');
-          }
+          if (kDebugMode) debugPrint('[Realtime] disconnected');
+          _scheduleVendorNotificationSyncOnDisconnect();
         },
         onError: (e) {
-          if (kDebugMode) {
-            debugPrint('[Realtime] error: $e');
-          }
+          if (kDebugMode) debugPrint('[Realtime] error: $e');
         },
       );
 
@@ -103,22 +98,37 @@ class RealtimeService with WidgetsBindingObserver {
       await ready.future.timeout(
         const Duration(seconds: 20),
         onTimeout: () {
-          if (kDebugMode) {
-            debugPrint('[Realtime] connection_established timeout');
-          }
+          if (kDebugMode) debugPrint('[Realtime] connection timeout');
         },
       );
     } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[Realtime] start failed: $e');
-      }
+      if (kDebugMode) debugPrint('[Realtime] start failed: $e');
     } finally {
       _starting = false;
     }
   }
 
-  /// Tear down websocket (e.g. logout).
+  void _scheduleVendorNotificationSyncOnDisconnect() {
+    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
+    final token = StorageService.getAuthToken();
+    if (token == null || token.isEmpty) return;
+
+    _disconnectApiSyncTimer?.cancel();
+    _disconnectApiSyncTimer = Timer(const Duration(milliseconds: 450), () {
+      _disconnectApiSyncTimer = null;
+      if (kDebugMode) {
+        debugPrint('[Realtime] disconnect debounce → API notification sync');
+      }
+      unawaited(
+        PushNotificationService.instance
+            .syncMissedSearchRequestNotificationsFromApiOnDisconnect(),
+      );
+    });
+  }
+
   void stop() {
+    _disconnectApiSyncTimer?.cancel();
+    _disconnectApiSyncTimer = null;
     activeChatId = null;
     onCustomerSearchAccepted = null;
     onCustomerNewMessage = null;
@@ -136,38 +146,22 @@ class RealtimeService with WidgetsBindingObserver {
 
   void _subscribeForRole() {
     final c = _client;
-    if (c == null || c.socketId == null) {
-      if (kDebugMode)
-        debugPrint('[Realtime] _subscribeForRole: no client/socketId');
-      return;
-    }
+    if (c == null || c.socketId == null) return;
 
     final userType = StorageService.getUserType();
     final raw = StorageService.getUserData();
-    if (raw == null || raw.isEmpty) {
-      if (kDebugMode)
-        debugPrint('[Realtime] _subscribeForRole: no userData stored');
-      return;
-    }
+    if (raw == null || raw.isEmpty) return;
 
     Map<String, dynamic> json;
     try {
       json = jsonDecode(raw) as Map<String, dynamic>;
     } catch (_) {
-      if (kDebugMode)
-        debugPrint('[Realtime] _subscribeForRole: invalid userData JSON');
       return;
     }
 
     final userId = json['id'];
     final uid = userId is int ? userId : int.tryParse(userId?.toString() ?? '');
-    if (uid == null) {
-      if (kDebugMode)
-        debugPrint('[Realtime] _subscribeForRole: no userId in userData');
-      return;
-    }
-
-    if (kDebugMode) debugPrint('[Realtime] role=$userType uid=$uid');
+    if (uid == null) return;
 
     if (userType == AppConstants.userTypeVendor) {
       final vendor = json['vendor'];
@@ -177,18 +171,11 @@ class RealtimeService with WidgetsBindingObserver {
       final vid = vendorId is int
           ? vendorId
           : int.tryParse(vendorId?.toString() ?? '');
-      if (kDebugMode)
-        debugPrint('[Realtime] vendor object: $vendor → vid=$vid');
       if (vid != null && vid > 0) {
         _bindVendorChannels(c, vendorId: vid);
-      } else {
-        if (kDebugMode)
-          debugPrint('[Realtime] ⚠ no vendorId → skipping vendor channels');
       }
       _bindVendorUserChannel(c, userId: uid);
     } else {
-      if (kDebugMode)
-        debugPrint('[Realtime] subscribing customer private-user.$uid');
       _bindCustomerUserChannel(c, userId: uid);
     }
   }
@@ -198,73 +185,45 @@ class RealtimeService with WidgetsBindingObserver {
       final ch = c.subscribeToPrivateChannel('private-user.$userId');
 
       ch.bind('search-request.accepted', (_, data) {
-        if (kDebugMode)
-          debugPrint('[Realtime] ✅ EVENT search-request.accepted received');
         final map = coerceMap(data);
         if (onCustomerSearchAccepted != null) {
           onCustomerSearchAccepted!.call(map);
-        } else {
-          unawaited(
-            PushNotificationService().showSearchAcceptedFromReverb(map),
-          );
         }
       });
 
       ch.bind('new-message.sent', (_, data) {
-        if (kDebugMode)
-          debugPrint('[Realtime] ✅ EVENT new-message.sent received');
         final map = coerceMap(data);
         final notification = map['notification'];
         if (notification is Map<String, dynamic>) {
-          final m = notification['meta'];
-          if (m is Map && m['chat_id'] != null) {
-            final cid = m['chat_id'] is int
-                ? m['chat_id'] as int
-                : int.tryParse(m['chat_id'].toString());
+          final meta = notification['meta'];
+          if (meta is Map && meta['chat_id'] != null) {
+            final cid = meta['chat_id'] is int
+                ? meta['chat_id'] as int
+                : int.tryParse(meta['chat_id'].toString());
             if (cid != null && cid == activeChatId) return;
           }
         }
         if (onCustomerNewMessage != null) {
           onCustomerNewMessage!.call(map);
-        } else {
-          unawaited(
-            PushNotificationService().showNewMessageFromReverb(
-              map,
-              activeChatId: activeChatId,
-            ),
-          );
         }
       });
     } catch (e) {
-      if (kDebugMode) debugPrint('[Realtime] customer channel auth failed: $e');
+      if (kDebugMode) debugPrint('[Realtime] customer auth failed: $e');
     }
   }
 
   void _bindVendorChannels(ReverbClient c, {required int vendorId}) {
     try {
       final notify = c.subscribeToPrivateChannel('private-vendor.$vendorId');
-      if (kDebugMode)
-        debugPrint('[Realtime] subscribed to private-vendor.$vendorId');
       notify.bind('search-request.created', (_, data) {
-        if (kDebugMode)
-          debugPrint('[Realtime] ✅ EVENT search-request.created received');
         final map = coerceMap(data);
-        if (onVendorSearchRequestCreated != null) {
-          onVendorSearchRequestCreated!.call(map);
-        } else {
-          unawaited(
-            PushNotificationService().showVendorNewSearchFromReverb(map),
-          );
-        }
+        unawaited(_deliverVendorSearchCreated(map));
       });
       notify.bind('search-request.rejected', (_, data) {
-        if (kDebugMode)
-          debugPrint('[Realtime] ✅ EVENT search-request.rejected received');
         onVendorSearchRejected?.call(coerceMap(data));
       });
     } catch (e) {
-      if (kDebugMode)
-        debugPrint('[Realtime] vendor notify channel auth failed: $e');
+      if (kDebugMode) debugPrint('[Realtime] vendor notify auth failed: $e');
     }
 
     try {
@@ -278,46 +237,34 @@ class RealtimeService with WidgetsBindingObserver {
         onVendorFeedExpired?.call(coerceMap(data));
       });
     } catch (e) {
-      if (kDebugMode)
-        debugPrint('[Realtime] vendor feed channel auth failed: $e');
+      if (kDebugMode) debugPrint('[Realtime] vendor feed auth failed: $e');
     }
   }
 
-  /// Vendor personal channel: `new-message.sent` on `private-user.{userId}`.
   void _bindVendorUserChannel(ReverbClient c, {required int userId}) {
     try {
       final ch = c.subscribeToPrivateChannel('private-user.$userId');
-
       ch.bind('new-message.sent', (_, data) {
         final map = coerceMap(data);
         final notification = map['notification'];
         if (notification is Map<String, dynamic>) {
-          final m = notification['meta'];
-          if (m is Map && m['chat_id'] != null) {
-            final cid = m['chat_id'] is int
-                ? m['chat_id'] as int
-                : int.tryParse(m['chat_id'].toString());
+          final meta = notification['meta'];
+          if (meta is Map && meta['chat_id'] != null) {
+            final cid = meta['chat_id'] is int
+                ? meta['chat_id'] as int
+                : int.tryParse(meta['chat_id'].toString());
             if (cid != null && cid == activeChatId) return;
           }
         }
         if (onVendorNewMessage != null) {
           onVendorNewMessage!.call(map);
-        } else {
-          unawaited(
-            PushNotificationService().showNewMessageFromReverb(
-              map,
-              activeChatId: activeChatId,
-            ),
-          );
         }
       });
     } catch (e) {
-      if (kDebugMode)
-        debugPrint('[Realtime] vendor user channel auth failed: $e');
+      if (kDebugMode) debugPrint('[Realtime] vendor user auth failed: $e');
     }
   }
 
-  /// Chat room: live [message.sent] events on `private-chat.{chatId}`.
   void subscribeChat(
     int chatId, {
     required void Function(Map<String, dynamic> data) onMessage,
@@ -330,11 +277,11 @@ class RealtimeService with WidgetsBindingObserver {
 
     try {
       final ch = c.subscribeToPrivateChannel(name);
-      ch.bind('message.sent', (String _, dynamic data) {
+      ch.bind('message.sent', (_, data) {
         onMessage(coerceMap(data));
       });
     } catch (e) {
-      if (kDebugMode) debugPrint('[Realtime] chat channel auth failed: $e');
+      if (kDebugMode) debugPrint('[Realtime] chat auth failed: $e');
     }
   }
 
@@ -347,10 +294,23 @@ class RealtimeService with WidgetsBindingObserver {
     if (data is Map) return Map<String, dynamic>.from(data);
     if (data is String) {
       try {
-        final d = jsonDecode(data);
-        if (d is Map) return Map<String, dynamic>.from(d);
+        final decoded = jsonDecode(data);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
       } catch (_) {}
     }
     return {};
   }
+
+  /// Tray first (always), then UI callback (overlay when resumed, or cubit refresh).
+  Future<void> _deliverVendorSearchCreated(Map<String, dynamic> map) async {
+    try {
+      await PushNotificationService.instance.showVendorSearchReverbTray(map);
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[Realtime] vendor search tray failed: $e\n$st');
+      }
+    }
+    onVendorSearchRequestCreated?.call(map);
+  }
 }
+

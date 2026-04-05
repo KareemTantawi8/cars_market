@@ -6,8 +6,8 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
-import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -152,14 +152,15 @@ class _SplashScreenState extends State<SplashScreen>
     final userType = StorageService.getUserType();
     if (token != null && token.isNotEmpty) {
       unawaited(RealtimeService.instance.start());
+      unawaited(PushNotificationService.instance.registerToken());
+      unawaited(
+        PushNotificationService.instance.establishNotificationSyncBaseline(),
+      );
       if (userType == AppConstants.userTypeVendor) {
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.vendorDashboard, (r) => false);
       } else {
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
       }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        PushNotificationService.tryNavigateToPendingChat();
-      });
     } else {
       context.navigateToAndRemoveUntil(const LoginScreen());
     }

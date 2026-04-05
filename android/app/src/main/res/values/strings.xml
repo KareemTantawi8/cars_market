@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_channel_name">وش سلندر</string>
+    <string name="notification_channel_desc">إشعارات تطبيق وش سلندر</string>
+    <string name="notification_search_title">طلب بحث جديد</string>
+    <string name="notification_search_body">العميل يبحث عن: %1$s</string>
+    <string name="notification_message_title">رسالة جديدة</string>
+    <string name="notification_open_app">افتح التطبيق لعرض التفاصيل</string>
+    <string name="notification_generic_body">لديك إشعار جديد</string>
+</resources>

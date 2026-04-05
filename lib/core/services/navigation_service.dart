@@ -6,96 +6,69 @@ import '../services/realtime_service.dart';
 import '../services/push_notification_service.dart';
 import '../controllers/user_type_controller.dart';
 
-/// Navigation Service for handling user type-based routing
 class NavigationService {
   NavigationService._();
 
-  /// Get current user type from storage
   static String? getCurrentUserType() {
-    return UserTypeController().currentUserType ?? StorageService.getUserType();
+    return UserTypeController().currentUserType ??
+        StorageService.getUserType();
   }
 
-  /// Navigate to appropriate home screen based on user type
   static void navigateToHome(BuildContext context) {
-    final controller = UserTypeController();
-    final userType = controller.currentUserType ?? getCurrentUserType();
-    
+    final userType = getCurrentUserType();
+
     if (userType == AppConstants.userTypeVendor) {
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.vendorDashboard,
-        (route) => false,
+        (_) => false,
       );
     } else {
-      // Default to customer home
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.home,
-        (route) => false,
+        (_) => false,
       );
     }
   }
 
-  /// Navigate after login based on user type
   static void navigateAfterLogin(BuildContext context, String userType) {
-    if (userType == AppConstants.userTypeVendor) {
-      // Check if vendor has subscription
-      // For now, navigate to dashboard (subscription check will be done later)
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.vendorDashboard,
-        (route) => false,
-      );
-    } else {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.home,
-        (route) => false,
-      );
-    }
+    navigateToHome(context);
   }
 
-  /// Navigate after registration based on user type
   static void navigateAfterRegister(BuildContext context, String userType) {
     if (userType == AppConstants.userTypeVendor) {
-      // Navigate to subscription plans for vendors
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.subscriptionPlans,
-        (route) => false,
+        (_) => false,
       );
     } else {
-      // Navigate to home for customers
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.home,
-        (route) => false,
+        (_) => false,
       );
     }
   }
 
-  /// Navigate after subscription purchase
   static void navigateAfterSubscription(BuildContext context) {
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.vendorDashboard,
-      (route) => false,
+      (_) => false,
     );
   }
 
-  /// Navigate to logout
   static void navigateToLogout(BuildContext context) {
     RealtimeService.instance.stop();
-    PushNotificationService.clearPendingNavigation();
-    // Clear storage
+    PushNotificationService.instance.unregisterToken();
     StorageService.clearAll();
-    
-    // Navigate to login
+
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,
-      (route) => false,
+      (_) => false,
     );
   }
 }
-

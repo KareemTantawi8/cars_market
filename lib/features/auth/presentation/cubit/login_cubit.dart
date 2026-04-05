@@ -8,8 +8,8 @@ import '../../data/models/login_response_model.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
-import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/services/realtime_service.dart';
+import '../../../../core/services/push_notification_service.dart';
 
 /// Login State
 abstract class LoginState extends Equatable {
@@ -89,39 +89,39 @@ class LoginCubit extends Cubit<LoginState> {
         return;
       }
 
-      // Create request model
+      // Get FCM token to send with login request
+      final fcmToken = await PushNotificationService.instance.getToken();
+
       final request = LoginRequestModel(
         phone: phone.trim(),
         password: password,
         deviceName: deviceName,
         tokenType: tokenType,
+        deviceToken: fcmToken,
       );
 
-      // Call API
       final response = await _authRepository.login(request);
 
-      // Save token and abilities
       await StorageService.saveAuthToken(response.token);
       await StorageService.saveUserType(response.user.type);
       await StorageService.saveUserId(response.user.id.toString());
       await StorageService.saveUserData(jsonEncode(response.user.toJson()));
       await StorageService.saveAbilities(response.abilities);
 
-      // Set auth token in API client for future requests
       _apiClient.setAuthToken(response.token);
 
-      // Fetch fresh user data from auth/me after login
       try {
         final userProfile = await _authRepository.getCurrentUser();
         await StorageService.saveUserData(jsonEncode(userProfile.toJson()));
         await StorageService.saveUserType(userProfile.type);
         await StorageService.saveUserId(userProfile.id.toString());
-      } catch (_) {
-        // Keep login response user data if auth/me fails
-      }
+      } catch (_) {}
 
       unawaited(RealtimeService.instance.start());
-      unawaited(PushNotificationService().resendFcmToken());
+      await PushNotificationService.instance.registerToken();
+      unawaited(
+        PushNotificationService.instance.establishNotificationSyncBaseline(),
+      );
 
       emit(LoginSuccess(response));
     } catch (e) {

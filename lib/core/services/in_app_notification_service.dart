@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../navigation/root_navigator.dart';
 import '../theme/app_colors.dart';
 import 'notification_navigation.dart';
+import 'notification_payload.dart';
+import 'push_notification_service.dart';
 
 /// In-app overlay banner for realtime / foreground alerts.
 /// Slides down from the top, auto-dismisses, and navigates on tap.
@@ -134,45 +136,30 @@ class InAppNotificationService {
   }
 
   /// Vendor: `search-request.created` Reverb payload.
-  static void showVendorNewSearchRequest(Map<String, dynamic> data) {
+  static Future<void> showVendorNewSearchRequest(Map<String, dynamic> data) async {
     if (kDebugMode) debugPrint('[InAppNotif] showVendorNewSearchRequest called');
-    final sr = data['search_request'];
-    Map<String, dynamic>? srMap;
-    if (sr is Map<String, dynamic>) {
-      srMap = sr;
-    } else if (sr is Map) {
-      srMap = Map<String, dynamic>.from(sr);
+    final map = vendorSearchRequestNavigationMap(data);
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      if (kDebugMode) {
+        debugPrint('[InAppNotif] skip overlay (not resumed); tray already posted');
+      }
+      return;
     }
-
-    final id = srMap?['id'];
-    final searchRequestId =
-        id is int ? id : int.tryParse(id?.toString() ?? '');
-
-    final customer = srMap?['customer'];
-    final customerName =
-        customer is Map ? customer['name']?.toString() : null;
-    final partText = srMap?['part_text']?.toString() ?? '';
-
+    await PushNotificationService.instance
+        .cancelVendorSearchLocalNotification(vendorSearchLocalNotificationId(map));
     const title = 'طلب بحث جديد';
-    final body = [
-      if (customerName != null && customerName.isNotEmpty) customerName,
-      if (partText.isNotEmpty) partText,
-    ].join(' — ');
-
-    final map = <String, dynamic>{
-      'type': 'search_request',
-      'title': title,
-      'body': body.isEmpty ? partText : body,
-      if (searchRequestId != null)
-        'meta': {'search_request_id': searchRequestId},
-      if (searchRequestId != null) 'search_request_id': searchRequestId,
-      'search_request': srMap,
-      ...data,
-    };
+    final bodyLine = map['body']?.toString() ?? '';
+    final partText = (map['search_request'] is Map
+            ? (map['search_request'] as Map)['part_text']
+            : null)
+        ?.toString() ??
+        '';
 
     show(
       title: title,
-      body: body.isEmpty ? (partText.isEmpty ? null : partText) : body,
+      body: bodyLine.isEmpty
+          ? (partText.isEmpty ? null : partText)
+          : bodyLine,
       icon: Icons.search_rounded,
       iconColor: AppColors.warning,
       notificationMapForNavigation: map,

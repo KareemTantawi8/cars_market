@@ -14,6 +14,7 @@ class VendorRegisterRequestModel {
   final List<int>? categoryIds;
   /// رقم المحل / رقم التواصل المختلف عن رقم التسجيل
   final String? shopPhone;
+  final String? deviceToken;
 
   VendorRegisterRequestModel({
     required this.name,
@@ -26,6 +27,7 @@ class VendorRegisterRequestModel {
     this.address,
     this.categoryIds,
     this.shopPhone,
+    this.deviceToken,
   });
 
   /// Convert to JSON for API request (snake_case)
@@ -42,6 +44,7 @@ class VendorRegisterRequestModel {
     if (address != null && address!.trim().isNotEmpty) map['address'] = address!.trim();
     if (categoryIds != null && categoryIds!.isNotEmpty) map['category_ids'] = categoryIds;
     if (shopPhone != null && shopPhone!.trim().isNotEmpty) map['shop_phone'] = shopPhone!.trim();
+    if (deviceToken != null && deviceToken!.isNotEmpty) map['device_token'] = deviceToken;
     return map;
   }
 }

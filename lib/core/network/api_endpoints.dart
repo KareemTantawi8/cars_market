@@ -23,8 +23,6 @@ class ApiEndpoints {
   // User
   // GET /api/v1/user/profile
   static const String userProfile = '$basePath/user/profile';
-  // POST /api/v1/user/fcm-token - Update FCM device token for push notifications
-  static const String updateFcmToken = '$basePath/user/fcm-token';
   // GET /api/v1/users/:id - Get user/vendor profile by ID
   static String userProfileById(int userId) => '$basePath/users/$userId';
   // PUT /api/v1/user/profile
@@ -67,6 +65,12 @@ class ApiEndpoints {
   static const String ratings = '$basePath/ratings';
   // POST /api/v1/ratings
   static const String createRating = '$basePath/ratings';
+
+  // FCM Device Token
+  // POST /api/v1/device-tokens - Register FCM push token (body: { token, device_type }). 200/401
+  static const String deviceToken = '$basePath/device-tokens';
+  // DELETE /api/v1/device-tokens - Remove FCM push token (body: { token }). 200/401
+  static const String deleteDeviceToken = '$basePath/device-tokens';
 
   // Notifications
   // GET /api/v1/notifications - List user notifications, paginated (query: page). Response: { data: [], meta: {} }. 401 Unauthenticated
