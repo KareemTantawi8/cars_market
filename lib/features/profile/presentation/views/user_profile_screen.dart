@@ -183,7 +183,7 @@ class _ProfileContent extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Gradient header with avatar
+// Header with avatar (no cover / gradient background)
 // ─────────────────────────────────────────────────────────────────────────────
 class _ProfileHeader extends StatelessWidget {
   final UserProfileModel profile;
@@ -194,123 +194,72 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF060D1F),
-            Color(0xFF0D2248),
-            AppColors.primaryDark,
-          ],
-          stops: [0.0, 0.45, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Decorative blobs
-          Positioned(
-            top: -50,
-            right: -50,
-            child: Container(
-              width: 180,
-              height: 180,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryColor.withOpacity(0.12),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 60,
-            left: -60,
-            child: Container(
-              width: 140,
-              height: 140,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryLight.withOpacity(0.08),
-              ),
-            ),
-          ),
-
-          // Content
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                // Top bar
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      if (!isEmbeddedInTab)
-                        IconButton(
-                          icon: const Icon(Icons.arrow_forward,
-                              color: Colors.white),
-                          onPressed: () => Navigator.of(context).pop(),
-                        )
-                      else
-                        const SizedBox(width: 48),
-                      Text(
-                        'الملف الشخصي',
-                        style: AppTextStyles.headingSmall.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Avatar
-                _AvatarWidget(profile: profile),
-                const SizedBox(height: 16),
-
-                // Name
-                Text(
-                  profile.name,
-                  style: AppTextStyles.headingMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
-
-                // Badge row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _HeaderBadge(
-                      label: profile.userType == AppConstants.userTypeVendor
-                          ? 'تاجر'
-                          : 'عميل',
-                      color: profile.userType == AppConstants.userTypeVendor
-                          ? AppColors.primaryColor
-                          : AppColors.accentColor,
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  if (!isEmbeddedInTab)
+                    IconButton(
+                      icon: Icon(Icons.arrow_forward, color: context.textPrimary),
+                      onPressed: () => Navigator.of(context).pop(),
+                    )
+                  else
+                    const SizedBox(width: 48),
+                  Text(
+                    'الملف الشخصي',
+                    style: AppTextStyles.headingSmall.copyWith(
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.bold,
                     ),
-                    if (profile.isVerified) ...[
-                      const SizedBox(width: 8),
-                      _HeaderBadge(
-                        label: 'موثّق',
-                        color: AppColors.success,
-                        icon: Icons.verified,
-                      ),
-                    ],
-                  ],
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _AvatarWidget(profile: profile),
+            const SizedBox(height: 16),
+            Text(
+              profile.name,
+              style: AppTextStyles.headingMedium.copyWith(
+                color: context.textPrimary,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _HeaderBadge(
+                  label: profile.userType == AppConstants.userTypeVendor
+                      ? 'تاجر'
+                      : 'عميل',
+                  color: profile.userType == AppConstants.userTypeVendor
+                      ? AppColors.primaryColor
+                      : AppColors.accentColor,
                 ),
-                const SizedBox(height: 56),
+                if (profile.isVerified) ...[
+                  const SizedBox(width: 8),
+                  _HeaderBadge(
+                    label: 'موثّق',
+                    color: AppColors.success,
+                    icon: Icons.verified,
+                  ),
+                ],
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 56),
+          ],
+        ),
       ),
     );
   }
@@ -370,12 +319,12 @@ class _AvatarWidget extends StatelessWidget {
             height: 96,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: context.inputBorderColor, width: 2),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
@@ -401,7 +350,7 @@ class _AvatarWidget extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.primaryColor,
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                border: Border.all(color: context.cardBg, width: 2),
               ),
               child: const Icon(Icons.camera_alt, size: 15, color: Colors.white),
             ),
@@ -467,35 +416,6 @@ class _AvatarWidget extends StatelessWidget {
                   await context
                       .read<UserProfileCubit>()
                       .uploadProfileImages(profileImage: file);
-                },
-              ),
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(Icons.photo_library_outlined,
-                      color: AppColors.primaryColor),
-                ),
-                title: const Text('تغيير صورة الخلفية'),
-                subtitle: const Text('حد أقصى 4 ميجابايت'),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  final xFile = await ImagePicker().pickImage(
-                    source: ImageSource.gallery,
-                    maxWidth: 1920,
-                    maxHeight: 1080,
-                    imageQuality: 90,
-                  );
-                  if (xFile == null || !context.mounted) return;
-                  final file = File(xFile.path);
-                  if (!file.existsSync()) return;
-                  await context
-                      .read<UserProfileCubit>()
-                      .uploadProfileImages(backgroundImage: file);
                 },
               ),
             ],
@@ -1093,18 +1013,16 @@ class _SettingTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final Color? iconColor;
   const _SettingTile({
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
-    this.iconColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? AppColors.primaryColor;
+    final color = AppColors.primaryColor;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),

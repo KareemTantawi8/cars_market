@@ -43,10 +43,10 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
   VendorDashboardCubit({
     UserProfileRepository? userProfileRepository,
     VendorRepository? vendorRepository,
-  })  : _userProfileRepository =
-            userProfileRepository ?? UserProfileRepository(),
-        _vendorRepository = vendorRepository ?? VendorRepository(),
-        super(VendorDashboardInitial());
+  }) : _userProfileRepository =
+           userProfileRepository ?? UserProfileRepository(),
+       _vendorRepository = vendorRepository ?? VendorRepository(),
+       super(VendorDashboardInitial());
 
   /// Fetch vendor profile from auth/me
   Future<void> fetchVendorProfile() async {
@@ -63,8 +63,7 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
       final vendorProfile = _mapToVendorProfileModel(userProfile);
       emit(VendorDashboardLoaded(vendorProfile));
     } catch (e) {
-      emit(VendorDashboardError(
-          e.toString().replaceAll('Exception: ', '')));
+      emit(VendorDashboardError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 
@@ -77,14 +76,17 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
       v.city,
       v.governorate?.name,
     ].whereType<String>().where((s) => s.isNotEmpty);
-    final fullAddress = addressParts.isNotEmpty ? addressParts.join('، ') : null;
+    final fullAddress = addressParts.isNotEmpty
+        ? addressParts.join('، ')
+        : null;
 
     // Parse response time for minutes (e.g. "7 minutes 24 seconds" -> 7)
     int? responseTimeMinutes;
     if (v.responseTimeHuman != null) {
-      final match = RegExp(r'(\d+)\s*(?:دقيقة|minute|دقائق|minutes)',
-              caseSensitive: false)
-          .firstMatch(v.responseTimeHuman!);
+      final match = RegExp(
+        r'(\d+)\s*(?:دقيقة|minute|دقائق|minutes)',
+        caseSensitive: false,
+      ).firstMatch(v.responseTimeHuman!);
       if (match != null) {
         responseTimeMinutes = int.tryParse(match.group(1) ?? '');
       }
@@ -92,6 +94,7 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
 
     return VendorProfileModel(
       id: v.id,
+      userAccountId: user.id,
       name: v.companyName.isNotEmpty ? v.companyName : user.name,
       description: v.description,
       isVerified: v.isVerified,
@@ -102,6 +105,8 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
       rating: v.averageRating,
       ratingCount: v.ratingsCount,
       supportedBrands: v.brands.map((b) => b.name).toList(),
+      supportedBrandIds:
+          v.brands.map((b) => b.id).where((id) => id > 0).toList(),
       availableServices: const [], // auth/me does not include services
       phone: v.phone ?? user.phone,
       whatsapp: v.phone ?? user.phone,
@@ -126,13 +131,16 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
 
     try {
       final response = await _vendorRepository.toggleOnline();
-      final isOnline = response['is_online'] as bool? ?? !current.profile.isOpen;
-      emit(VendorDashboardLoaded(
-        current.profile.copyWith(
-          isOpen: isOnline,
-          openUntil: isOnline ? 'متصل' : null,
+      final isOnline =
+          response['is_online'] as bool? ?? !current.profile.isOpen;
+      emit(
+        VendorDashboardLoaded(
+          current.profile.copyWith(
+            isOpen: isOnline,
+            openUntil: isOnline ? 'متصل' : null,
+          ),
         ),
-      ));
+      );
     } catch (e) {
       rethrow;
     }

@@ -236,7 +236,8 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _titleController,
-          style: AppTextStyles.input,
+          style: AppTextStyles.input.copyWith(color: context.textPrimary),
+          cursorColor: AppColors.primaryColor,
           decoration: _inputDecoration(
             hint: 'مثال: بي ام دبليو الفئة الثالثة بحالة ممتازة',
           ),
@@ -246,7 +247,8 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _descriptionController,
-          style: AppTextStyles.input,
+          style: AppTextStyles.input.copyWith(color: context.textPrimary),
+          cursorColor: AppColors.primaryColor,
           maxLines: 4,
           decoration: _inputDecoration(
             hint: 'اكتب مواصفات السيارة والمميزات والعيوب إن وجدت....',
@@ -261,7 +263,8 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
         const SizedBox(height: 8),
         TextFormField(
           controller: _priceController,
-          style: AppTextStyles.input,
+          style: AppTextStyles.input.copyWith(color: context.textPrimary),
+          cursorColor: AppColors.primaryColor,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           textDirection: TextDirection.ltr,
           decoration: _inputDecoration(hint: 'السعر'),
@@ -334,7 +337,10 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   }
 
   Widget _buildFieldLabel(String label) {
-    return Text(label, style: AppTextStyles.inputLabel);
+    return Text(
+      label,
+      style: AppTextStyles.inputLabel.copyWith(color: context.textSecondary),
+    );
   }
 
   InputDecoration _inputDecoration({
@@ -343,9 +349,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: AppTextStyles.inputHint,
-      // filled: true,
-      fillColor: AppColors.inputBackground,
+      hintStyle: AppTextStyles.inputHint.copyWith(color: context.textHint),
+      filled: true,
+      fillColor: context.inputBg,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: context.inputBorderColor),
@@ -385,8 +391,8 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
               child: Text(
                 value ?? hint,
                 style: (value != null && value.isNotEmpty)
-                    ? AppTextStyles.input
-                    : AppTextStyles.inputHint,
+                    ? AppTextStyles.input.copyWith(color: context.textPrimary)
+                    : AppTextStyles.inputHint.copyWith(color: context.textHint),
               ),
             ),
             Icon(
@@ -414,7 +420,12 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             children: [
               Icon(icon, size: 20, color: iconColor),
               const SizedBox(width: 8),
-              Text(label, style: AppTextStyles.bodyMedium),
+              Text(
+                label,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: context.textPrimary,
+                ),
+              ),
             ],
           ),
         ),

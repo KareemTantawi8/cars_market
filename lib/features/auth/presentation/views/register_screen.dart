@@ -168,68 +168,93 @@ class _RegisterScreenState extends State<RegisterScreen> {
       isScrollControlled: true,
       builder: (sheetContext) => Theme(
         data: Theme.of(context),
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (_, scrollController) => Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 44,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: context.textHint,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('اختر الماركات', style: AppTextStyles.headingSmall),
-              ),
-              const Divider(color: AppColors.dividerColor),
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: state.brands.length,
-                  itemBuilder: (_, index) {
-                    final brand = state.brands[index];
-                    final isSelected = _selectedBrands.any((b) => b.id == brand.id);
-                    return CheckboxListTile(
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedBrands = [..._selectedBrands, brand];
-                          } else {
-                            _selectedBrands = _selectedBrands.where((b) => b.id != brand.id).toList();
-                          }
-                        });
-                      },
-                      title: Text(brand.displayName, style: AppTextStyles.bodyMedium.copyWith(color: context.textPrimary)),
-                      activeColor: AppColors.primaryColor,
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(left: 16, right: 16, bottom: MediaQuery.of(context).viewInsets.bottom + 16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            return DraggableScrollableSheet(
+              initialChildSize: 0.6,
+              minChildSize: 0.3,
+              maxChildSize: 0.9,
+              expand: false,
+              builder: (_, scrollController) => Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: context.textHint,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: Text('تأكيد (${_selectedBrands.length} ماركات)', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text('اختر الماركات', style: AppTextStyles.headingSmall),
+                  ),
+                  const Divider(color: AppColors.dividerColor),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: state.brands.length,
+                      itemBuilder: (_, index) {
+                        final brand = state.brands[index];
+                        final isSelected =
+                            _selectedBrands.any((b) => b.id == brand.id);
+                        return CheckboxListTile(
+                          value: isSelected,
+                          onChanged: (val) {
+                            setModalState(() {
+                              if (val == true) {
+                                _selectedBrands = [..._selectedBrands, brand];
+                              } else {
+                                _selectedBrands = _selectedBrands
+                                    .where((b) => b.id != brand.id)
+                                    .toList();
+                              }
+                            });
+                            if (mounted) setState(() {});
+                          },
+                          title: Text(
+                            brand.displayName,
+                            style: AppTextStyles.bodyMedium
+                                .copyWith(color: context.textPrimary),
+                          ),
+                          activeColor: AppColors.primaryColor,
+                        );
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      bottom:
+                          MediaQuery.of(context).viewInsets.bottom + 16,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'تأكيد (${_selectedBrands.length} ماركات)',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

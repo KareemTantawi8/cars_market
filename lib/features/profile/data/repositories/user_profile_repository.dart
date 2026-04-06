@@ -11,7 +11,7 @@ class UserProfileRepository {
   final ApiClient _apiClient;
 
   UserProfileRepository({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+    : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
     if (kDebugMode) {
@@ -25,9 +25,7 @@ class UserProfileRepository {
   Future<UserProfileModel> getCurrentUserProfile() async {
     _log('📋 Fetching current user profile from: ${ApiEndpoints.currentUser}');
     try {
-      final response = await _apiClient.get(
-        ApiEndpoints.currentUser,
-      );
+      final response = await _apiClient.get(ApiEndpoints.currentUser);
 
       _log('✅ User profile response status: ${response.statusCode}');
 
@@ -35,11 +33,15 @@ class UserProfileRepository {
         final data = response.data;
         if (data is Map<String, dynamic>) {
           // API may return { "user": {...} } or { "data": { "user": {...} } }
-          final payload = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
+          final payload = data['data'] is Map<String, dynamic>
+              ? data['data'] as Map<String, dynamic>
+              : data;
           final userRaw = payload['user'];
           final userData = userRaw is Map<String, dynamic> ? userRaw : payload;
           final result = UserProfileModel.fromJson(userData);
-          _log('✅ Parsed user profile: ${result.name} (ID: ${result.id}), vendor: ${result.vendor != null}');
+          _log(
+            '✅ Parsed user profile: ${result.name} (ID: ${result.id}), vendor: ${result.vendor != null}',
+          );
           return result;
         }
         throw Exception('Invalid response format');
@@ -57,7 +59,9 @@ class UserProfileRepository {
         }
         final errorData = e.response!.data;
         final errorMessage = errorData is Map<String, dynamic>
-            ? errorData['message'] ?? errorData['error'] ?? 'فشل في جلب بيانات المستخدم'
+            ? errorData['message'] ??
+                  errorData['error'] ??
+                  'فشل في جلب بيانات المستخدم'
             : 'فشل في جلب بيانات المستخدم';
         throw Exception(errorMessage);
       } else {
@@ -83,20 +87,21 @@ class UserProfileRepository {
     const profileMaxBytes = 2 * 1024 * 1024; // 2MB
     const backgroundMaxBytes = 4 * 1024 * 1024; // 4MB
 
-      Future<MultipartFile> _fileToMultipart(File file, int maxBytes) async {
+    Future<MultipartFile> fileToMultipart(File file, int maxBytes) async {
       final length = await file.length();
       final bytes = length > maxBytes
           ? await FlutterImageCompress.compressWithFile(
-                file.absolute.path,
-                minWidth: 1200,
-                minHeight: 1200,
-                quality: 85,
-                format: CompressFormat.jpeg,
-              )
+              file.absolute.path,
+              minWidth: 1200,
+              minHeight: 1200,
+              quality: 85,
+              format: CompressFormat.jpeg,
+            )
           : await file.readAsBytes();
       if (bytes == null || bytes.isEmpty) throw Exception('فشل في ضغط الصورة');
       final name = file.path.split(RegExp(r'[/\\]')).last;
-      final safeName = name.toLowerCase().endsWith('.jpg') ||
+      final safeName =
+          name.toLowerCase().endsWith('.jpg') ||
               name.toLowerCase().endsWith('.jpeg') ||
               name.toLowerCase().endsWith('.png') ||
               name.toLowerCase().endsWith('.webp')
@@ -107,16 +112,20 @@ class UserProfileRepository {
 
     final formData = FormData();
     if (profileImage != null && profileImage.existsSync()) {
-      formData.files.add(MapEntry(
-        'profile_image',
-        await _fileToMultipart(profileImage, profileMaxBytes),
-      ));
+      formData.files.add(
+        MapEntry(
+          'profile_image',
+          await fileToMultipart(profileImage, profileMaxBytes),
+        ),
+      );
     }
     if (backgroundImage != null && backgroundImage.existsSync()) {
-      formData.files.add(MapEntry(
-        'background_image',
-        await _fileToMultipart(backgroundImage, backgroundMaxBytes),
-      ));
+      formData.files.add(
+        MapEntry(
+          'background_image',
+          await fileToMultipart(backgroundImage, backgroundMaxBytes),
+        ),
+      );
     }
 
     try {
@@ -133,10 +142,15 @@ class UserProfileRepository {
       }
       final data = response.data;
       if (data is! Map<String, dynamic>) return {};
-      final inner = data['data'] is Map<String, dynamic> ? data['data'] as Map<String, dynamic> : data;
+      final inner = data['data'] is Map<String, dynamic>
+          ? data['data'] as Map<String, dynamic>
+          : data;
       final result = <String, String>{};
-      if (inner['profile_image_url'] != null) result['profile_image_url'] = inner['profile_image_url'].toString();
-      if (inner['background_image_url'] != null) result['background_image_url'] = inner['background_image_url'].toString();
+      if (inner['profile_image_url'] != null)
+        result['profile_image_url'] = inner['profile_image_url'].toString();
+      if (inner['background_image_url'] != null)
+        result['background_image_url'] = inner['background_image_url']
+            .toString();
       _log('✅ Profile images updated');
       return result;
     } on DioException catch (e) {
@@ -154,9 +168,11 @@ class UserProfileRepository {
               final parts = <String>[];
               for (final entry in errors.entries) {
                 final v = entry.value;
-                if (v is List && v.isNotEmpty) parts.add('${entry.key}: ${v.first}');
+                if (v is List && v.isNotEmpty)
+                  parts.add('${entry.key}: ${v.first}');
               }
-              if (parts.isNotEmpty) throw Exception('$msg\n${parts.join('\n')}');
+              if (parts.isNotEmpty)
+                throw Exception('$msg\n${parts.join('\n')}');
             }
             throw Exception(msg);
           }
@@ -165,5 +181,51 @@ class UserProfileRepository {
       throw Exception(e.message ?? 'فشل في رفع الصور');
     }
   }
-}
 
+  /// PUT /api/v1/user/profile — يحدّث ماركات التاجر المدعومة (معرّفات من /categories/brands).
+  Future<void> updateVendorSupportedBrandIds(List<int> brandIds) async {
+    final seen = <int>{};
+    final unique = [for (final id in brandIds) if (id > 0 && seen.add(id)) id];
+    _log('📤 updateVendorSupportedBrandIds: $unique');
+    try {
+      final response = await _apiClient.put(
+        ApiEndpoints.updateProfile,
+        data: {'brand_ids': unique},
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('فشل التحديث: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _log('❌ updateVendorSupportedBrandIds: ${e.message}');
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final errorData = e.response!.data;
+        if (statusCode == 422 && errorData is Map<String, dynamic>) {
+          final msg = errorData['message']?.toString() ?? 'تحقق من البيانات';
+          final errors = errorData['errors'];
+          if (errors is Map<String, dynamic>) {
+            final parts = <String>[];
+            for (final entry in errors.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty) {
+                parts.add('${entry.key}: ${v.first}');
+              }
+            }
+            if (parts.isNotEmpty) {
+              throw Exception('$msg\n${parts.join('\n')}');
+            }
+          }
+          throw Exception(msg);
+        }
+        if (errorData is Map<String, dynamic>) {
+          throw Exception(
+            errorData['message']?.toString() ??
+                errorData['error']?.toString() ??
+                'فشل تحديث الماركات',
+          );
+        }
+      }
+      throw Exception(e.message ?? 'خطأ في الشبكة');
+    }
+  }
+}

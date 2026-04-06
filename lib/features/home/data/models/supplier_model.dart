@@ -54,9 +54,13 @@ class SupplierModel {
     if (locationData is String) {
       locationStr = locationData;
     } else if (locationData is Map) {
-      locationStr = locationData['name']?.toString() ?? 
-                    locationData['name_ar']?.toString() ?? 
-                    locationData['address']?.toString() ?? '';
+      locationStr = locationData['full_address']?.toString() ??
+          locationData['address']?.toString() ??
+          locationData['city']?.toString() ??
+          locationData['name_ar']?.toString() ??
+          locationData['governorate_name']?.toString() ??
+          locationData['name']?.toString() ??
+          '';
     }
     
     return SupplierModel(

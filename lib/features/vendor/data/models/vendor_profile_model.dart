@@ -1,6 +1,10 @@
 /// Vendor Profile Model
 class VendorProfileModel {
+  /// Vendor row id (`vendors.id`) for [ApiEndpoints.vendorProfileById] / chat matching.
   final int id;
+
+  /// Account user id for this vendor — use for [ChatRepository.createChatWithUser].
+  final int? userAccountId;
   final String name;
   final String? description;
   final bool isVerified;
@@ -11,8 +15,12 @@ class VendorProfileModel {
   final double rating;
   final int ratingCount;
   final List<String> supportedBrands;
+
+  /// Ids from API (auth/me / vendor profile) for editing supported brands.
+  final List<int> supportedBrandIds;
   final List<String> availableServices;
   final String? phone;
+
   /// رقم المحل / التواصل (قد يختلف عن رقم الحساب)
   final String? shopPhone;
   final String? whatsapp;
@@ -24,12 +32,10 @@ class VendorProfileModel {
   final String? imageUrl;
   final String? backgroundImageUrl;
 
-  VendorProfileModel copyWith({
-    bool? isOpen,
-    String? openUntil,
-  }) {
+  VendorProfileModel copyWith({bool? isOpen, String? openUntil}) {
     return VendorProfileModel(
       id: id,
+      userAccountId: userAccountId,
       name: name,
       description: description,
       isVerified: isVerified,
@@ -40,6 +46,7 @@ class VendorProfileModel {
       rating: rating,
       ratingCount: ratingCount,
       supportedBrands: supportedBrands,
+      supportedBrandIds: supportedBrandIds,
       availableServices: availableServices,
       phone: phone,
       shopPhone: shopPhone,
@@ -56,6 +63,7 @@ class VendorProfileModel {
 
   VendorProfileModel({
     required this.id,
+    this.userAccountId,
     required this.name,
     this.description,
     this.isVerified = false,
@@ -66,6 +74,7 @@ class VendorProfileModel {
     this.rating = 0.0,
     this.ratingCount = 0,
     required this.supportedBrands,
+    this.supportedBrandIds = const [],
     required this.availableServices,
     this.phone,
     this.shopPhone,
@@ -90,31 +99,44 @@ class VendorProfileModel {
   factory VendorProfileModel.fromJson(Map<String, dynamic> json) {
     // Handle supported brands
     List<String> brands = [];
-    final brandsData = json['supported_brands'] ?? 
-                       json['brands'] ?? 
-                       json['brand_names'] ?? 
-                       json['car_brands'];
+    final brandsData =
+        json['supported_brands'] ??
+        json['brands'] ??
+        json['brand_names'] ??
+        json['car_brands'];
+    final brandIds = <int>[];
     if (brandsData is List) {
       brands = brandsData.map((e) {
         if (e is String) return e;
-        if (e is Map) return e['name']?.toString() ?? 
-                         e['name_ar']?.toString() ?? 
-                         e['brand_name']?.toString() ?? '';
+        if (e is Map) {
+          final m = e;
+          final bid = m['id'] ?? m['brand_id'];
+          if (bid is int && bid > 0) {
+            brandIds.add(bid);
+          } else if (bid is num && bid > 0) {
+            brandIds.add(bid.toInt());
+          }
+          return m['name']?.toString() ??
+              m['name_ar']?.toString() ??
+              m['brand_name']?.toString() ??
+              '';
+        }
         return e.toString();
       }).toList();
     }
 
     // Handle available services
     List<String> services = [];
-    final servicesData = json['available_services'] ?? 
-                         json['services'] ?? 
-                         json['service_names'];
+    final servicesData =
+        json['available_services'] ?? json['services'] ?? json['service_names'];
     if (servicesData is List) {
       services = servicesData.map((e) {
         if (e is String) return e;
-        if (e is Map) return e['name']?.toString() ?? 
-                         e['name_ar']?.toString() ?? 
-                         e['service_name']?.toString() ?? '';
+        if (e is Map)
+          return e['name']?.toString() ??
+              e['name_ar']?.toString() ??
+              e['service_name']?.toString() ??
+              '';
         return e.toString();
       }).toList();
     }
@@ -123,17 +145,21 @@ class VendorProfileModel {
     double? lat, lng;
     final locationData = json['location'] ?? json['coordinates'];
     if (locationData is Map) {
-      lat = (locationData['latitude'] as num?)?.toDouble() ?? 
-            (locationData['lat'] as num?)?.toDouble();
-      lng = (locationData['longitude'] as num?)?.toDouble() ?? 
-            (locationData['lng'] as num?)?.toDouble() ?? 
-            (locationData['lon'] as num?)?.toDouble();
+      lat =
+          (locationData['latitude'] as num?)?.toDouble() ??
+          (locationData['lat'] as num?)?.toDouble();
+      lng =
+          (locationData['longitude'] as num?)?.toDouble() ??
+          (locationData['lng'] as num?)?.toDouble() ??
+          (locationData['lon'] as num?)?.toDouble();
     } else {
-      lat = (json['latitude'] as num?)?.toDouble() ?? 
-            (json['lat'] as num?)?.toDouble();
-      lng = (json['longitude'] as num?)?.toDouble() ?? 
-            (json['lng'] as num?)?.toDouble() ?? 
-            (json['lon'] as num?)?.toDouble();
+      lat =
+          (json['latitude'] as num?)?.toDouble() ??
+          (json['lat'] as num?)?.toDouble();
+      lng =
+          (json['longitude'] as num?)?.toDouble() ??
+          (json['lng'] as num?)?.toDouble() ??
+          (json['lon'] as num?)?.toDouble();
     }
 
     // Handle address
@@ -142,74 +168,99 @@ class VendorProfileModel {
     if (addressData is String) {
       addressStr = addressData;
     } else if (addressData is Map) {
-      addressStr = addressData['full_address']?.toString() ?? 
-                   addressData['address']?.toString();
+      addressStr =
+          addressData['full_address']?.toString() ??
+          addressData['address']?.toString();
     }
 
     // Handle response time
     int? responseTime;
-    final responseTimeData = json['response_time'] ?? 
-                             json['response_time_minutes'] ?? 
-                             json['avg_response_time'];
+    final responseTimeData =
+        json['response_time'] ??
+        json['response_time_minutes'] ??
+        json['avg_response_time'];
     if (responseTimeData is int) {
       responseTime = responseTimeData;
     } else if (responseTimeData is String) {
       responseTime = int.tryParse(responseTimeData);
     }
 
+    final userAccountId = (json['user_id'] as num?)?.toInt() ??
+        (json['user'] is Map<String, dynamic>
+            ? (json['user']['id'] as num?)?.toInt()
+            : null);
+    final vendorRecordId = (json['id'] as num?)?.toInt() ??
+        (json['vendor_id'] as num?)?.toInt();
+
     return VendorProfileModel(
-      id: json['id'] as int? ?? 
-          json['user_id'] as int? ?? 
-          json['vendor_id'] as int? ?? 0,
-      name: json['name'] as String? ?? 
-            json['vendor_name'] as String? ?? 
-            json['company_name'] as String? ?? '',
-      description: json['description'] as String? ?? 
-                   json['bio'] as String? ?? 
-                   json['about'] as String?,
-      isVerified: json['is_verified'] as bool? ?? 
-                  json['verified'] as bool? ?? 
-                  json['is_certified'] as bool? ?? false,
-      isOpen: json['is_open'] as bool? ?? 
-              json['open'] as bool? ?? 
-              json['is_online'] as bool? ??
-              (json['status']?.toString() == 'open'),
-      openUntil: json['open_until'] as String? ?? 
-                 json['closing_time'] as String?,
+      id: vendorRecordId ?? userAccountId ?? 0,
+      userAccountId: userAccountId,
+      name:
+          json['name'] as String? ??
+          json['vendor_name'] as String? ??
+          json['company_name'] as String? ??
+          '',
+      description:
+          json['description'] as String? ??
+          json['bio'] as String? ??
+          json['about'] as String?,
+      isVerified:
+          json['is_verified'] as bool? ??
+          json['verified'] as bool? ??
+          json['is_certified'] as bool? ??
+          false,
+      isOpen:
+          json['is_open'] as bool? ??
+          json['open'] as bool? ??
+          json['is_online'] as bool? ??
+          (json['status']?.toString() == 'open'),
+      openUntil:
+          json['open_until'] as String? ?? json['closing_time'] as String?,
       responseTimeMinutes: responseTime,
       responseTimeHuman: json['response_time_human'] as String?,
-      rating: (json['rating'] as num?)?.toDouble() ?? 
-             (json['average_rating'] as num?)?.toDouble() ?? 
-             (json['avg_rating'] as num?)?.toDouble() ?? 0.0,
-      ratingCount: (json['rating_count'] as num?)?.toInt() ?? 
-                   (json['ratings_count'] as num?)?.toInt() ??
-                   (json['reviews_count'] as num?)?.toInt() ?? 
-                   (json['total_reviews'] as num?)?.toInt() ?? 
-                   (json['review_count'] as num?)?.toInt() ?? 0,
+      rating:
+          (json['rating'] as num?)?.toDouble() ??
+          (json['average_rating'] as num?)?.toDouble() ??
+          (json['avg_rating'] as num?)?.toDouble() ??
+          0.0,
+      ratingCount:
+          (json['rating_count'] as num?)?.toInt() ??
+          (json['ratings_count'] as num?)?.toInt() ??
+          (json['reviews_count'] as num?)?.toInt() ??
+          (json['total_reviews'] as num?)?.toInt() ??
+          (json['review_count'] as num?)?.toInt() ??
+          0,
       supportedBrands: brands,
+      supportedBrandIds: brandIds,
       availableServices: services,
-      phone: json['phone'] as String? ??
-             json['mobile'] as String? ??
-             json['phone_number'] as String?,
-      shopPhone: json['shop_phone'] as String? ??
-                 json['shop_mobile'] as String?,
-      whatsapp: json['whatsapp'] as String? ??
-                json['whatsapp_number'] as String? ?? 
-                json['phone'], // Fallback to phone if whatsapp not available
+      phone:
+          json['phone'] as String? ??
+          json['mobile'] as String? ??
+          json['phone_number'] as String?,
+      shopPhone:
+          json['shop_phone'] as String? ?? json['shop_mobile'] as String?,
+      whatsapp:
+          json['whatsapp'] as String? ??
+          json['whatsapp_number'] as String? ??
+          json['phone'], // Fallback to phone if whatsapp not available
       address: addressStr,
-      governorate: _parseGovernorate(json['governorate']) ?? 
-                   json['governorate_name'] as String?,
+      governorate:
+          _parseGovernorate(json['governorate']) ??
+          json['governorate_name'] as String?,
       latitude: lat,
       longitude: lng,
-      googleMapsUrl: json['google_maps_url'] as String? ??
+      googleMapsUrl:
+          json['google_maps_url'] as String? ??
           json['google_maps_link'] as String?,
-      imageUrl: json['image_url'] as String? ?? 
-                json['image'] as String? ?? 
-                json['logo'] as String? ?? 
-                json['avatar'] as String?,
-      backgroundImageUrl: json['background_image_url'] as String? ?? 
-                          json['background_image'] as String? ?? 
-                          json['cover_image'] as String?,
+      imageUrl:
+          json['image_url'] as String? ??
+          json['image'] as String? ??
+          json['logo'] as String? ??
+          json['avatar'] as String?,
+      backgroundImageUrl:
+          json['background_image_url'] as String? ??
+          json['background_image'] as String? ??
+          json['cover_image'] as String?,
     );
   }
 
@@ -217,12 +268,14 @@ class VendorProfileModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (userAccountId != null) 'user_id': userAccountId,
       'name': name,
       if (description != null) 'description': description,
       'is_verified': isVerified,
       'is_open': isOpen,
       if (openUntil != null) 'open_until': openUntil,
-      if (responseTimeMinutes != null) 'response_time_minutes': responseTimeMinutes,
+      if (responseTimeMinutes != null)
+        'response_time_minutes': responseTimeMinutes,
       'rating': rating,
       'rating_count': ratingCount,
       'supported_brands': supportedBrands,
@@ -236,8 +289,8 @@ class VendorProfileModel {
       if (longitude != null) 'longitude': longitude,
       if (googleMapsUrl != null) 'google_maps_url': googleMapsUrl,
       if (imageUrl != null) 'image_url': imageUrl,
-      if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
+      if (backgroundImageUrl != null)
+        'background_image_url': backgroundImageUrl,
     };
   }
 }
-

@@ -4,10 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/bottom_nav_bar.dart';
-import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
 import '../../../chat/presentation/views/chat_list_screen.dart';
@@ -16,7 +14,6 @@ import '../../../profile/presentation/views/user_profile_screen.dart';
 import '../cubit/search_cubit.dart';
 import '../cubit/category_cubit.dart';
 import '../../data/models/category_models.dart';
-import '../../data/models/supplier_model.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/storage_service.dart';
@@ -88,7 +85,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearch() {
-    // --- Check max requests ---
     if (_requestTimestamps.length >= _maxRequests) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -100,12 +96,10 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    // --- Check cooldown ---
     if (_requestTimestamps.isNotEmpty) {
       final lastRequest = _requestTimestamps.last;
       final diff = DateTime.now().difference(lastRequest);
       if (diff < _cooldown) {
-        // Already counting down, don't restart
         return;
       }
     }
@@ -113,32 +107,62 @@ class _HomeScreenState extends State<HomeScreen> {
     final categoryState = context.read<CategoryCubit>().state;
     final searchCubit = context.read<SearchCubit>();
 
-    if (categoryState is CategoryLoaded) {
-      _requestTimestamps.add(DateTime.now());
-      searchCubit.searchSuppliers(
-        partName: _partNameController.text.trim().isEmpty
-            ? null
-            : _partNameController.text.trim(),
-        brandId: categoryState.selectedBrand?.id,
-        modelId: categoryState.selectedModel?.id,
-        yearId: categoryState.selectedYear?.id,
-        governorateId: categoryState.selectedGovernorate?.id,
-        brandName: categoryState.selectedBrand?.displayName,
-        modelName: categoryState.selectedModel?.displayName,
-        yearName: categoryState.selectedYear?.displayName,
-        governorateName: categoryState.selectedGovernorate?.displayName,
-      );
-      // Start countdown for next request
-      _startCountdown();
-      // Show success message
+    if (categoryState is! CategoryLoaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم إرسال طلبك (${_requestTimestamps.length}/$_maxRequests). سيتواصل معك التجار قريباً.'),
-          backgroundColor: AppColors.success,
-          duration: const Duration(seconds: 3),
+        const SnackBar(
+          content: Text('جاري تحميل البيانات، يرجى الانتظار قليلاً'),
+          backgroundColor: AppColors.warning,
         ),
       );
+      return;
     }
+
+    if (categoryState.selectedBrand == null ||
+        categoryState.selectedModel == null ||
+        categoryState.selectedYear == null ||
+        categoryState.selectedGovernorate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'الرجاء اختيار الماركة والموديل وسنة السيارة والمحافظة',
+          ),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
+
+    searchCubit.searchSuppliers(
+      partName: _partNameController.text.trim().isEmpty
+          ? null
+          : _partNameController.text.trim(),
+      brandId: categoryState.selectedBrand!.id,
+      modelId: categoryState.selectedModel!.id,
+      yearId: categoryState.selectedYear!.id,
+      governorateId: categoryState.selectedGovernorate!.id,
+      brandName: categoryState.selectedBrand!.displayName,
+      modelName: categoryState.selectedModel!.displayName,
+      yearName: categoryState.selectedYear!.displayName,
+      governorateName: categoryState.selectedGovernorate!.displayName,
+    );
+  }
+
+  /// Rate limit applies only after the server accepts the search (see [BlocListener]).
+  void _registerSuccessfulSearchRequest() {
+    if (!mounted) return;
+    setState(() {
+      _requestTimestamps.add(DateTime.now());
+    });
+    _startCountdown();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'تم إرسال طلبك (${_requestTimestamps.length}/$_maxRequests). سيتواصل معك التجار قريباً.',
+        ),
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _startCountdown() {
@@ -344,7 +368,10 @@ class _HomeScreenState extends State<HomeScreen> {
       listeners: [
         BlocListener<SearchCubit, SearchState>(
           listener: (context, state) {
-            if (state is SearchError) {
+            if (state is SearchSuccess) {
+              _registerSuccessfulSearchRequest();
+              context.read<SearchCubit>().clearSearch();
+            } else if (state is SearchError) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message),
@@ -431,15 +458,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildSearchSection(),
-                  const SizedBox(height: 32),
-                  BlocBuilder<SearchCubit, SearchState>(
-                    builder: (context, searchState) {
-                      if (searchState is SearchSuccess) {
-                        return _buildSearchResultsSection(searchState);
-                      }
-                      return _buildSuppliersSection();
-                    },
-                  ),
                 ],
               ),
             ),
@@ -555,7 +573,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'الماركة',
-                          value: state.selectedBrand?.displayName ?? 'تويوتا',
+                          value:
+                              state.selectedBrand?.displayName ?? 'اختر الماركة',
                           isPlaceholder: state.selectedBrand == null,
                           onTap: () => _showBrandSelectionDialog(state),
                         ),
@@ -564,7 +583,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'الموديل',
-                          value: state.selectedModel?.displayName ?? 'كورولا',
+                          value:
+                              state.selectedModel?.displayName ?? 'اختر الموديل',
                           isPlaceholder: state.selectedModel == null,
                           onTap: () => _showModelSelectionDialog(state),
                         ),
@@ -578,7 +598,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'المحافظة',
-                          value: state.selectedGovernorate?.displayName ?? 'القاهرة',
+                          value: state.selectedGovernorate?.displayName ??
+                              'اختر المحافظة',
                           isPlaceholder: state.selectedGovernorate == null,
                           onTap: () => _showGovernorateSelectionDialog(state),
                         ),
@@ -587,7 +608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'السنة',
-                          value: state.selectedYear?.displayName ?? '2024',
+                          value: state.selectedYear?.displayName ?? 'اختر السنة',
                           isPlaceholder: state.selectedYear == null,
                           onTap: () => _showYearSelectionDialog(state),
                         ),
@@ -786,255 +807,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSuppliersSection() {
-    // Show empty state - no data until user makes a search
-    return const SizedBox.shrink();
-  }
-
-  Widget _buildSearchResultsSection(SearchSuccess state) {
-    final suppliers = state.response.suppliers;
-    final request = state.request;
-    
-    // Get active filters
-    final activeFilters = <String>[];
-    if (request.partName != null && request.partName!.isNotEmpty) {
-      activeFilters.add(request.partName!);
-    }
-    if (request.brandName != null && request.brandName!.isNotEmpty) {
-      activeFilters.add(request.brandName!);
-    }
-    if (request.modelName != null && request.modelName!.isNotEmpty) {
-      activeFilters.add(request.modelName!);
-    }
-    if (request.yearName != null && request.yearName!.isNotEmpty) {
-      activeFilters.add(request.yearName!);
-    }
-    if (request.governorateName != null && request.governorateName!.isNotEmpty) {
-      activeFilters.add(request.governorateName!);
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Results Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'نتائج البحث',
-              style: AppTextStyles.headingSmall,
-            ),
-            TextButton.icon(
-              onPressed: () {
-                // Clear search and show suppliers again
-                context.read<SearchCubit>().clearSearch();
-              },
-              icon: const Icon(Icons.edit, size: 16),
-              label: const Text('تعديل البحث'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryColor,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-            ),
-          ],
-        ),
-        if (activeFilters.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: activeFilters.map((filter) {
-              return Chip(
-                label: Text(
-                  filter,
-                  style: AppTextStyles.bodySmall,
-                ),
-                backgroundColor: context.cardBg,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 16),
-        ],
-        // Search Results List
-        if (suppliers.isEmpty)
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.search_off,
-                    size: 64,
-                    color: context.textSecondary,
-        ),
-        const SizedBox(height: 16),
-                  Text(
-                    'لا توجد نتائج',
-                    style: AppTextStyles.headingSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'لم نجد موردين يطابقون معايير البحث',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: context.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          ...suppliers.map((supplier) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildSearchResultCard(supplier),
-            );
-          }).toList(),
-      ],
-    );
-  }
-
-  Widget _buildSearchResultCard(SupplierModel supplier) {
-    return Card(
-      color: context.cardBg,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: supplier.imageUrl != null
-                    ? Image.network(
-                        supplier.imageUrl!,
-                        width: double.infinity,
-                        height: 200,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            _buildImagePlaceholder(),
-                      )
-                    : _buildImagePlaceholder(),
-              ),
-              // Online dot indicator (green dot only when online)
-              if (supplier.isOnline)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: AppColors.success,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name
-                Text(
-                  supplier.name,
-                  style: AppTextStyles.headingSmall,
-                ),
-                const SizedBox(height: 8),
-                // Rating
-                Row(
-                  children: [
-                    RatingStars(
-                      rating: supplier.rating,
-                      size: 16,
-                      reviewCount: supplier.reviewCount,
-                    ),
-                  ],
-                ),
-                if (supplier.location.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  // Location
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 16,
-                        color: context.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          supplier.distance != null
-                              ? '${supplier.location} (${supplier.distance})'
-                              : supplier.location,
-                          style: AppTextStyles.bodySmall,
-                        ),
-                      ),
-                    ],
-        ),
-                ],
-                if (supplier.supportedBrands.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  // Brands
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.directions_car,
-                        size: 16,
-                        color: context.textSecondary,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          'الماركات: ${supplier.supportedBrands.join('، ')}',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                const SizedBox(height: 16),
-                // Contact Button
-                PrimaryButton(
-                  text: 'تواصل مع التاجر',
-                  onPressed: () {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.vendorProfile,
-              arguments: {
-                        'vendorId': supplier.id.toString(),
-                        'vendorName': supplier.name,
-              },
-            );
-          },
-        ),
-      ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImagePlaceholder() {
-    return Container(
-      width: double.infinity,
-      height: 200,
-      color: context.surfaceBg,
-      child: Icon(
-        Icons.store,
-        size: 64,
-        color: context.textSecondary,
-      ),
-    );
-  }
 }

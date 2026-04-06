@@ -311,12 +311,15 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                         : null,
                     child: Container(
                       color: context.cardBg,
+                      alignment: Alignment.center,
                       child: url != null
                           ? CachedNetworkImage(
                               imageUrl: url,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
-                              errorWidget: (_, __, ___) => _imagePlaceholder(),
+                              fit: BoxFit.contain,
+                              placeholder: (_, _) => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              errorWidget: (_, _, _) => _imagePlaceholder(),
                             )
                           : _imagePlaceholder(),
                     ),
@@ -460,17 +463,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(Icons.location_on_outlined, size: 18, color: context.textSecondary),
-              const SizedBox(width: 6),
-              Text(
-                ad.location,
-                style: AppTextStyles.bodySmall,
-              ),
-            ],
-          ),
         ],
       ),
     );
@@ -490,7 +482,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           _specCard('النوع', ad.type, Icons.build_outlined),
           _specCard('الحالة', ad.condition, Icons.check_circle_outline),
           _specCard('الضمان', ad.warranty, Icons.verified_outlined),
-          _specCard('المقاس', ad.size, Icons.straighten_outlined),
+          _specCard(
+            'الموديل',
+            ad.vehicleModelLine.isNotEmpty ? ad.vehicleModelLine : '—',
+            Icons.directions_car_outlined,
+          ),
         ],
       ),
     );
@@ -567,6 +563,9 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Widget _buildLocationSection(PublicAdDetailsModel ad) {
+    final loc = ad.location.trim();
+    if (loc.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -577,49 +576,30 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             style: AppTextStyles.headingSmall,
           ),
           const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              height: 160,
-              width: double.infinity,
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
               color: context.cardBg,
-              child: Stack(
-                children: [
-                  Center(
-                    child: Icon(
-                      Icons.map_outlined,
-                      size: 48,
-                      color: context.textHint,
-                    ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: context.inputBorderColor),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 22,
+                  color: AppColors.primaryColor,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    loc,
+                    style: AppTextStyles.bodyMedium.copyWith(height: 1.45),
                   ),
-                  Center(
-                    child: Material(
-                      color: AppColors.primaryColor.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(8),
-                      child: InkWell(
-                        onTap: () {},
-                        borderRadius: BorderRadius.circular(8),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.location_on, color: Colors.white, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                'عرض على الخريطة',
-                                style: AppTextStyles.buttonSmall.copyWith(
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -646,6 +626,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                       arguments: {
                         'vendorId': ad.sellerId,
                         'vendorName': ad.sellerName,
+                        'vendorProfileByUserId': true,
                       },
                     )
                 : null,
@@ -713,6 +694,52 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               ],
             ),
           ),
+          ),
+          const SizedBox(height: 12),
+          Material(
+            color: context.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.adDetails,
+                  arguments: {'adId': ad.id},
+                );
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.inputBorderColor),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.article_outlined,
+                      color: AppColors.primaryColor,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'عرض صفحة الإعلان',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryColor,
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_left,
+                      color: context.textSecondary,
+                      size: 22,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -846,15 +873,19 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Future<void> _openChat(PublicAdDetailsModel ad) async {
-    final vendorId = int.tryParse(ad.sellerId ?? '');
-    if (vendorId == null) {
+    final sellerUserId = int.tryParse(ad.sellerId ?? '');
+    if (sellerUserId == null || sellerUserId <= 0) {
       if (mounted) {
         CustomToast.showError(context, 'تعذّر تحديد التاجر');
       }
       return;
     }
     try {
-      final chatId = await ChatRepository().findChatIdForVendor(vendorId);
+      var chatId = await ChatRepository().findChatIdWithSeller(
+        sellerUserId: sellerUserId,
+        sellerVendorRecordId: ad.sellerVendorRecordId,
+      );
+      chatId ??= await ChatRepository().createChatWithUser(sellerUserId);
       if (!mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(
@@ -869,7 +900,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       } else {
         CustomToast.showInfo(
           context,
-          'لا توجد محادثة مع هذا التاجر بعد. أرسل طلباً وسيتواصل معك التاجر.',
+          'لا يمكن بدء المحادثة حالياً. جرّب التواصل بالاتصال أو واتساب.',
         );
       }
     } catch (_) {
@@ -975,20 +1006,41 @@ class _FullScreenImageViewer extends StatefulWidget {
 }
 
 class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
-  late final PageController _ctrl;
+  late final PageController _pageCtrl;
+  late final List<TransformationController> _zoomCtrl;
   late int _current;
+
+  void _onMatrixChanged() => setState(() {});
 
   @override
   void initState() {
     super.initState();
     _current = widget.initialIndex;
-    _ctrl = PageController(initialPage: widget.initialIndex);
+    _pageCtrl = PageController(initialPage: widget.initialIndex);
+    _zoomCtrl = List<TransformationController>.generate(
+      widget.urls.length,
+      (_) {
+        final c = TransformationController();
+        c.addListener(_onMatrixChanged);
+        return c;
+      },
+    );
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    for (final c in _zoomCtrl) {
+      c.removeListener(_onMatrixChanged);
+      c.dispose();
+    }
+    _pageCtrl.dispose();
     super.dispose();
+  }
+
+  /// When scale ≈ 1, horizontal drags go to [PageView]. When zoomed in/out, pan the image.
+  bool _allowPan(int index) {
+    final s = _zoomCtrl[index].value.getMaxScaleOnAxis();
+    return (s - 1.0).abs() > 0.012;
   }
 
   @override
@@ -998,25 +1050,59 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text('${_current + 1} / ${widget.urls.length}',
-            style: const TextStyle(color: Colors.white)),
-      ),
-      body: PageView.builder(
-        controller: _ctrl,
-        itemCount: widget.urls.length,
-        onPageChanged: (i) => setState(() => _current = i),
-        itemBuilder: (_, index) => InteractiveViewer(
-          child: Center(
-            child: CachedNetworkImage(
-              imageUrl: widget.urls[index],
-              fit: BoxFit.contain,
-              placeholder: (_, __) =>
-                  const Center(child: CircularProgressIndicator(color: Colors.white)),
-              errorWidget: (_, __, ___) =>
-                  const Icon(Icons.broken_image, color: Colors.white, size: 64),
-            ),
-          ),
+        title: Text(
+          '${_current + 1} / ${widget.urls.length}',
+          style: const TextStyle(color: Colors.white),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'ملء الشاشة',
+            icon: const Icon(Icons.fit_screen),
+            onPressed: () {
+              _zoomCtrl[_current].value = Matrix4.identity();
+              setState(() {});
+            },
+          ),
+        ],
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final w = constraints.maxWidth;
+          final h = constraints.maxHeight;
+          return PageView.builder(
+            controller: _pageCtrl,
+            itemCount: widget.urls.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (context, index) {
+              return InteractiveViewer(
+                transformationController: _zoomCtrl[index],
+                minScale: 0.2,
+                maxScale: 6.0,
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                clipBehavior: Clip.none,
+                panEnabled: _allowPan(index),
+                scaleEnabled: true,
+                child: SizedBox(
+                  width: w,
+                  height: h,
+                  child: CachedNetworkImage(
+                    imageUrl: widget.urls[index],
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                    placeholder: (_, _) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    errorWidget: (_, _, _) => const Icon(
+                      Icons.broken_image,
+                      color: Colors.white,
+                      size: 64,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

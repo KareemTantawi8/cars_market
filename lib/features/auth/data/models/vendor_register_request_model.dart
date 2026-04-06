@@ -1,6 +1,7 @@
 /// Vendor Register Request Model
 /// API: name, phone, password, password_confirmation, device_name,
-///      company_name, governorate_id, address (optional), category_ids (optional),
+///      company_name, governorate_id, address (optional),
+///      brand_ids (optional, car brand ids from /categories/brands),
 ///      shop_phone (optional)
 class VendorRegisterRequestModel {
   final String name;
@@ -11,7 +12,9 @@ class VendorRegisterRequestModel {
   final String companyName;
   final int governorateId;
   final String? address;
-  final List<int>? categoryIds;
+
+  /// Car brand ids (GET /categories/brands). Sent as JSON [brand_ids] (deduped).
+  final List<int>? brandIds;
   /// رقم المحل / رقم التواصل المختلف عن رقم التسجيل
   final String? shopPhone;
   final String? deviceToken;
@@ -25,10 +28,15 @@ class VendorRegisterRequestModel {
     required this.governorateId,
     this.deviceName = 'Mobile',
     this.address,
-    this.categoryIds,
+    this.brandIds,
     this.shopPhone,
     this.deviceToken,
   });
+
+  static List<int> _dedupeIds(List<int> ids) {
+    final seen = <int>{};
+    return [for (final id in ids) if (seen.add(id)) id];
+  }
 
   /// Convert to JSON for API request (snake_case)
   Map<String, dynamic> toJson() {
@@ -42,7 +50,11 @@ class VendorRegisterRequestModel {
       'governorate_id': governorateId,
     };
     if (address != null && address!.trim().isNotEmpty) map['address'] = address!.trim();
-    if (categoryIds != null && categoryIds!.isNotEmpty) map['category_ids'] = categoryIds;
+    if (brandIds != null && brandIds!.isNotEmpty) {
+      // Laravel commonly validates `brand_ids.*` against the brands table.
+      // Do not also send `category_ids` unless the API expects it — dual rules can 422.
+      map['brand_ids'] = _dedupeIds(brandIds!);
+    }
     if (shopPhone != null && shopPhone!.trim().isNotEmpty) map['shop_phone'] = shopPhone!.trim();
     if (deviceToken != null && deviceToken!.isNotEmpty) map['device_token'] = deviceToken;
     return map;

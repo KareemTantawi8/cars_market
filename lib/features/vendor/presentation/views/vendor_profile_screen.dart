@@ -21,44 +21,48 @@ class VendorProfileScreen extends StatelessWidget {
   final String vendorId;
   final String? vendorName;
 
+  /// When true, [vendorId] is parsed as **user** id (e.g. from ad seller); profile is resolved via `GET /users/:id`.
+  final bool bySellerUserId;
+
   const VendorProfileScreen({
     super.key,
     required this.vendorId,
     this.vendorName,
+    this.bySellerUserId = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final userId = int.tryParse(vendorId) ?? 0;
-    
-    return BlocProvider(
-      create: (context) => VendorProfileCubit()..fetchVendorProfile(userId),
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
-          builder: (context, state) {
-            if (state is VendorProfileLoading) {
-              return const Center(child: LoadingIndicator());
-            }
+    final parsedId = int.tryParse(vendorId) ?? 0;
 
-            if (state is VendorProfileError) {
-              return Center(
-                child: ErrorState(
-                  message: state.message,
-                  onRetry: () {
-                    context.read<VendorProfileCubit>().fetchVendorProfile(userId);
-                  },
-                ),
-              );
-            }
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
+        builder: (context, state) {
+          if (state is VendorProfileLoading) {
+            return const Center(child: LoadingIndicator());
+          }
 
-            if (state is VendorProfileLoaded) {
-              return _buildProfileContent(context, state.profile);
-            }
+          if (state is VendorProfileError) {
+            return Center(
+              child: ErrorState(
+                message: state.message,
+                onRetry: () {
+                  context.read<VendorProfileCubit>().fetchVendorProfile(
+                        parsedId,
+                        bySellerUserId: bySellerUserId,
+                      );
+                },
+              ),
+            );
+          }
 
-            return const SizedBox.shrink();
-          },
-        ),
+          if (state is VendorProfileLoaded) {
+            return _buildProfileContent(context, state.profile);
+          }
+
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -66,7 +70,6 @@ class VendorProfileScreen extends StatelessWidget {
   Widget _buildProfileContent(BuildContext context, VendorProfileModel profile) {
     return CustomScrollView(
       slivers: [
-        // App Bar with Background Image
         SliverAppBar(
           expandedHeight: 0,
           pinned: true,
@@ -113,52 +116,6 @@ class VendorProfileScreen extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBackgroundImage(String? imageUrl) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Colors.black.withOpacity(0.8),
-            Colors.black.withOpacity(0.9),
-          ],
-        ),
-      ),
-      child: imageUrl != null && imageUrl.isNotEmpty
-          ? ColorFiltered(
-              colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.7),
-                BlendMode.darken,
-              ),
-              child: CachedNetworkImage(
-                imageUrl: imageUrl,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.black.withOpacity(0.8),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.black.withOpacity(0.8),
-                ),
-              ),
-            )
-          : Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800',
-                  ),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.7),
-                    BlendMode.darken,
-                  ),
-                ),
-              ),
-            ),
     );
   }
 
@@ -555,130 +512,6 @@ class VendorProfileScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildLocationSection(BuildContext context, VendorProfileModel profile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'الموقع',
-          style: AppTextStyles.headingSmall,
-        ),
-        const SizedBox(height: 16),
-        // Address card
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.cardBg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.inputBorderColor),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.location_on_outlined,
-                      color: AppColors.primaryColor,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (profile.governorate != null && profile.governorate!.isNotEmpty)
-                          Text(
-                            profile.governorate!,
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        if (profile.address != null && profile.address!.isNotEmpty) ...[
-                          if (profile.governorate != null) const SizedBox(height: 4),
-                          Text(
-                            profile.address!,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: context.textSecondary,
-                            ),
-                          ),
-                        ],
-                        if (profile.latitude != null && profile.longitude != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            '${profile.latitude!.toStringAsFixed(5)}, ${profile.longitude!.toStringAsFixed(5)}',
-                            style: AppTextStyles.caption.copyWith(
-                              color: context.textHint,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // Map & Directions buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openGoogleMaps(
-                        profile.latitude,
-                        profile.longitude,
-                        profile.address,
-                      ),
-                      icon: const Icon(Icons.map_outlined, size: 18),
-                      label: const Text('الخريطة'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryColor,
-                        side: BorderSide(color: AppColors.primaryColor),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () => _openGoogleMapsDirections(
-                        profile.latitude,
-                        profile.longitude,
-                        profile.address,
-                      ),
-                      icon: const Icon(Icons.directions_outlined, size: 18),
-                      label: const Text('الاتجاهات'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryColor,
-                        foregroundColor: context.textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildTextAddressSection(BuildContext context, VendorProfileModel profile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -729,7 +562,10 @@ class VendorProfileScreen extends StatelessWidget {
   Future<void> _openChatWithVendor(
       BuildContext context, VendorProfileModel profile) async {
     try {
-      final chatId = await ChatRepository().findChatIdForVendor(profile.id);
+      final chatId = await ChatRepository().findChatIdWithSeller(
+        sellerUserId: profile.userAccountId,
+        sellerVendorRecordId: profile.id,
+      );
 
       if (!context.mounted) return;
 
@@ -745,7 +581,17 @@ class VendorProfileScreen extends StatelessWidget {
       } else {
         // Try to create new chat
         try {
-          final newChatId = await ChatRepository().createChatWithUser(profile.id);
+          final otherUserId = profile.userAccountId;
+          if (otherUserId == null) {
+            if (context.mounted) {
+              CustomToast.showInfo(
+                context,
+                'لا يمكن بدء محادثة الآن. يمكنك التواصل عبر واتساب.',
+              );
+            }
+            return;
+          }
+          final newChatId = await ChatRepository().createChatWithUser(otherUserId);
           if (!context.mounted) return;
           if (newChatId != null) {
             Navigator.pushNamed(
@@ -930,20 +776,5 @@ class VendorProfileScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _openGoogleMapsDirections(double? lat, double? lng, String? address) async {
-    if (lat != null && lng != null) {
-      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    } else if (address != null && address.isNotEmpty) {
-      final encodedAddress = Uri.encodeComponent(address);
-      final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$encodedAddress');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
-    }
   }
 }

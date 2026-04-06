@@ -69,6 +69,21 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     super.dispose();
   }
 
+  Future<void> _openManageSupportedBrands(
+    BuildContext context,
+    List<int> initialIds,
+  ) async {
+    final saved = await Navigator.pushNamed(
+      context,
+      AppRoutes.vendorSupportedBrands,
+      arguments: {'initialBrandIds': initialIds},
+    );
+    if (!context.mounted) return;
+    if (saved == true) {
+      await context.read<VendorDashboardCubit>().refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -92,8 +107,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             }
             if (state is VendorDashboardLoaded) {
               return RefreshIndicator(
-                onRefresh: () =>
-                    context.read<VendorDashboardCubit>().refresh(),
+                onRefresh: () => context.read<VendorDashboardCubit>().refresh(),
                 child: _buildDashboard(context, state.profile),
               );
             }
@@ -121,8 +135,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   // ─── Hero / AppBar ────────────────────────────────────────────────────────
 
   Widget _buildSliverHero(BuildContext context, VendorProfileModel profile) {
-    const fallbackUrl =
-        'https://images.unsplash.com/photo-1486754735734-325b5831c3ad?w=800';
     return SliverAppBar(
       expandedHeight: 260,
       pinned: true,
@@ -140,34 +152,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Background image
-            profile.backgroundImageUrl != null &&
-                    profile.backgroundImageUrl!.isNotEmpty
-                ? CachedNetworkImage(
-                    imageUrl: profile.backgroundImageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) =>
-                        Container(color: AppColors.primaryDark),
-                    errorWidget: (_, __, ___) => _heroBgFallback(fallbackUrl),
-                  )
-                : _heroBgFallback(fallbackUrl),
-
-            // Gradient overlay — bottom-heavy for text legibility
-            DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.3, 1.0],
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.75),
-                  ],
-                ),
-              ),
-            ),
-
-            // Vendor name + status badge anchored to bottom-left
+            Container(color: AppColors.primaryDark),
             Positioned(
               bottom: 52,
               right: 20,
@@ -180,18 +165,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _heroBgFallback(String url) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      placeholder: (_, __) => Container(color: AppColors.primaryDark),
-      errorWidget: (_, __, ___) => Container(
-        color: AppColors.primaryDark,
-        child: const Icon(Icons.storefront, size: 80, color: Colors.white24),
-      ),
-    );
-  }
-
   Widget _buildHeroCaption(VendorProfileModel profile) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
@@ -200,11 +173,16 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         CircleAvatar(
           radius: 36,
           backgroundColor: AppColors.primaryDark,
-          backgroundImage: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+          backgroundImage:
+              profile.imageUrl != null && profile.imageUrl!.isNotEmpty
               ? CachedNetworkImageProvider(profile.imageUrl!)
               : null,
           child: profile.imageUrl == null || profile.imageUrl!.isEmpty
-              ? const Icon(Icons.storefront, size: 36, color: AppColors.primaryLight)
+              ? const Icon(
+                  Icons.storefront,
+                  size: 36,
+                  color: AppColors.primaryLight,
+                )
               : null,
         ),
         const SizedBox(width: 14),
@@ -225,9 +203,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         fontWeight: FontWeight.w700,
                         shadows: [
                           Shadow(
-                              color: Colors.black54,
-                              blurRadius: 8,
-                              offset: Offset(0, 2)),
+                            color: Colors.black54,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
                         ],
                       ),
                       maxLines: 1,
@@ -236,8 +215,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   ),
                   if (profile.isVerified) ...[
                     const SizedBox(width: 6),
-                    const Icon(Icons.verified,
-                        color: AppColors.primaryLight, size: 20),
+                    const Icon(
+                      Icons.verified,
+                      color: AppColors.primaryLight,
+                      size: 20,
+                    ),
                   ],
                 ],
               ),
@@ -278,8 +260,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             Text(
               isOpen
                   ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-                      ? 'مفتوح حتى ${profile.openUntil}'
-                      : 'متصل')
+                        ? 'مفتوح حتى ${profile.openUntil}'
+                        : 'متصل')
                   : 'غير متصل',
               style: const TextStyle(
                 color: Colors.white,
@@ -324,7 +306,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             const SizedBox(height: 28),
 
             // Brands — always visible so vendor knows where to manage them
-            _buildBrandsSectionWithManage(context, profile.supportedBrands),
+            _buildBrandsSectionWithManage(context, profile),
             const SizedBox(height: 28),
 
             // Services
@@ -360,7 +342,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   // ─── Stats row ────────────────────────────────────────────────────────────
 
   Widget _buildStatsRow(BuildContext context, VendorProfileModel profile) {
-    final hasResponseTime = profile.responseTimeMinutes != null ||
+    final hasResponseTime =
+        profile.responseTimeMinutes != null ||
         (profile.responseTimeHuman != null &&
             profile.responseTimeHuman!.isNotEmpty);
 
@@ -445,9 +428,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: AppTextStyles.caption.copyWith(
-              color: context.textSecondary,
-            ),
+            style: AppTextStyles.caption.copyWith(color: context.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -476,7 +457,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            isNowOnline ? 'أنت الآن متصل وتستلم طلبات البحث' : 'أنت الآن غير متصل',
+            isNowOnline
+                ? 'أنت الآن متصل وتستلم طلبات البحث'
+                : 'أنت الآن غير متصل',
           ),
           backgroundColor: isNowOnline ? AppColors.success : AppColors.warning,
           behavior: SnackBarBehavior.floating,
@@ -521,7 +504,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   // ─── Brands ───────────────────────────────────────────────────────────────
 
   Widget _buildBrandsSectionWithManage(
-      BuildContext context, List<String> brands) {
+    BuildContext context,
+    VendorProfileModel profile,
+  ) {
+    final brands = profile.supportedBrands;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -529,10 +515,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           children: [
             Expanded(child: _buildSectionHeader('ماركاتي')),
             GestureDetector(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
+              onTap: () => _openManageSupportedBrands(
+                context,
+                profile.supportedBrandIds,
+              ),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(20),
@@ -540,8 +531,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.edit_outlined,
-                        size: 14, color: AppColors.primaryColor),
+                    const Icon(
+                      Icons.edit_outlined,
+                      size: 14,
+                      color: AppColors.primaryColor,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'تعديل',
@@ -563,18 +557,24 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             color: AppColors.primaryColor.withOpacity(0.06),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: AppColors.primaryColor.withOpacity(0.15), width: 1),
+              color: AppColors.primaryColor.withOpacity(0.15),
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline,
-                  size: 15, color: AppColors.primaryColor),
+              const Icon(
+                Icons.info_outline,
+                size: 15,
+                color: AppColors.primaryColor,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'الإشعارات ستصلك فقط للطلبات المتعلقة بماركاتك',
-                  style: AppTextStyles.caption
-                      .copyWith(color: AppColors.primaryColor),
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primaryColor,
+                  ),
                 ),
               ),
             ],
@@ -587,26 +587,31 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               // Profile button
               Expanded(
                 child: GestureDetector(
-                  onTap: () =>
-                      Navigator.pushNamed(context, AppRoutes.profile),
+                  onTap: () => Navigator.pushNamed(context, AppRoutes.profile),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
                       color: context.cardBg,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: context.inputBorderColor, width: 1.5),
+                        color: context.inputBorderColor,
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.person_outline,
-                            color: AppColors.primaryColor, size: 28),
+                        Icon(
+                          Icons.person_outline,
+                          color: AppColors.primaryColor,
+                          size: 28,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           'الملف الشخصي',
                           style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.primaryColor,
-                              fontWeight: FontWeight.w600),
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -617,27 +622,34 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               // Add brand button
               Expanded(
                 child: GestureDetector(
-                  onTap: () =>
-                      Navigator.pushNamed(context, AppRoutes.profile),
+                  onTap: () => _openManageSupportedBrands(
+                    context,
+                    profile.supportedBrandIds,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     decoration: BoxDecoration(
                       color: AppColors.primaryColor.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: AppColors.primaryColor.withOpacity(0.25),
-                          width: 1.5),
+                        color: AppColors.primaryColor.withOpacity(0.25),
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.add_circle_outline,
-                            color: AppColors.primaryColor, size: 28),
+                        Icon(
+                          Icons.add_circle_outline,
+                          color: AppColors.primaryColor,
+                          size: 28,
+                        ),
                         const SizedBox(height: 6),
                         Text(
                           'إضافة ماركة',
                           style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.primaryColor,
-                              fontWeight: FontWeight.w600),
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -670,11 +682,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   color: AppColors.primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                   border: Border.all(
-                      color: AppColors.primaryColor.withOpacity(0.2),
-                      width: 1.5),
+                    color: AppColors.primaryColor.withOpacity(0.2),
+                    width: 1.5,
+                  ),
                 ),
-                child: const Icon(Icons.directions_car_outlined,
-                    color: AppColors.primaryColor, size: 26),
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  color: AppColors.primaryColor,
+                  size: 26,
+                ),
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -710,7 +726,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             color: AppColors.primaryColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-                color: AppColors.primaryColor.withOpacity(0.25), width: 1),
+              color: AppColors.primaryColor.withOpacity(0.25),
+              width: 1,
+            ),
           ),
           child: Text(
             s,
@@ -751,8 +769,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               profile.address,
             ),
             child: ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(24)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
               child: SizedBox(
                 height: 180,
                 width: double.infinity,
@@ -760,9 +779,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   fit: StackFit.expand,
                   children: [
                     // Map grid background
-                    CustomPaint(
-                      painter: _MapGridPainter(isDark: isDark),
-                    ),
+                    CustomPaint(painter: _MapGridPainter(isDark: isDark)),
 
                     // Bottom fade so content bleeds naturally
                     Positioned(
@@ -797,7 +814,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         ),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.45),
                             borderRadius: BorderRadius.circular(20),
@@ -805,8 +824,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.open_in_new_rounded,
-                                  color: Colors.white, size: 13),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                color: Colors.white,
+                                size: 13,
+                              ),
                               SizedBox(width: 5),
                               Text(
                                 'فتح الخريطة',
@@ -831,7 +853,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => _showSetLocationDialog(context, profile),
+                            onTap: () =>
+                                _showSetLocationDialog(context, profile),
                             borderRadius: BorderRadius.circular(24),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -843,7 +866,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                 borderRadius: BorderRadius.circular(24),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primaryColor.withOpacity(0.4),
+                                    color: AppColors.primaryColor.withOpacity(
+                                      0.4,
+                                    ),
                                     blurRadius: 12,
                                     offset: const Offset(0, 4),
                                   ),
@@ -887,7 +912,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                 width: 64,
                                 height: 64,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryColor.withOpacity(0.15),
+                                  color: AppColors.primaryColor.withOpacity(
+                                    0.15,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -895,7 +922,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                 width: 44,
                                 height: 44,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primaryColor.withOpacity(0.25),
+                                  color: AppColors.primaryColor.withOpacity(
+                                    0.25,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                               ),
@@ -906,15 +935,19 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: AppColors.primaryColor
-                                          .withOpacity(0.5),
+                                      color: AppColors.primaryColor.withOpacity(
+                                        0.5,
+                                      ),
                                       blurRadius: 14,
                                       spreadRadius: 1,
                                     ),
                                   ],
                                 ),
-                                child: const Icon(Icons.location_on_rounded,
-                                    color: Colors.white, size: 22),
+                                child: const Icon(
+                                  Icons.location_on_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
                               ),
                             ],
                           ),
@@ -951,8 +984,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       color: AppColors.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.place_outlined,
-                        color: AppColors.primaryColor, size: 22),
+                    child: const Icon(
+                      Icons.place_outlined,
+                      color: AppColors.primaryColor,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -996,23 +1032,26 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         color: AppColors.primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.navigation_outlined,
-                          color: AppColors.primaryColor, size: 18),
+                      child: const Icon(
+                        Icons.navigation_outlined,
+                        color: AppColors.primaryColor,
+                        size: 18,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
             Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: context.textSecondary.withOpacity(0.1)),
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: context.textSecondary.withOpacity(0.1),
+            ),
           ],
 
           // ── Shop phone ─────────────────────────────────────────────────
-          if (profile.shopPhone != null &&
-              profile.shopPhone!.isNotEmpty) ...[
+          if (profile.shopPhone != null && profile.shopPhone!.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: Row(
@@ -1024,8 +1063,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       color: AppColors.success.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(Icons.phone_outlined,
-                        color: AppColors.success, size: 22),
+                    child: const Icon(
+                      Icons.phone_outlined,
+                      color: AppColors.success,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1052,10 +1094,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               ),
             ),
             Divider(
-                height: 1,
-                indent: 16,
-                endIndent: 16,
-                color: context.textSecondary.withOpacity(0.1)),
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: context.textSecondary.withOpacity(0.1),
+            ),
           ],
 
           // ── Action buttons ─────────────────────────────────────────────
@@ -1221,9 +1264,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       Navigator.of(context).pop(); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -1245,14 +1286,16 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     }
     if (lat != null && lng != null) {
       final url = Uri.parse(
-          'https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+      );
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     } else if (address != null && address.isNotEmpty) {
       final encoded = Uri.encodeComponent(address);
       final url = Uri.parse(
-          'https://www.google.com/maps/search/?api=1&query=$encoded');
+        'https://www.google.com/maps/search/?api=1&query=$encoded',
+      );
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
@@ -1262,15 +1305,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   // ─── Performance report ───────────────────────────────────────────────────
 
   Widget _buildPerformanceCard(
-      BuildContext context, VendorProfileModel profile) {
+    BuildContext context,
+    VendorProfileModel profile,
+  ) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [
-            AppColors.primaryDark,
-            AppColors.primaryColor,
-          ],
+          colors: [AppColors.primaryDark, AppColors.primaryColor],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -1298,8 +1340,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     color: Colors.white.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.analytics_outlined,
-                      color: Colors.white, size: 28),
+                  child: const Icon(
+                    Icons.analytics_outlined,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -1332,8 +1377,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     color: Colors.white.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.arrow_forward_ios,
-                      color: Colors.white, size: 16),
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                 ),
               ],
             ),
@@ -1343,7 +1391,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Future<void> _showPerformanceReport(BuildContext context, int vendorId) async {
+  Future<void> _showPerformanceReport(
+    BuildContext context,
+    int vendorId,
+  ) async {
     final repo = VendorProfileRepository();
     showDialog<void>(
       context: context,
@@ -1391,8 +1442,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  List<Widget> _reportEntriesToList(Map<String, dynamic> map,
-      {String prefix = ''}) {
+  List<Widget> _reportEntriesToList(
+    Map<String, dynamic> map, {
+    String prefix = '',
+  }) {
     final list = <Widget>[];
     final labels = <String, String>{
       'total_orders': 'إجمالي الطلبات',
@@ -1410,45 +1463,53 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       final value = e.value;
       final label = labels[key] ?? _keyToLabel(key);
       if (value is Map<String, dynamic>) {
-        list.add(Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Text(
-            label,
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: context.textPrimary,
-              fontWeight: FontWeight.w600,
+        list.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(
+              label,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: context.textPrimary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ));
+        );
         list.addAll(_reportEntriesToList(value, prefix: '$prefix  '));
       } else if (value is List) {
         list.add(const SizedBox(height: 8));
-        list.add(Text(
-          '$label: ${value.length}',
-          style: AppTextStyles.bodySmall.copyWith(color: context.textPrimary),
-        ));
+        list.add(
+          Text(
+            '$label: ${value.length}',
+            style: AppTextStyles.bodySmall.copyWith(color: context.textPrimary),
+          ),
+        );
       } else {
         list.add(const SizedBox(height: 6));
-        list.add(Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 140,
-              child: Text(
-                label,
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: context.textSecondary),
+        list.add(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 140,
+                child: Text(
+                  label,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: context.textSecondary,
+                  ),
+                ),
               ),
-            ),
-            Expanded(
-              child: Text(
-                value?.toString() ?? '—',
-                style: AppTextStyles.bodySmall
-                    .copyWith(color: context.textPrimary),
+              Expanded(
+                child: Text(
+                  value?.toString() ?? '—',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: context.textPrimary,
+                  ),
+                ),
               ),
-            ),
-          ],
-        ));
+            ],
+          ),
+        );
       }
     }
     return list;
@@ -1492,8 +1553,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   color: AppColors.primaryColor.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.chat_bubble_outline_rounded,
-                    color: AppColors.primaryColor, size: 26),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: AppColors.primaryColor,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1524,8 +1588,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   color: AppColors.primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.arrow_forward_ios,
-                    color: AppColors.primaryColor, size: 16),
+                child: const Icon(
+                  Icons.arrow_forward_ios,
+                  color: AppColors.primaryColor,
+                  size: 16,
+                ),
               ),
             ],
           ),
@@ -1787,8 +1854,7 @@ class _MapGridPainter extends CustomPainter {
       blockPaint,
     );
     canvas.drawRect(
-      Rect.fromLTWH(
-          size.width * 0.6, 0, size.width * 0.4, size.height * 0.42),
+      Rect.fromLTWH(size.width * 0.6, 0, size.width * 0.4, size.height * 0.42),
       blockPaint,
     );
 
@@ -1797,8 +1863,12 @@ class _MapGridPainter extends CustomPainter {
       ..color = isDark ? const Color(0xFF1A2E45) : const Color(0xFFBDD8F0);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.42, size.height * 0.62,
-            size.width * 0.22, size.height * 0.38),
+        Rect.fromLTWH(
+          size.width * 0.42,
+          size.height * 0.62,
+          size.width * 0.22,
+          size.height * 0.38,
+        ),
         const Radius.circular(6),
       ),
       waterPaint,
@@ -1854,15 +1924,20 @@ class _MapGridPainter extends CustomPainter {
           : const Color(0xFFFFD700).withOpacity(0.5)
       ..strokeWidth = 1.5;
     _drawDashedLine(
-        canvas, Offset(0, size.height * 0.52),
-        Offset(size.width, size.height * 0.52), dashPaint);
+      canvas,
+      Offset(0, size.height * 0.52),
+      Offset(size.width, size.height * 0.52),
+      dashPaint,
+    );
     _drawDashedLine(
-        canvas, Offset(size.width * 0.28, 0),
-        Offset(size.width * 0.28, size.height), dashPaint);
+      canvas,
+      Offset(size.width * 0.28, 0),
+      Offset(size.width * 0.28, size.height),
+      dashPaint,
+    );
   }
 
-  void _drawDashedLine(
-      Canvas canvas, Offset start, Offset end, Paint paint) {
+  void _drawDashedLine(Canvas canvas, Offset start, Offset end, Paint paint) {
     const dashLength = 10.0;
     const gapLength = 8.0;
     final dx = end.dx - start.dx;

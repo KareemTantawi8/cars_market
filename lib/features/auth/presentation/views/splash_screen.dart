@@ -37,10 +37,6 @@ class _SplashScreenState extends State<SplashScreen>
   // Tagline
   late final Animation<double> _taglineOpacity;
 
-  // Bottom bar
-  late final Animation<double> _barOpacity;
-  late final Animation<double> _barWidth;
-
   // Glow pulse
   late final Animation<double> _pulse;
 
@@ -118,17 +114,6 @@ class _SplashScreenState extends State<SplashScreen>
     _taglineOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
       parent: _mainController,
       curve: const Interval(0.68, 0.86, curve: Curves.easeOut),
-    ));
-
-    // ── Progress bar ──────────────────────────────────────────────────────
-    _barOpacity = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-      parent: _mainController,
-      curve: const Interval(0.7, 0.85, curve: Curves.easeOut),
-    ));
-
-    _barWidth = Tween(begin: 0.0, end: 1.0).animate(CurvedAnimation(
-      parent: _mainController,
-      curve: const Interval(0.72, 1.0, curve: Curves.easeInOut),
     ));
 
     // ── Glow pulse ────────────────────────────────────────────────────────
@@ -359,70 +344,6 @@ class _SplashScreenState extends State<SplashScreen>
                   },
                 ),
               ],
-            ),
-          ),
-
-          // ── Bottom progress bar ────────────────────────────────────────
-          Positioned(
-            bottom: 52,
-            left: 0,
-            right: 0,
-            child: AnimatedBuilder(
-              animation: _mainController,
-              builder: (_, __) {
-                return Opacity(
-                  opacity: _barOpacity.value,
-                  child: Column(
-                    children: [
-                      Text(
-                        'جاري التحميل...',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withOpacity(0.45),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 56),
-                        child: Stack(
-                          children: [
-                            Container(
-                              height: 3,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(2),
-                                color: Colors.white.withOpacity(0.12),
-                              ),
-                            ),
-                            FractionallySizedBox(
-                              widthFactor: _barWidth.value,
-                              child: Container(
-                                height: 3,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(2),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      AppColors.primaryLight,
-                                      AppColors.primaryColor,
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          AppColors.primaryColor.withOpacity(0.8),
-                                      blurRadius: 8,
-                                    )
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
             ),
           ),
         ],

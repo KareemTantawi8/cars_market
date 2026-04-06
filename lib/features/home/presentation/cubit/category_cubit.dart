@@ -118,13 +118,99 @@ class CategoryCubit extends Cubit<CategoryState> {
       final brands = results[0] as List<BrandModel>;
       final governorates = results[1] as List<GovernorateModel>;
 
+      final selectedGovernorate = _pickDefaultGovernorate(governorates);
+      final selectedBrand = _pickDefaultBrand(brands);
+
+      List<CarModelModel> models = [];
+      List<YearModel> years = [];
+      CarModelModel? selectedModel;
+      YearModel? selectedYear;
+
+      if (selectedBrand != null) {
+        try {
+          models = await _categoryRepository.getModelsByBrand(selectedBrand.id);
+          selectedModel = _pickDefaultModel(models);
+          if (selectedModel != null) {
+            years = await _categoryRepository.getYearsByModel(selectedModel.id);
+            selectedYear = _pickDefaultYear(years);
+          }
+        } catch (_) {
+          // Keep lists/selections partial; user can pick manually
+        }
+      }
+
       emit(CategoryLoaded(
         brands: brands,
+        models: models,
+        years: years,
         governorates: governorates,
+        selectedBrand: selectedBrand,
+        selectedModel: selectedModel,
+        selectedYear: selectedYear,
+        selectedGovernorate: selectedGovernorate,
       ));
     } catch (e) {
       emit(CategoryError(e.toString().replaceAll('Exception: ', ''), 'initial'));
     }
+  }
+
+  GovernorateModel? _pickDefaultGovernorate(List<GovernorateModel> list) {
+    if (list.isEmpty) return null;
+    for (final g in list) {
+      final slug = g.slug?.toLowerCase() ?? '';
+      if (g.displayName.contains('القاهرة') ||
+          slug == 'cairo' ||
+          slug.contains('cairo')) {
+        return g;
+      }
+    }
+    return list.first;
+  }
+
+  BrandModel? _pickDefaultBrand(List<BrandModel> brands) {
+    if (brands.isEmpty) return null;
+    bool matches(BrandModel b, String needle) {
+      final n = needle.toLowerCase();
+      return b.name.toLowerCase().contains(n) ||
+          (b.nameAr ?? '').toLowerCase().contains(n);
+    }
+
+    for (final b in brands) {
+      if (matches(b, 'تويوتا') || matches(b, 'toyota')) return b;
+    }
+    return brands.first;
+  }
+
+  CarModelModel? _pickDefaultModel(List<CarModelModel> models) {
+    if (models.isEmpty) return null;
+    bool matches(CarModelModel m, String needle) {
+      final n = needle.toLowerCase();
+      return m.name.toLowerCase().contains(n) ||
+          (m.nameAr ?? '').toLowerCase().contains(n);
+    }
+
+    for (final m in models) {
+      if (matches(m, 'كورولا') || matches(m, 'corolla')) return m;
+    }
+    return models.first;
+  }
+
+  YearModel? _pickDefaultYear(List<YearModel> years) {
+    if (years.isEmpty) return null;
+    final target = DateTime.now().year;
+    for (final y in years) {
+      if (y.yearInt == target) return y;
+    }
+    YearModel? best;
+    var bestVal = -1;
+    for (final y in years) {
+      final yi = y.yearInt;
+      if (yi != null && yi > bestVal) {
+        bestVal = yi;
+        best = y;
+      }
+    }
+    return best ?? years.first;
   }
 
   /// Load brands

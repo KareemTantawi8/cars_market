@@ -227,7 +227,7 @@ class RegisterCubit extends Cubit<RegisterState> {
         deviceName: deviceName,
         shopPhone: shopPhone?.trim().isEmpty == true ? null : shopPhone?.trim(),
         address: address?.trim().isEmpty == true ? null : address?.trim(),
-        categoryIds: brandIds,
+        brandIds: brandIds,
         deviceToken: fcmToken,
       );
 

@@ -261,7 +261,8 @@ class _EditAdScreenState extends State<EditAdScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _titleController,
-                    style: AppTextStyles.input,
+                    style: AppTextStyles.input.copyWith(color: context.textPrimary),
+                    cursorColor: AppColors.primaryColor,
                     decoration: _inputDecoration(hint: 'عنوان الإعلان'),
                   ),
                   const SizedBox(height: 16),
@@ -269,7 +270,8 @@ class _EditAdScreenState extends State<EditAdScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _descriptionController,
-                    style: AppTextStyles.input,
+                    style: AppTextStyles.input.copyWith(color: context.textPrimary),
+                    cursorColor: AppColors.primaryColor,
                     maxLines: 4,
                     decoration: _inputDecoration(
                       hint: 'الوصف...',
@@ -281,7 +283,8 @@ class _EditAdScreenState extends State<EditAdScreen> {
                   const SizedBox(height: 8),
                   TextFormField(
                     controller: _priceController,
-                    style: AppTextStyles.input,
+                    style: AppTextStyles.input.copyWith(color: context.textPrimary),
+                    cursorColor: AppColors.primaryColor,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textDirection: TextDirection.ltr,
                     decoration: _inputDecoration(hint: 'السعر'),
@@ -413,7 +416,10 @@ class _EditAdScreenState extends State<EditAdScreen> {
   }
 
   Widget _buildFieldLabel(String label) {
-    return Text(label, style: AppTextStyles.inputLabel);
+    return Text(
+      label,
+      style: AppTextStyles.inputLabel.copyWith(color: context.textSecondary),
+    );
   }
 
   Widget _buildDropdown({
@@ -436,7 +442,9 @@ class _EditAdScreenState extends State<EditAdScreen> {
             Expanded(
               child: Text(
                 value ?? hint,
-                style: value != null && value.isNotEmpty ? AppTextStyles.input : AppTextStyles.inputHint,
+                style: value != null && value.isNotEmpty
+                    ? AppTextStyles.input.copyWith(color: context.textPrimary)
+                    : AppTextStyles.inputHint.copyWith(color: context.textHint),
               ),
             ),
             Icon(Icons.arrow_back_ios_new, size: 16, color: context.textSecondary),
@@ -449,7 +457,7 @@ class _EditAdScreenState extends State<EditAdScreen> {
   InputDecoration _inputDecoration({String? hint, EdgeInsetsGeometry? contentPadding}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: AppTextStyles.inputHint,
+      hintStyle: AppTextStyles.inputHint.copyWith(color: context.textHint),
       filled: true,
       fillColor: context.inputBg,
       border: OutlineInputBorder(
@@ -471,7 +479,12 @@ class _EditAdScreenState extends State<EditAdScreen> {
   Widget _buildToggle(String label, bool value, ValueChanged<bool> onChanged) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: AppTextStyles.bodyMedium)),
+        Expanded(
+          child: Text(
+            label,
+            style: AppTextStyles.bodyMedium.copyWith(color: context.textPrimary),
+          ),
+        ),
         Switch(
           value: value,
           onChanged: onChanged,

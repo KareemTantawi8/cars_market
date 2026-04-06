@@ -5,9 +5,7 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
-import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
-import '../../../../shared/widgets/common/bottom_nav_bar.dart';
 import '../../data/models/search_request_model.dart';
 import '../../data/models/search_response_model.dart';
 import '../../data/models/supplier_model.dart';
@@ -52,10 +50,6 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
       filters.add(request.governorateName!);
     }
     return filters;
-  }
-
-  List<SupplierModel> get _suppliers {
-    return widget.searchResponse?.suppliers ?? [];
   }
 
   @override

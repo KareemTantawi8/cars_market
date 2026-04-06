@@ -10,6 +10,7 @@ import '../../features/home/presentation/cubit/search_cubit.dart';
 import '../../features/home/presentation/cubit/category_cubit.dart';
 import '../../features/vendor/presentation/views/vendor_profile_screen.dart';
 import '../../features/vendor/presentation/views/vendor_dashboard_screen.dart';
+import '../../features/vendor/presentation/views/vendor_supported_brands_screen.dart';
 import '../../features/vendor/presentation/cubit/vendor_profile_cubit.dart';
 import '../../features/chat/presentation/views/chat_list_screen.dart';
 import '../../features/chat/presentation/views/chat_room_screen.dart';
@@ -42,19 +43,13 @@ class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.splash:
-        return MaterialPageRoute(
-          builder: (_) => const SplashScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const SplashScreen());
 
       case AppRoutes.login:
-        return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const LoginScreen());
 
       case AppRoutes.register:
-        return MaterialPageRoute(
-          builder: (_) => const RegisterScreen(),
-        );
+        return MaterialPageRoute(builder: (_) => const RegisterScreen());
 
       case AppRoutes.home:
         return MaterialPageRoute(
@@ -84,12 +79,20 @@ class AppRouter {
 
       case AppRoutes.vendorProfile:
         final args = settings.arguments as Map<String, dynamic>?;
+        final vendorIdStr = args?['vendorId']?.toString() ?? '';
+        final bySellerUserId = args?['vendorProfileByUserId'] == true;
+        final parsedVendorOrUserId = int.tryParse(vendorIdStr) ?? 0;
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
-            create: (_) => VendorProfileCubit(),
+            create: (_) => VendorProfileCubit()
+              ..fetchVendorProfile(
+                parsedVendorOrUserId,
+                bySellerUserId: bySellerUserId,
+              ),
             child: VendorProfileScreen(
-              vendorId: args?['vendorId'] ?? '',
-              vendorName: args?['vendorName'],
+              vendorId: vendorIdStr,
+              vendorName: args?['vendorName'] as String?,
+              bySellerUserId: bySellerUserId,
             ),
           ),
         );
@@ -109,7 +112,10 @@ class AppRouter {
             create: (_) => ChatCubit(),
             child: ChatRoomScreen(
               chatId: args?['chatId'] ?? '1',
-              chatName: args?['chatName'] ?? args?['vendorName'] ?? 'مركز النصر لقطع الغيار',
+              chatName:
+                  args?['chatName'] ??
+                  args?['vendorName'] ??
+                  'مركز النصر لقطع الغيار',
             ),
           ),
         );
@@ -122,14 +128,33 @@ class AppRouter {
       case AppRoutes.planDetails:
         final args = settings.arguments as Map<String, dynamic>?;
         return MaterialPageRoute(
-          builder: (_) => PlanDetailsScreen(
-            planId: args?['planId'] ?? 0,
-          ),
+          builder: (_) => PlanDetailsScreen(planId: args?['planId'] ?? 0),
         );
 
       case AppRoutes.vendorDashboard:
+        return MaterialPageRoute(builder: (_) => const VendorDashboardScreen());
+
+      case AppRoutes.vendorSupportedBrands:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final raw = args?['initialBrandIds'];
+        final initial = <int>[];
+        if (raw is List) {
+          for (final e in raw) {
+            if (e is int) {
+              initial.add(e);
+            } else if (e is num) {
+              initial.add(e.toInt());
+            } else {
+              final p = int.tryParse(e?.toString() ?? '');
+              if (p != null) initial.add(p);
+            }
+          }
+        }
         return MaterialPageRoute(
-          builder: (_) => const VendorDashboardScreen(),
+          builder: (_) => BlocProvider(
+            create: (_) => CategoryCubit()..loadInitialData(),
+            child: VendorSupportedBrandsScreen(initialBrandIds: initial),
+          ),
         );
 
       case AppRoutes.profile:
@@ -210,10 +235,7 @@ class AppRouter {
               if (id != null && id > 0) cubit.loadAd(id);
               return cubit;
             },
-            child: AdDetailsScreen(
-              adId: adId,
-              ad: args?['ad'],
-            ),
+            child: AdDetailsScreen(adId: adId, ad: args?['ad']),
           ),
         );
 
@@ -225,9 +247,11 @@ class AppRouter {
           if (id is int) orderId = id;
           if (id is num) orderId = id.toInt();
         }
-        final orderTitle = args?['orderTitle'] as String? ?? args?['order_title'] as String?;
+        final orderTitle =
+            args?['orderTitle'] as String? ?? args?['order_title'] as String?;
         return MaterialPageRoute(
-          builder: (_) => OrdersScreen(orderId: orderId, orderTitle: orderTitle),
+          builder: (_) =>
+              OrdersScreen(orderId: orderId, orderTitle: orderTitle),
         );
 
       case AppRoutes.permissions:
@@ -249,12 +273,9 @@ class AppRouter {
       default:
         return MaterialPageRoute(
           builder: (_) => Scaffold(
-            body: Center(
-              child: Text('Route not found: ${settings.name}'),
-            ),
+            body: Center(child: Text('Route not found: ${settings.name}')),
           ),
         );
     }
   }
 }
-

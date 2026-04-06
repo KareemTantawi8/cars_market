@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -31,6 +33,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isOnline = false;
   String _displayName = '';
+  String? _peerPhone;
   List<Map<String, dynamic>> _messages = [];
   int? _currentUserId;
 
@@ -164,34 +167,105 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   bool _isMessageFromMe(Map<String, dynamic> message) {
-    final sid = message['sender_id'];
     final me = _currentUserId;
     if (me == null) return false;
-    if (sid is int) return sid == me;
-    if (sid is num) return sid.toInt() == me;
-    return sid?.toString() == me.toString();
+
+    bool sameId(dynamic raw) {
+      if (raw is int) return raw == me;
+      if (raw is num) return raw.toInt() == me;
+      return raw?.toString() == me.toString();
+    }
+
+    if (sameId(message['sender_id'])) return true;
+
+    final sender = message['sender'];
+    if (sender is Map<String, dynamic>) {
+      if (sameId(sender['id'])) return true;
+    }
+    return false;
+  }
+
+  String _peerCaption(Map<String, dynamic> message) {
+    final s = message['sender'];
+    if (s is Map) {
+      final n = s['name']?.toString().trim() ?? '';
+      if (n.isNotEmpty && n != 'You') return n;
+    }
+    return widget.chatName;
+  }
+
+  String? _sanitizeDialNumber(String? raw) {
+    if (raw == null) return null;
+    final t = raw.trim();
+    if (t.isEmpty) return null;
+    if (t.startsWith('+')) {
+      final rest = t.substring(1).replaceAll(RegExp(r'\D'), '');
+      return rest.isEmpty ? null : '+$rest';
+    }
+    final digits = t.replaceAll(RegExp(r'\D'), '');
+    return digits.isEmpty ? null : digits;
+  }
+
+  String? _phoneFromParticipant(dynamic raw) {
+    if (raw is! Map) return null;
+    final p = Map<String, dynamic>.from(raw);
+    for (final key in [
+      'phone',
+      'mobile',
+      'phone_number',
+      'shop_phone',
+      'shop_mobile',
+    ]) {
+      final v = _sanitizeDialNumber(p[key]?.toString());
+      if (v != null) return v;
+    }
+    final user = p['user'];
+    if (user is Map) {
+      final u = Map<String, dynamic>.from(user);
+      for (final key in ['phone', 'mobile', 'phone_number']) {
+        final v = _sanitizeDialNumber(u[key]?.toString());
+        if (v != null) return v;
+      }
+    }
+    return null;
+  }
+
+  Future<void> _callPeer() async {
+    final number = _peerPhone;
+    if (number == null || number.isEmpty) {
+      if (mounted) {
+        CustomToast.showError(context, 'لا يتوفر رقم هاتف لهذا الطرف');
+      }
+      return;
+    }
+    final uri = Uri.parse('tel:$number');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
+    }
   }
 
   String _formatTimestamp(String? timestamp) {
-    if (timestamp == null) return '';
-    // TODO: Implement proper date formatting
+    if (timestamp == null || timestamp.isEmpty) return '';
     try {
-      final date = DateTime.parse(timestamp);
+      final date = DateTime.parse(timestamp).toLocal();
       final now = DateTime.now();
-      final difference = now.difference(date);
-      
-      if (difference.inMinutes < 1) {
-        return 'الآن';
-      } else if (difference.inHours < 1) {
-        return 'منذ ${difference.inMinutes} دقيقة';
-      } else if (difference.inDays < 1) {
-        return 'منذ ${difference.inHours} ساعة';
-      } else if (difference.inDays == 1) {
-        return 'أمس';
-      } else {
-        return '${date.day}/${date.month}/${date.year}';
+      final sameDay = date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
+      if (sameDay) {
+        return DateFormat('HH:mm').format(date);
       }
-    } catch (e) {
+      final difference = now.difference(date);
+      if (difference.inDays == 1) {
+        return 'أمس ${DateFormat('HH:mm').format(date)}';
+      }
+      if (difference.inDays < 7) {
+        return DateFormat('EEE HH:mm').format(date);
+      }
+      return DateFormat('d/M/y HH:mm').format(date);
+    } catch (_) {
       return timestamp;
     }
   }
@@ -224,11 +298,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         } else if (state is ChatDetailsLoaded) {
           final userType = StorageService.getUserType();
           if (userType == AppConstants.userTypeVendor) {
-            _displayName = state.chat['customer']?['name'] ?? 'عميل';
-            _isOnline = state.chat['customer']?['is_online'] ?? false;
+            final c = state.chat['customer'];
+            _displayName = c is Map ? (c['name']?.toString() ?? 'عميل') : 'عميل';
+            _isOnline = c is Map ? (c['is_online'] == true) : false;
+            _peerPhone = _phoneFromParticipant(c);
           } else {
-            _displayName = state.chat['vendor']?['company_name'] ?? 'تاجر';
-            _isOnline = state.chat['vendor']?['is_online'] ?? false;
+            final v = state.chat['vendor'];
+            _displayName =
+                v is Map ? (v['company_name']?.toString() ?? 'تاجر') : 'تاجر';
+            _isOnline = v is Map ? (v['is_online'] == true) : false;
+            _peerPhone = _phoneFromParticipant(v);
           }
         } else if (state is MessagesLoaded) {
           setState(() {
@@ -259,9 +338,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.phone),
-            onPressed: () {
-              // TODO: Handle phone call
-            },
+            onPressed: _callPeer,
+            tooltip: 'اتصال',
           ),
         ],
         title: Row(
@@ -365,6 +443,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 timestamp: _formatTimestamp(timestamp),
                                 isSentByMe: isSentByMe,
                                 imageUrl: message['image_url']?.toString(),
+                                peerDisplayName:
+                                    isSentByMe ? null : _peerCaption(message),
                               );
                             },
             ),
@@ -385,17 +465,6 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             child: SafeArea(
               child: Row(
                 children: [
-                  // Gallery Icon
-                  IconButton(
-                    icon: Icon(
-                      Icons.image,
-                      color: context.textSecondary,
-                    ),
-                    onPressed: () {
-                      // TODO: Pick image from gallery
-                    },
-                  ),
-                  // Message Input
                   Expanded(
                     child: TextField(
                       controller: _messageController,
@@ -429,9 +498,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: Icon(
+                      icon: const Icon(
                         Icons.send,
-                        color: context.textPrimary,
+                        color: Colors.white,
                         size: 20,
                       ),
                       onPressed: _sendMessage,

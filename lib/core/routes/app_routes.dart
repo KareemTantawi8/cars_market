@@ -37,6 +37,7 @@ class AppRoutes {
   // Vendor Routes
   static const String vendorDashboard = '/vendor-dashboard';
   static const String vendorIncomingRequests = '/vendor-incoming-requests';
+  static const String vendorSupportedBrands = '/vendor-supported-brands';
 
   // Customer Search Requests
   static const String mySearchRequests = '/my-search-requests';
@@ -47,4 +48,3 @@ class AppRoutes {
   // Admin / Permissions (requires permissions.view)
   static const String permissions = '/permissions';
 }
-

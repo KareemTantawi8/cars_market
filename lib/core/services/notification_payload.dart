@@ -80,6 +80,75 @@ int? parseChatIdFromMap(Map<String, dynamic> data) {
   return null;
 }
 
+/// Extracts ad id from FCM / API notification maps (`ad_id`, `adId`, `listing_id` in root or `meta`).
+int? parseAdIdFromMap(Map<String, dynamic> data) {
+  int? pick(Map<dynamic, dynamic> m) {
+    final v = m['ad_id'] ?? m['adId'] ?? m['listing_id'];
+    if (v == null) return null;
+    if (v is int) return v > 0 ? v : null;
+    if (v is num) {
+      final i = v.toInt();
+      return i > 0 ? i : null;
+    }
+    final i = int.tryParse(v.toString());
+    return i != null && i > 0 ? i : null;
+  }
+
+  final direct = pick(data);
+  if (direct != null) return direct;
+
+  dynamic meta = data['meta'];
+  if (meta is String && meta.isNotEmpty) {
+    try {
+      final m = jsonDecode(meta);
+      if (m is Map) meta = m;
+    } catch (_) {}
+  }
+  if (meta is Map) {
+    final id = pick(Map<dynamic, dynamic>.from(meta));
+    if (id != null) return id;
+  }
+
+  dynamic nested = data['data'];
+  if (nested is String && nested.isNotEmpty) {
+    try {
+      nested = jsonDecode(nested);
+    } catch (_) {}
+  }
+  if (nested is Map) {
+    final id = pick(Map<dynamic, dynamic>.from(nested));
+    if (id != null) return id;
+    final nestedMeta = nested['meta'];
+    if (nestedMeta is Map) {
+      final id2 = pick(Map<dynamic, dynamic>.from(nestedMeta));
+      if (id2 != null) return id2;
+    }
+  }
+
+  return null;
+}
+
+/// Whether [type] should open the ad details screen when [parseAdIdFromMap] finds an id.
+bool isAdNotificationPayloadType(String? type) {
+  if (type == null || type.isEmpty) return false;
+  const known = {
+    'ad_approved',
+    'ad_rejected',
+    'ad_pending',
+    'new_listing',
+    'listing',
+    'listing_published',
+    'listing_updated',
+    'ad_view',
+    'new_ad',
+    'ad_published',
+    'ad_expired',
+  };
+  if (known.contains(type)) return true;
+  final t = type.toLowerCase();
+  return t.startsWith('ad_') && !t.contains('search');
+}
+
 /// Reverb `private-vendor.*` / `search-request.created` → same shape as API notification rows.
 Map<String, dynamic> vendorSearchRequestNavigationMap(
   Map<String, dynamic> data,

@@ -257,6 +257,7 @@ class PushNotificationService {
     }
 
     await _setupLocalNotifications();
+    await _handleLocalNotificationColdStart();
 
     if (Platform.isAndroid) {
       _scheduleAndroidNotificationPermissionAfterFirstFrame();
@@ -349,6 +350,34 @@ class PushNotificationService {
       badge: true,
       sound: true,
     );
+  }
+
+  /// When the user opens the app from a **local** tray notification (e.g. one
+  /// shown by [firebaseMessagingBackgroundHandler] while the app was killed),
+  /// [onDidReceiveNotificationResponse] does not run — we must read launch details.
+  Future<void> _handleLocalNotificationColdStart() async {
+    try {
+      final details =
+          await _localNotifications.getNotificationAppLaunchDetails();
+      if (details == null || !details.didNotificationLaunchApp) return;
+      final response = details.notificationResponse;
+      final payload = response?.payload;
+      if (payload == null || payload.isEmpty) return;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        if (rootNavigatorKey.currentState == null) return;
+        if (response == null) return;
+        _onLocalNotificationTap(response);
+      });
+    } catch (e, st) {
+      developer.log(
+        'getNotificationAppLaunchDetails failed: $e',
+        name: 'FCM.launch',
+        error: e,
+        stackTrace: st,
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -806,6 +835,19 @@ class PushNotificationService {
 
     final type = data['type']?.toString() ?? '';
     if (kDebugMode) debugPrint('[FCM] Navigate: type=$type data=$data');
+
+    if (isAdNotificationPayloadType(type)) {
+      final adId = parseAdIdFromMap(data);
+      if (adId != null) {
+        navigator.pushNamed(
+          AppRoutes.adDetails,
+          arguments: {'adId': adId.toString()},
+        );
+        return;
+      }
+      navigator.pushNamed(AppRoutes.notifications);
+      return;
+    }
 
     switch (type) {
       case 'new-message':

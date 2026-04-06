@@ -51,40 +51,80 @@ class ChatRepository {
     }
   }
 
-  /// Resolves an existing inbox row from [GET /api/v1/chats] whose participant (vendor OR customer) matches [targetUserId].
-  Future<int?> findChatIdForVendor(int targetUserId) async {
+  static int? _asInt(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString());
+  }
+
+  static int? _chatRowId(Map<String, dynamic> c) {
+    final id = c['id'];
+    if (id is int) return id;
+    if (id is num) return id.toInt();
+    return int.tryParse(id?.toString() ?? '');
+  }
+
+  /// True when [vendor] map is the ad seller / target vendor.
+  /// Never treats [vendor.id] as a user id — avoids opening another vendor's chat when IDs collide.
+  static bool _vendorParticipantMatches(
+    Map<String, dynamic> vendor, {
+    required int? sellerUserId,
+    required int? sellerVendorRecordId,
+  }) {
+    if (sellerVendorRecordId != null && sellerVendorRecordId > 0) {
+      final vid = _asInt(vendor['id']);
+      if (vid == sellerVendorRecordId) return true;
+    }
+    if (sellerUserId != null && sellerUserId > 0) {
+      final vu = _asInt(vendor['user_id']);
+      if (vu == sellerUserId) return true;
+      final u = vendor['user'];
+      if (u is Map<String, dynamic>) {
+        final uid = _asInt(u['id']);
+        if (uid == sellerUserId) return true;
+      }
+    }
+    return false;
+  }
+
+  /// Resolves inbox chat with the seller. Pass [sellerVendorRecordId] when known (`vendors.id`).
+  Future<int?> findChatIdWithSeller({
+    int? sellerUserId,
+    int? sellerVendorRecordId,
+  }) async {
+    if ((sellerUserId == null || sellerUserId <= 0) &&
+        (sellerVendorRecordId == null || sellerVendorRecordId <= 0)) {
+      return null;
+    }
+
     final chats = await getChats();
     for (final c in chats) {
-      // Check vendor field
       final vendor = c['vendor'];
-      final vendorId = vendor is Map<String, dynamic>
-          ? vendor['id']
-          : c['vendor_id'];
-      if (vendorId != null && vendorId.toString() == targetUserId.toString()) {
-        final id = c['id'];
-        if (id is int) return id;
-        if (id is num) return id.toInt();
-        return int.tryParse(id?.toString() ?? '');
+      if (vendor is Map<String, dynamic>) {
+        if (_vendorParticipantMatches(
+          vendor,
+          sellerUserId: sellerUserId,
+          sellerVendorRecordId: sellerVendorRecordId,
+        )) {
+          return _chatRowId(c);
+        }
+        continue;
       }
-      // Check customer field
-      final customer = c['customer'];
-      final customerId = customer is Map<String, dynamic>
-          ? customer['id']
-          : c['customer_id'];
-      if (customerId != null && customerId.toString() == targetUserId.toString()) {
-        final id = c['id'];
-        if (id is int) return id;
-        if (id is num) return id.toInt();
-        return int.tryParse(id?.toString() ?? '');
-      }
-      // Check generic user field
-      final user = c['user'];
-      final userId = user is Map<String, dynamic> ? user['id'] : c['user_id'];
-      if (userId != null && userId.toString() == targetUserId.toString()) {
-        final id = c['id'];
-        if (id is int) return id;
-        if (id is num) return id.toInt();
-        return int.tryParse(id?.toString() ?? '');
+
+      if (sellerUserId != null && sellerUserId > 0) {
+        final customer = c['customer'];
+        if (customer is Map<String, dynamic>) {
+          var cid = _asInt(customer['id']);
+          final cu = customer['user'];
+          if (cu is Map<String, dynamic>) {
+            cid ??= _asInt(cu['id']);
+          }
+          if (cid == sellerUserId) return _chatRowId(c);
+        }
+        final user = c['user'];
+        final uid = user is Map<String, dynamic> ? _asInt(user['id']) : _asInt(c['user_id']);
+        if (uid == sellerUserId) return _chatRowId(c);
       }
     }
     return null;
@@ -245,7 +285,7 @@ class ChatRepository {
     _log('🆕 Creating chat with user: $userId');
     try {
       final response = await _apiClient.post(
-        '/chats',
+        ApiEndpoints.chats,
         data: {'user_id': userId},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -262,6 +302,20 @@ class ChatRepository {
       return null;
     } on DioException catch (e) {
       _log('❌ Error creating chat: ${e.message}');
+      final code = e.response?.statusCode;
+      if (code == 422 || code == 409) {
+        final data = e.response?.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          if (inner is Map<String, dynamic>) {
+            final id = inner['id'];
+            if (id is int) return id;
+            if (id is num) return id.toInt();
+            final p = int.tryParse(id?.toString() ?? '');
+            if (p != null) return p;
+          }
+        }
+      }
       return null;
     }
   }

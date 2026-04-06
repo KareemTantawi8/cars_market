@@ -27,18 +27,69 @@ bool _parseBool(dynamic value) {
   return false;
 }
 
+/// Builds a human-readable place line from JSON. Never uses the seller's personal name.
+String? parseAdLocationLabel(Map<String, dynamic> json) {
+  final parts = <String>[];
+  void add(dynamic v) {
+    if (v == null) return;
+    final s = v.toString().trim();
+    if (s.isEmpty) return;
+    if (!parts.contains(s)) parts.add(s);
+  }
+
+  add(json['address']);
+  add(json['full_address']);
+  add(json['street_address']);
+  add(json['city']);
+  add(json['city_name']);
+
+  final gov = json['governorate'];
+  if (gov is String) add(gov);
+  if (gov is Map) {
+    final m = Map<String, dynamic>.from(gov);
+    add(m['name_ar'] ?? m['name']);
+  }
+
+  final loc = json['location'];
+  if (loc is String) add(loc);
+  if (loc is Map) {
+    final m = Map<String, dynamic>.from(loc);
+    add(m['full_address'] ?? m['address']);
+    add(m['city']);
+    add(m['name_ar'] ?? m['governorate_name']);
+    if (parts.isEmpty) add(m['name']);
+  }
+
+  if (parts.isEmpty) return null;
+  return parts.join('، ');
+}
+
 class AdUserModel {
   final int id;
   final String? name;
   final String? phone;
 
-  AdUserModel({required this.id, this.name, this.phone});
+  /// `vendors.id` when present — use for chat/profile APIs, distinct from [id] (user account id).
+  final int? vendorRecordId;
+
+  AdUserModel({
+    required this.id,
+    this.name,
+    this.phone,
+    this.vendorRecordId,
+  });
 
   factory AdUserModel.fromJson(Map<String, dynamic> json) {
+    int? vendorRecordId = _parseIntOrNull(json['vendor_id']);
+    final nested = json['vendor'];
+    if (nested is Map<String, dynamic>) {
+      vendorRecordId ??= _parseIntOrNull(nested['id']);
+    }
     return AdUserModel(
       id: _parseInt(json['id']),
       name: json['name'] as String?,
       phone: json['phone']?.toString(),
+      vendorRecordId: vendorRecordId,
     );
   }
 }
@@ -110,6 +161,8 @@ class AdModel {
   final AdBrandModel? brand;
   final AdCarModelRef? carModel;
   final AdYearModel? year;
+  /// Address / city / governorate for display (not the seller's name).
+  final String? locationLabel;
 
   AdModel({
     required this.id,
@@ -135,6 +188,7 @@ class AdModel {
     this.brand,
     this.carModel,
     this.year,
+    this.locationLabel,
   });
 
   factory AdModel.fromJson(Map<String, dynamic> json) {
@@ -190,6 +244,7 @@ class AdModel {
       year: json['year'] is Map<String, dynamic>
           ? AdYearModel.fromJson(json['year'] as Map<String, dynamic>)
           : null,
+      locationLabel: parseAdLocationLabel(json),
     );
   }
 

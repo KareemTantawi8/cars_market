@@ -51,6 +51,17 @@ Future<void> navigateFromNotificationMap(
   final meta = parseNotificationMeta(notification['meta']);
   final nestedData = parseNotificationMeta(notification['data']);
 
+  if (isAdNotificationPayloadType(type)) {
+    final adId = parseAdIdFromMap(notification);
+    if (adId != null) {
+      nav.pushNamed(
+        AppRoutes.adDetails,
+        arguments: {'adId': adId.toString()},
+      );
+      return;
+    }
+  }
+
   if (type == 'order_pending' || type == 'new_order') {
     final m = meta;
     final orderId = m?['order_id'];

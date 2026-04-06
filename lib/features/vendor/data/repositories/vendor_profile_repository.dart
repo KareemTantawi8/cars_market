@@ -80,6 +80,69 @@ class VendorProfileRepository {
     }
   }
 
+  static int? _vendorRecordIdFromUserPayload(Map<String, dynamic> map) {
+    final v = map['vendor'];
+    if (v is Map<String, dynamic>) {
+      final raw = v['id'];
+      if (raw is int && raw > 0) return raw;
+      final p = int.tryParse(raw?.toString() ?? '');
+      if (p != null && p > 0) return p;
+    }
+    final rawId = map['vendor_id'];
+    if (rawId is int && rawId > 0) return rawId;
+    final p2 = int.tryParse(rawId?.toString() ?? '');
+    if (p2 != null && p2 > 0) return p2;
+    return null;
+  }
+
+  /// Resolves [userId] (ad owner / account user id) to vendor profile via
+  /// GET /api/v1/users/:id then GET /api/v1/vendors/:vendorId/profile.
+  Future<VendorProfileModel> getVendorProfilePageForAdOwnerUser(int userId) async {
+    _log('📋 Resolving vendor profile from ad owner user ID: $userId');
+    try {
+      final response = await _apiClient.get(ApiEndpoints.userProfileById(userId));
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to fetch user: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data is! Map<String, dynamic>) throw Exception('Invalid response format');
+
+      final payload = data['data'] is Map<String, dynamic>
+          ? data['data'] as Map<String, dynamic>
+          : data;
+
+      Map<String, dynamic> userMap;
+      final userRaw = payload['user'];
+      if (userRaw is Map<String, dynamic>) {
+        userMap = userRaw;
+      } else {
+        userMap = payload;
+      }
+
+      var vendorRecordId = _vendorRecordIdFromUserPayload(userMap);
+      vendorRecordId ??= _vendorRecordIdFromUserPayload(payload);
+      if (vendorRecordId != null) {
+        return getVendorProfilePage(vendorRecordId);
+      }
+
+      try {
+        return await getVendorProfilePage(userId);
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          throw Exception('التاجر غير موجود');
+        }
+        rethrow;
+      }
+    } on DioException catch (e) {
+      _log('❌ getVendorProfilePageForAdOwnerUser: ${e.message}');
+      if (e.response?.statusCode == 404) throw Exception('التاجر غير موجود');
+      final msg = e.response?.data is Map<String, dynamic>
+          ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'فشل في جلب بيانات التاجر'
+          : 'فشل في جلب بيانات التاجر';
+      throw Exception(msg);
+    }
+  }
+
   /// Get vendor profile from /profile endpoint (governorate, categories, user details)
   /// GET /api/v1/vendors/:id/profile. 200/404.
   Future<VendorProfileModel> getVendorProfilePage(int vendorId) async {
