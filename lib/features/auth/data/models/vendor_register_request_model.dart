@@ -1,8 +1,7 @@
 /// Vendor Register Request Model
-/// API: name, phone, password, password_confirmation, device_name,
-///      company_name, governorate_id, address (optional),
-///      brand_ids (optional, car brand ids from /categories/brands),
-///      shop_phone (optional)
+/// POST /api/v1/auth/register-vendor
+/// Body: name, phone, password, password_confirmation, device_name,
+///       company_name, governorate_id, address (optional), category_ids (optional).
 class VendorRegisterRequestModel {
   final String name;
   final String phone;
@@ -13,11 +12,9 @@ class VendorRegisterRequestModel {
   final int governorateId;
   final String? address;
 
-  /// Car brand ids (GET /categories/brands). Sent as JSON [brand_ids] (deduped).
-  final List<int>? brandIds;
-  /// رقم المحل / رقم التواصل المختلف عن رقم التسجيل
-  final String? shopPhone;
-  final String? deviceToken;
+  /// Category ids (API: `category_ids`). UI may load options from `/categories/brands`;
+  /// ids are sent as returned by the API.
+  final List<int>? categoryIds;
 
   VendorRegisterRequestModel({
     required this.name,
@@ -26,11 +23,9 @@ class VendorRegisterRequestModel {
     required this.passwordConfirmation,
     required this.companyName,
     required this.governorateId,
-    this.deviceName = 'Mobile',
+    this.deviceName = 'Flutter App',
     this.address,
-    this.brandIds,
-    this.shopPhone,
-    this.deviceToken,
+    this.categoryIds,
   });
 
   static List<int> _dedupeIds(List<int> ids) {
@@ -38,7 +33,6 @@ class VendorRegisterRequestModel {
     return [for (final id in ids) if (seen.add(id)) id];
   }
 
-  /// Convert to JSON for API request (snake_case)
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
       'name': name,
@@ -49,15 +43,12 @@ class VendorRegisterRequestModel {
       'company_name': companyName,
       'governorate_id': governorateId,
     };
-    if (address != null && address!.trim().isNotEmpty) map['address'] = address!.trim();
-    if (brandIds != null && brandIds!.isNotEmpty) {
-      // Laravel commonly validates `brand_ids.*` against the brands table.
-      // Do not also send `category_ids` unless the API expects it — dual rules can 422.
-      map['brand_ids'] = _dedupeIds(brandIds!);
+    if (address != null && address!.trim().isNotEmpty) {
+      map['address'] = address!.trim();
     }
-    if (shopPhone != null && shopPhone!.trim().isNotEmpty) map['shop_phone'] = shopPhone!.trim();
-    if (deviceToken != null && deviceToken!.isNotEmpty) map['device_token'] = deviceToken;
+    if (categoryIds != null && categoryIds!.isNotEmpty) {
+      map['category_ids'] = _dedupeIds(categoryIds!);
+    }
     return map;
   }
 }
-

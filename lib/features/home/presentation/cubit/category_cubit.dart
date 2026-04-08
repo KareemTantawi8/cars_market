@@ -104,8 +104,13 @@ class CategoryCubit extends Cubit<CategoryState> {
       : _categoryRepository = categoryRepository ?? CategoryRepository(),
         super(CategoryInitial());
 
-  /// Load initial data (brands and governorates)
-  Future<void> loadInitialData() async {
+  /// Load brands and governorates.
+  ///
+  /// When [withSearchFormDefaults] is true (home search form), also loads
+  /// models/years and pre-selects brand/model/year/governorate.
+  /// When false (e.g. register), emits as soon as brands + governorates are
+  /// ready so pickers work without extra network or cubit selections.
+  Future<void> loadInitialData({bool withSearchFormDefaults = true}) async {
     emit(const CategoryLoading('initial'));
 
     try {
@@ -117,6 +122,14 @@ class CategoryCubit extends Cubit<CategoryState> {
 
       final brands = results[0] as List<BrandModel>;
       final governorates = results[1] as List<GovernorateModel>;
+
+      if (!withSearchFormDefaults) {
+        emit(CategoryLoaded(
+          brands: brands,
+          governorates: governorates,
+        ));
+        return;
+      }
 
       final selectedGovernorate = _pickDefaultGovernorate(governorates);
       final selectedBrand = _pickDefaultBrand(brands);

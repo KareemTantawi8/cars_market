@@ -561,9 +561,19 @@ class VendorProfileScreen extends StatelessWidget {
 
   Future<void> _openChatWithVendor(
       BuildContext context, VendorProfileModel profile) async {
+    final otherUserId = profile.userAccountId;
+    if (otherUserId == null || otherUserId <= 0) {
+      if (context.mounted) {
+        CustomToast.showError(
+          context,
+          'لا يمكن تحديد حساب هذا التاجر للمحادثة. يمكنك التواصل عبر واتساب.',
+        );
+      }
+      return;
+    }
     try {
-      final chatId = await ChatRepository().findChatIdWithSeller(
-        sellerUserId: profile.userAccountId,
+      final chatId = await ChatRepository().openChatWithAdSeller(
+        sellerUserId: otherUserId,
         sellerVendorRecordId: profile.id,
       );
 
@@ -579,44 +589,17 @@ class VendorProfileScreen extends StatelessWidget {
           },
         );
       } else {
-        // Try to create new chat
-        try {
-          final otherUserId = profile.userAccountId;
-          if (otherUserId == null) {
-            if (context.mounted) {
-              CustomToast.showInfo(
-                context,
-                'لا يمكن بدء محادثة الآن. يمكنك التواصل عبر واتساب.',
-              );
-            }
-            return;
-          }
-          final newChatId = await ChatRepository().createChatWithUser(otherUserId);
-          if (!context.mounted) return;
-          if (newChatId != null) {
-            Navigator.pushNamed(
-              context,
-              AppRoutes.chatRoom,
-              arguments: {
-                'chatId': newChatId.toString(),
-                'chatName': profile.name,
-              },
-            );
-          } else {
-            CustomToast.showInfo(
-              context,
-              'لا يمكن بدء محادثة الآن. يمكنك التواصل عبر واتساب.',
-            );
-          }
-        } catch (_) {
-          if (context.mounted) {
-            CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
-          }
-        }
+        CustomToast.showError(
+          context,
+          'لا يمكن بدء المحادثة الآن. جرّب واتساب أو أعد المحاولة لاحقاً.',
+        );
       }
-    } catch (_) {
+    } catch (e) {
       if (context.mounted) {
-        CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
+        CustomToast.showError(
+          context,
+          'تعذّر فتح المحادثة. ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }

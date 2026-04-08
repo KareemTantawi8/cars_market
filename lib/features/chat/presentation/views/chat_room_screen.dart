@@ -34,6 +34,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   bool _isOnline = false;
   String _displayName = '';
   String? _peerPhone;
+  /// Last chat details from API (for phone fallbacks if nested shape differs).
+  Map<String, dynamic>? _chatDetailsSnapshot;
   List<Map<String, dynamic>> _messages = [];
   int? _currentUserId;
 
@@ -213,25 +215,94 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'phone',
       'mobile',
       'phone_number',
+      'tel',
+      'telephone',
+      'contact_phone',
+      'primary_phone',
       'shop_phone',
       'shop_mobile',
+      'company_phone',
+      'business_phone',
     ]) {
       final v = _sanitizeDialNumber(p[key]?.toString());
       if (v != null) return v;
     }
-    final user = p['user'];
-    if (user is Map) {
-      final u = Map<String, dynamic>.from(user);
-      for (final key in ['phone', 'mobile', 'phone_number']) {
-        final v = _sanitizeDialNumber(u[key]?.toString());
-        if (v != null) return v;
+    for (final nestKey in ['user', 'profile', 'account', 'owner']) {
+      final nest = p[nestKey];
+      if (nest is Map) {
+        final inner = Map<String, dynamic>.from(nest);
+        for (final key in ['phone', 'mobile', 'phone_number']) {
+          final v = _sanitizeDialNumber(inner[key]?.toString());
+          if (v != null) return v;
+        }
       }
     }
     return null;
   }
 
+  dynamic _peerParticipantFromChat(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) {
+      return chat['customer'] ?? chat['buyer'] ?? chat['client'];
+    }
+    return chat['vendor'] ?? chat['seller'] ?? chat['shop'];
+  }
+
+  String? _phoneFromChatEnvelope(Map<String, dynamic> chat) {
+    final peer = _peerParticipantFromChat(chat);
+    var n = _phoneFromParticipant(peer);
+    if (n != null) return n;
+    for (final key in [
+      'peer_phone',
+      'counterparty_phone',
+      'other_party_phone',
+      'contact_phone',
+    ]) {
+      n = _sanitizeDialNumber(chat[key]?.toString());
+      if (n != null) return n;
+    }
+    final sr = chat['search_request'];
+    if (sr is Map) {
+      for (final key in ['phone', 'contact_phone', 'customer_phone']) {
+        n = _sanitizeDialNumber(
+          Map<String, dynamic>.from(sr)[key]?.toString(),
+        );
+        if (n != null) return n;
+      }
+    }
+    return null;
+  }
+
+  void _applyChatDetails(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    final peer = _peerParticipantFromChat(chat);
+    String displayName;
+    bool online;
+    if (userType == AppConstants.userTypeVendor) {
+      displayName = peer is Map
+          ? (peer['name']?.toString() ?? 'عميل')
+          : 'عميل';
+      online = peer is Map ? (peer['is_online'] == true) : false;
+    } else {
+      displayName = peer is Map
+          ? (peer['company_name']?.toString() ?? 'تاجر')
+          : 'تاجر';
+      online = peer is Map ? (peer['is_online'] == true) : false;
+    }
+    final phone = _phoneFromChatEnvelope(chat);
+    setState(() {
+      _chatDetailsSnapshot = chat;
+      _displayName = displayName;
+      _isOnline = online;
+      _peerPhone = phone;
+    });
+  }
+
   Future<void> _callPeer() async {
-    final number = _peerPhone;
+    var number = _peerPhone;
+    if ((number == null || number.isEmpty) && _chatDetailsSnapshot != null) {
+      number = _phoneFromChatEnvelope(_chatDetailsSnapshot!);
+    }
     if (number == null || number.isEmpty) {
       if (mounted) {
         CustomToast.showError(context, 'لا يتوفر رقم هاتف لهذا الطرف');
@@ -239,10 +310,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       return;
     }
     final uri = Uri.parse('tel:$number');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
+    try {
+      final ok = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!ok && mounted) {
+        CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
+      }
+    } catch (_) {
+      if (mounted) {
+        CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
+      }
     }
   }
 
@@ -296,19 +375,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             }
           });
         } else if (state is ChatDetailsLoaded) {
-          final userType = StorageService.getUserType();
-          if (userType == AppConstants.userTypeVendor) {
-            final c = state.chat['customer'];
-            _displayName = c is Map ? (c['name']?.toString() ?? 'عميل') : 'عميل';
-            _isOnline = c is Map ? (c['is_online'] == true) : false;
-            _peerPhone = _phoneFromParticipant(c);
-          } else {
-            final v = state.chat['vendor'];
-            _displayName =
-                v is Map ? (v['company_name']?.toString() ?? 'تاجر') : 'تاجر';
-            _isOnline = v is Map ? (v['is_online'] == true) : false;
-            _peerPhone = _phoneFromParticipant(v);
-          }
+          final map = state.chat['data'] is Map<String, dynamic>
+              ? state.chat['data'] as Map<String, dynamic>
+              : state.chat;
+          _applyChatDetails(Map<String, dynamic>.from(map));
         } else if (state is MessagesLoaded) {
           setState(() {
             // API returns messages newest first, ListView with reverse:true will show newest at bottom

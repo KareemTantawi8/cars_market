@@ -512,20 +512,51 @@ class _AdCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.right,
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              ad.priceFormatted,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.primaryColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  ad.priceFormatted,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
               ),
-            ),
+              if (ad.locationLabel != null && ad.locationLabel!.trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        ad.locationLabel!.trim(),
+                        style: AppTextStyles.caption.copyWith(
+                          color: context.textSecondary,
+                          height: 1.25,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: context.textSecondary,
+                    ),
+                  ],
+                ),
+              ],
+            ],
           ),
         ],
       ),

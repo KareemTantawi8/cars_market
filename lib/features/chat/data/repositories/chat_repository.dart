@@ -66,7 +66,8 @@ class ChatRepository {
   }
 
   /// True when [vendor] map is the ad seller / target vendor.
-  /// Never treats [vendor.id] as a user id — avoids opening another vendor's chat when IDs collide.
+  /// When [sellerVendorRecordId] is set, only [vendor.id] may match — avoids
+  /// attaching to another vendor row that shares the same user account.
   static bool _vendorParticipantMatches(
     Map<String, dynamic> vendor, {
     required int? sellerUserId,
@@ -74,14 +75,14 @@ class ChatRepository {
   }) {
     if (sellerVendorRecordId != null && sellerVendorRecordId > 0) {
       final vid = _asInt(vendor['id']);
-      if (vid == sellerVendorRecordId) return true;
+      return vid == sellerVendorRecordId;
     }
     if (sellerUserId != null && sellerUserId > 0) {
       final vu = _asInt(vendor['user_id']);
       if (vu == sellerUserId) return true;
       final u = vendor['user'];
-      if (u is Map<String, dynamic>) {
-        final uid = _asInt(u['id']);
+      if (u is Map) {
+        final uid = _asInt(Map<String, dynamic>.from(u)['id']);
         if (uid == sellerUserId) return true;
       }
     }
@@ -101,33 +102,71 @@ class ChatRepository {
     final chats = await getChats();
     for (final c in chats) {
       final vendor = c['vendor'];
-      if (vendor is Map<String, dynamic>) {
+      if (vendor is Map) {
+        final vm = Map<String, dynamic>.from(vendor);
         if (_vendorParticipantMatches(
-          vendor,
+          vm,
           sellerUserId: sellerUserId,
           sellerVendorRecordId: sellerVendorRecordId,
         )) {
           return _chatRowId(c);
         }
-        continue;
-      }
-
-      if (sellerUserId != null && sellerUserId > 0) {
-        final customer = c['customer'];
-        if (customer is Map<String, dynamic>) {
-          var cid = _asInt(customer['id']);
-          final cu = customer['user'];
-          if (cu is Map<String, dynamic>) {
-            cid ??= _asInt(cu['id']);
-          }
-          if (cid == sellerUserId) return _chatRowId(c);
-        }
-        final user = c['user'];
-        final uid = user is Map<String, dynamic> ? _asInt(user['id']) : _asInt(c['user_id']);
-        if (uid == sellerUserId) return _chatRowId(c);
       }
     }
     return null;
+  }
+
+  /// Verifies [chatId] is with the ad seller (vendor row and/or user id).
+  Future<bool> verifyChatWithAdSeller(
+    int chatId, {
+    required int sellerUserId,
+    int? sellerVendorRecordId,
+  }) async {
+    try {
+      final raw = await getChatDetails(chatId);
+      final vendor = raw['vendor'];
+      if (vendor is! Map) return false;
+      return _vendorParticipantMatches(
+        Map<String, dynamic>.from(vendor),
+        sellerUserId: sellerUserId,
+        sellerVendorRecordId: sellerVendorRecordId,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Resolves inbox thread or creates one, then confirms via [getChatDetails].
+  Future<int?> openChatWithAdSeller({
+    required int sellerUserId,
+    int? sellerVendorRecordId,
+  }) async {
+    if (sellerUserId <= 0) return null;
+
+    var chatId = await findChatIdWithSeller(
+      sellerUserId: sellerUserId,
+      sellerVendorRecordId: sellerVendorRecordId,
+    );
+
+    if (chatId != null) {
+      final ok = await verifyChatWithAdSeller(
+        chatId,
+        sellerUserId: sellerUserId,
+        sellerVendorRecordId: sellerVendorRecordId,
+      );
+      if (!ok) chatId = null;
+    }
+
+    chatId ??= await createChatWithUser(sellerUserId);
+
+    if (chatId == null) return null;
+
+    final verified = await verifyChatWithAdSeller(
+      chatId,
+      sellerUserId: sellerUserId,
+      sellerVendorRecordId: sellerVendorRecordId,
+    );
+    return verified ? chatId : null;
   }
 
   /// GET /api/v1/chats/{id} - Chat details with customer, vendor, linked search request. Must be participant. 403 Forbidden.

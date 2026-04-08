@@ -27,37 +27,65 @@ bool _parseBool(dynamic value) {
   return false;
 }
 
-/// Builds a human-readable place line from JSON. Never uses the seller's personal name.
+/// Builds a human-readable place line from JSON.
+/// Skips strings that match the seller [user] name or vendor company so the
+/// location row is never confused with "من أنا".
 String? parseAdLocationLabel(Map<String, dynamic> json) {
+  final excludedLower = <String>{};
+  void addExcluded(String? s) {
+    final t = s?.trim().toLowerCase();
+    if (t == null || t.isEmpty) return;
+    excludedLower.add(t);
+  }
+
+  final u = json['user'];
+  if (u is Map) {
+    addExcluded(u['name']?.toString());
+    final v = u['vendor'];
+    if (v is Map) {
+      addExcluded(v['company_name']?.toString());
+      addExcluded(v['name']?.toString());
+    }
+  }
+
   final parts = <String>[];
-  void add(dynamic v) {
+  void addMaybe(dynamic v) {
     if (v == null) return;
     final s = v.toString().trim();
     if (s.isEmpty) return;
+    if (excludedLower.contains(s.toLowerCase())) return;
     if (!parts.contains(s)) parts.add(s);
   }
 
-  add(json['address']);
-  add(json['full_address']);
-  add(json['street_address']);
-  add(json['city']);
-  add(json['city_name']);
+  addMaybe(json['address']);
+  addMaybe(json['full_address']);
+  addMaybe(json['street_address']);
+  addMaybe(json['pickup_address']);
+  addMaybe(json['location_text']);
+  addMaybe(json['city']);
+  addMaybe(json['city_name']);
+  addMaybe(json['area']);
+  addMaybe(json['district']);
 
   final gov = json['governorate'];
-  if (gov is String) add(gov);
+  if (gov is String) addMaybe(gov);
   if (gov is Map) {
     final m = Map<String, dynamic>.from(gov);
-    add(m['name_ar'] ?? m['name']);
+    addMaybe(m['name_ar'] ?? m['name']);
+    addMaybe(m['governorate_name_ar'] ?? m['governorate_name']);
   }
 
   final loc = json['location'];
-  if (loc is String) add(loc);
+  if (loc is String) addMaybe(loc);
   if (loc is Map) {
     final m = Map<String, dynamic>.from(loc);
-    add(m['full_address'] ?? m['address']);
-    add(m['city']);
-    add(m['name_ar'] ?? m['governorate_name']);
-    if (parts.isEmpty) add(m['name']);
+    addMaybe(m['full_address'] ?? m['address']);
+    addMaybe(m['street_address']);
+    addMaybe(m['city']);
+    addMaybe(m['city_name']);
+    addMaybe(m['name_ar'] ?? m['governorate_name']);
+    addMaybe(m['governorate_name_ar']);
+    // Do not use bare m['name'] — APIs often put a contact/shop label there.
   }
 
   if (parts.isEmpty) return null;
@@ -80,10 +108,13 @@ class AdUserModel {
   });
 
   factory AdUserModel.fromJson(Map<String, dynamic> json) {
-    int? vendorRecordId = _parseIntOrNull(json['vendor_id']);
+    int? vendorRecordId = _parseIntOrNull(json['vendor_id'] ?? json['vendorId']);
+    vendorRecordId ??= _parseIntOrNull(json['vendor_record_id']);
+    vendorRecordId ??= _parseIntOrNull(json['seller_vendor_id']);
     final nested = json['vendor'];
-    if (nested is Map<String, dynamic>) {
-      vendorRecordId ??= _parseIntOrNull(nested['id']);
+    if (nested is Map) {
+      final m = Map<String, dynamic>.from(nested);
+      vendorRecordId ??= _parseIntOrNull(m['id']);
     }
     return AdUserModel(
       id: _parseInt(json['id']),
@@ -91,6 +122,34 @@ class AdUserModel {
       phone: json['phone']?.toString(),
       vendorRecordId: vendorRecordId,
     );
+  }
+
+  /// Merges ad-level vendor hints into the [user] map so [vendorRecordId] parses reliably.
+  static Map<String, dynamic>? mergeVendorHintsFromAd(
+    Map<String, dynamic> adJson,
+    Map<String, dynamic>? userMap,
+  ) {
+    if (userMap == null) return null;
+    final m = Map<String, dynamic>.from(userMap);
+    final hasVendor = m['vendor_id'] != null ||
+        m['vendorId'] != null ||
+        m['vendor'] != null;
+    if (!hasVendor) {
+      final vid = _parseIntOrNull(adJson['vendor_id'] ?? adJson['vendorId']);
+      if (vid != null && vid > 0) {
+        m['vendor_id'] = vid;
+      } else {
+        final rootV = adJson['vendor'];
+        if (rootV is Map) {
+          final vm = Map<String, dynamic>.from(rootV);
+          final id = _parseIntOrNull(vm['id']);
+          if (id != null && id > 0) {
+            m['vendor'] = {'id': id};
+          }
+        }
+      }
+    }
+    return m;
   }
 }
 
@@ -212,6 +271,17 @@ class AdModel {
       if (priceRaw is String) price = double.tryParse(priceRaw);
     }
     final carModelJson = json['carModel'] ?? json['car_model'];
+    final userRaw = json['user'] ?? json['seller'] ?? json['owner'];
+    AdUserModel? user;
+    if (userRaw is Map) {
+      final merged = AdUserModel.mergeVendorHintsFromAd(
+        json,
+        Map<String, dynamic>.from(userRaw),
+      );
+      if (merged != null) {
+        user = AdUserModel.fromJson(merged);
+      }
+    }
     return AdModel(
       id: _parseInt(json['id']),
       userId: _parseInt(json['user_id']),
@@ -232,9 +302,7 @@ class AdModel {
       createdAt: json['created_at'] as String?,
       updatedAt: json['updated_at'] as String?,
       viewsCount: _parseIntOrNull(json['views_count'] ?? json['views']),
-      user: json['user'] is Map<String, dynamic>
-          ? AdUserModel.fromJson(json['user'] as Map<String, dynamic>)
-          : null,
+      user: user,
       brand: json['brand'] is Map<String, dynamic>
           ? AdBrandModel.fromJson(json['brand'] as Map<String, dynamic>)
           : null,

@@ -150,10 +150,9 @@ class RegisterCubit extends Cubit<RegisterState> {
     required String passwordConfirmation,
     required String companyName,
     required int governorateId,
-    String deviceName = 'Mobile',
-    String? shopPhone,
+    String deviceName = 'Flutter App',
     String? address,
-    List<int>? brandIds,
+    List<int>? categoryIds,
   }) async {
     emit(RegisterLoading());
 
@@ -215,8 +214,6 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      final fcmToken = await PushNotificationService.instance.getToken();
-
       final request = VendorRegisterRequestModel(
         name: name.trim(),
         phone: phone.trim(),
@@ -225,10 +222,8 @@ class RegisterCubit extends Cubit<RegisterState> {
         companyName: companyName.trim(),
         governorateId: governorateId,
         deviceName: deviceName,
-        shopPhone: shopPhone?.trim().isEmpty == true ? null : shopPhone?.trim(),
         address: address?.trim().isEmpty == true ? null : address?.trim(),
-        brandIds: brandIds,
-        deviceToken: fcmToken,
+        categoryIds: categoryIds,
       );
 
       final response = await _authRepository.registerAsVendor(request);

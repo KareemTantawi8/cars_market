@@ -43,6 +43,14 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     super.dispose();
   }
 
+  bool _sellerProfileTapEnabled(PublicAdDetailsModel ad) {
+    if (ad.sellerVendorRecordId != null && ad.sellerVendorRecordId! > 0) {
+      return true;
+    }
+    final sid = ad.sellerId?.trim();
+    return sid != null && sid.isNotEmpty && int.tryParse(sid) != null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -619,16 +627,32 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           ),
           const SizedBox(height: 12),
           InkWell(
-            onTap: ad.sellerId != null
-                ? () => Navigator.pushNamed(
-                      context,
-                      AppRoutes.vendorProfile,
-                      arguments: {
-                        'vendorId': ad.sellerId,
-                        'vendorName': ad.sellerName,
-                        'vendorProfileByUserId': true,
-                      },
-                    )
+            onTap: _sellerProfileTapEnabled(ad)
+                ? () {
+                    final vid = ad.sellerVendorRecordId;
+                    if (vid != null && vid > 0) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.vendorProfile,
+                        arguments: {
+                          'vendorId': vid.toString(),
+                          'vendorName': ad.sellerName,
+                          'vendorProfileByUserId': false,
+                        },
+                      );
+                    } else if (ad.sellerId != null &&
+                        ad.sellerId!.trim().isNotEmpty) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.vendorProfile,
+                        arguments: {
+                          'vendorId': ad.sellerId,
+                          'vendorName': ad.sellerName,
+                          'vendorProfileByUserId': true,
+                        },
+                      );
+                    }
+                  }
                 : null,
             borderRadius: BorderRadius.circular(12),
             child: Container(
@@ -694,52 +718,6 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
               ],
             ),
           ),
-          ),
-          const SizedBox(height: 12),
-          Material(
-            color: context.cardBg,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: () {
-                Navigator.pushNamed(
-                  context,
-                  AppRoutes.adDetails,
-                  arguments: {'adId': ad.id},
-                );
-              },
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: context.inputBorderColor),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.article_outlined,
-                      color: AppColors.primaryColor,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'عرض صفحة الإعلان',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryColor,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Icons.chevron_left,
-                      color: context.textSecondary,
-                      size: 22,
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -876,16 +854,15 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     final sellerUserId = int.tryParse(ad.sellerId ?? '');
     if (sellerUserId == null || sellerUserId <= 0) {
       if (mounted) {
-        CustomToast.showError(context, 'تعذّر تحديد التاجر');
+        CustomToast.showError(context, 'تعذّر تحديد البائع');
       }
       return;
     }
     try {
-      var chatId = await ChatRepository().findChatIdWithSeller(
+      final chatId = await ChatRepository().openChatWithAdSeller(
         sellerUserId: sellerUserId,
         sellerVendorRecordId: ad.sellerVendorRecordId,
       );
-      chatId ??= await ChatRepository().createChatWithUser(sellerUserId);
       if (!mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(
@@ -898,14 +875,17 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           },
         );
       } else {
-        CustomToast.showInfo(
+        CustomToast.showError(
           context,
-          'لا يمكن بدء المحادثة حالياً. جرّب التواصل بالاتصال أو واتساب.',
+          'لا يمكن بدء المحادثة مع صاحب هذا الإعلان. جرّب الاتصال أو واتساب، أو أعد المحاولة لاحقاً.',
         );
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
-        CustomToast.showError(context, 'تعذّر فتح المحادثة، حاول مرة أخرى.');
+        CustomToast.showError(
+          context,
+          'تعذّر فتح المحادثة. ${e.toString().replaceAll('Exception: ', '')}',
+        );
       }
     }
   }

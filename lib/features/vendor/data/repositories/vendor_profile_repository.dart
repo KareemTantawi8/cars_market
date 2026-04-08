@@ -82,16 +82,19 @@ class VendorProfileRepository {
 
   static int? _vendorRecordIdFromUserPayload(Map<String, dynamic> map) {
     final v = map['vendor'];
-    if (v is Map<String, dynamic>) {
-      final raw = v['id'];
+    if (v is Map) {
+      final vm = Map<String, dynamic>.from(v);
+      final raw = vm['id'];
       if (raw is int && raw > 0) return raw;
       final p = int.tryParse(raw?.toString() ?? '');
       if (p != null && p > 0) return p;
     }
-    final rawId = map['vendor_id'];
-    if (rawId is int && rawId > 0) return rawId;
-    final p2 = int.tryParse(rawId?.toString() ?? '');
-    if (p2 != null && p2 > 0) return p2;
+    for (final key in ['vendor_id', 'vendorId', 'vendor_record_id', 'seller_vendor_id']) {
+      final rawId = map[key];
+      if (rawId is int && rawId > 0) return rawId;
+      final p = int.tryParse(rawId?.toString() ?? '');
+      if (p != null && p > 0) return p;
+    }
     return null;
   }
 

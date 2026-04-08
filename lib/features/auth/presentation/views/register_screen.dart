@@ -27,7 +27,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _passwordConfirmationController = TextEditingController();
   final _companyNameController = TextEditingController();
-  final _shopPhoneController = TextEditingController();
   bool _obscurePassword = true;
   bool _obscurePasswordConfirmation = true;
   String _selectedUserType = AppConstants.userTypeCustomer;
@@ -42,7 +41,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _passwordConfirmationController.dispose();
     _companyNameController.dispose();
-    _shopPhoneController.dispose();
     _addressController.dispose();
     super.dispose();
   }
@@ -70,13 +68,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           passwordConfirmation: _passwordConfirmationController.text,
           companyName: _companyNameController.text,
           governorateId: _selectedGovernorate!.id,
-          shopPhone: _shopPhoneController.text.trim().isEmpty
-              ? null
-              : _shopPhoneController.text.trim(),
           address: _addressController.text.trim().isEmpty
               ? null
               : _addressController.text.trim(),
-          brandIds: _selectedBrands.isEmpty
+          categoryIds: _selectedBrands.isEmpty
               ? null
               : _selectedBrands.map((b) => b.id).toList(),
         );
@@ -158,6 +153,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  void _toggleBrandInRegisterSheet(
+    BrandModel brand,
+    void Function(void Function()) setModalState,
+  ) {
+    setModalState(() {
+      if (_selectedBrands.any((b) => b.id == brand.id)) {
+        _selectedBrands =
+            _selectedBrands.where((b) => b.id != brand.id).toList();
+      } else {
+        _selectedBrands = [..._selectedBrands, brand];
+      }
+    });
+    if (mounted) setState(() {});
+  }
+
   void _showBrandsMultiSelectDialog(CategoryLoaded state) {
     showModalBottomSheet(
       context: context,
@@ -199,26 +209,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         final brand = state.brands[index];
                         final isSelected =
                             _selectedBrands.any((b) => b.id == brand.id);
-                        return CheckboxListTile(
-                          value: isSelected,
-                          onChanged: (val) {
-                            setModalState(() {
-                              if (val == true) {
-                                _selectedBrands = [..._selectedBrands, brand];
-                              } else {
-                                _selectedBrands = _selectedBrands
-                                    .where((b) => b.id != brand.id)
-                                    .toList();
-                              }
-                            });
-                            if (mounted) setState(() {});
-                          },
-                          title: Text(
-                            brand.displayName,
-                            style: AppTextStyles.bodyMedium
-                                .copyWith(color: context.textPrimary),
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () =>
+                                _toggleBrandInRegisterSheet(brand, setModalState),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Checkbox(
+                                    value: isSelected,
+                                    activeColor: AppColors.primaryColor,
+                                    onChanged: (_) => _toggleBrandInRegisterSheet(
+                                        brand, setModalState),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      brand.displayName,
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        color: context.textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          activeColor: AppColors.primaryColor,
                         );
                       },
                     ),
@@ -265,7 +286,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => RegisterCubit()),
-        BlocProvider(create: (_) => CategoryCubit()..loadInitialData()),
+        BlocProvider(
+          create: (_) =>
+              CategoryCubit()..loadInitialData(withSearchFormDefaults: false),
+        ),
       ],
       child: BlocListener<RegisterCubit, RegisterState>(
         listener: (context, state) {
@@ -799,25 +823,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ),
                                       const SizedBox(height: 18),
 
-                                      // ── Shop phone (optional) ─────────────
-                                      _FieldLabel(label: 'رقم المحل (اختياري)'),
-                                      const SizedBox(height: 8),
-                                      TextFormField(
-                                        controller: _shopPhoneController,
-                                        keyboardType: TextInputType.phone,
-                                        textInputAction: TextInputAction.next,
-                                        inputFormatters: [
-                                          FilteringTextInputFormatter.digitsOnly
-                                        ],
-                                        style: AppTextStyles.input,
-                                        decoration: _inputDeco(
-                                          hint: 'رقم للتواصل يختلف عن رقم التسجيل',
-                                          icon: Icons.store_outlined,
-                                          context: context,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 18),
-
                                       // Address field
                                       _FieldLabel(label: 'العنوان التفصيلي (اختياري)'),
                                       const SizedBox(height: 8),
@@ -944,7 +949,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                                         onPressed: () => context
                                                             .read<
                                                                 CategoryCubit>()
-                                                            .loadInitialData(),
+                                                            .loadInitialData(
+                                                                withSearchFormDefaults:
+                                                                    false),
                                                         icon: const Icon(
                                                             Icons.refresh,
                                                             size: 16),
