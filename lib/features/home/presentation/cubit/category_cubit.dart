@@ -124,9 +124,13 @@ class CategoryCubit extends Cubit<CategoryState> {
       final governorates = results[1] as List<GovernorateModel>;
 
       if (!withSearchFormDefaults) {
+        // Still pick a default governorate (Cairo) for convenience —
+        // brand/model/year are left blank for the user to choose freely.
+        final selectedGovernorate = _pickDefaultGovernorate(governorates);
         emit(CategoryLoaded(
           brands: brands,
           governorates: governorates,
+          selectedGovernorate: selectedGovernorate,
         ));
         return;
       }
@@ -248,22 +252,16 @@ class CategoryCubit extends Cubit<CategoryState> {
 
   /// Load models for selected brand
   Future<void> loadModels(int brandId) async {
-    final currentState = state;
-    if (currentState is CategoryLoaded) {
-      emit(const CategoryLoading('models'));
-    }
     try {
       final models = await _categoryRepository.getModelsByBrand(brandId);
-
-      if (currentState is CategoryLoaded) {
-        emit(currentState.copyWith(
+      final latest = state;
+      if (latest is CategoryLoaded && latest.selectedBrand?.id == brandId) {
+        emit(latest.copyWith(
           models: models,
-          years: [], // Clear years when brand changes
+          years: [],
           clearSelectedModel: true,
           clearSelectedYear: true,
         ));
-      } else {
-        emit(CategoryLoaded(models: models));
       }
     } catch (e) {
       emit(CategoryError(e.toString().replaceAll('Exception: ', ''), 'models'));
@@ -272,18 +270,13 @@ class CategoryCubit extends Cubit<CategoryState> {
 
   /// Load years for selected model
   Future<void> loadYears(int modelId) async {
-    final currentState = state;
-
     try {
       final years = await _categoryRepository.getYearsByModel(modelId);
-
-      if (currentState is CategoryLoaded) {
-        emit(currentState.copyWith(
-          years: years,
-          clearSelectedYear: true,
-        ));
-      } else {
-        emit(CategoryLoaded(years: years));
+      final latest = state;
+      if (latest is CategoryLoaded && latest.selectedModel?.id == modelId) {
+        // Do not clear selectedYear here — selectModel already cleared it; clearing again
+        // with a stale snapshot could wipe the user's pick if requests complete out of order.
+        emit(latest.copyWith(years: years));
       }
     } catch (e) {
       emit(CategoryError(e.toString().replaceAll('Exception: ', ''), 'years'));

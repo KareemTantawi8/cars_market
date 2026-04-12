@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
@@ -35,34 +37,44 @@ class VendorProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final parsedId = int.tryParse(vendorId) ?? 0;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
-        builder: (context, state) {
-          if (state is VendorProfileLoading) {
-            return const Center(child: LoadingIndicator());
-          }
+    return Theme(
+      data: AppTheme.lightTheme,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.lightTheme.appBarTheme.systemOverlayStyle ??
+            const SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: Brightness.dark,
+            ),
+        child: Scaffold(
+          backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
+          body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
+            builder: (context, state) {
+              if (state is VendorProfileLoading) {
+                return const Center(child: LoadingIndicator());
+              }
 
-          if (state is VendorProfileError) {
-            return Center(
-              child: ErrorState(
-                message: state.message,
-                onRetry: () {
-                  context.read<VendorProfileCubit>().fetchVendorProfile(
-                        parsedId,
-                        bySellerUserId: bySellerUserId,
-                      );
-                },
-              ),
-            );
-          }
+              if (state is VendorProfileError) {
+                return Center(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () {
+                      context.read<VendorProfileCubit>().fetchVendorProfile(
+                            parsedId,
+                            bySellerUserId: bySellerUserId,
+                          );
+                    },
+                  ),
+                );
+              }
 
-          if (state is VendorProfileLoaded) {
-            return _buildProfileContent(context, state.profile);
-          }
+              if (state is VendorProfileLoaded) {
+                return _buildProfileContent(context, state.profile);
+              }
 
-          return const SizedBox.shrink();
-        },
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -120,12 +132,9 @@ class VendorProfileScreen extends StatelessWidget {
   }
 
   Widget _buildVendorInfoCard(BuildContext context, VendorProfileModel profile) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    // Flat layout: same background as scaffold (like customer profile / create ad).
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -330,8 +339,9 @@ class VendorProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: context.cardBg,
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.inputBorderColor),
       ),
       child: Row(
         children: [
@@ -404,7 +414,7 @@ class VendorProfileScreen extends StatelessWidget {
               onPressed: () => _openChatWithVendor(context, profile),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryColor,
-                foregroundColor: context.textPrimary,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -434,7 +444,7 @@ class VendorProfileScreen extends StatelessWidget {
               onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.success,
-                foregroundColor: context.textPrimary,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -487,7 +497,7 @@ class VendorProfileScreen extends StatelessWidget {
         onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.success,
-          foregroundColor: context.textPrimary,
+          foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -521,7 +531,7 @@ class VendorProfileScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: context.cardBg,
+            color: Theme.of(context).scaffoldBackgroundColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: context.inputBorderColor),
           ),
@@ -549,7 +559,7 @@ class VendorProfileScreen extends StatelessWidget {
                       color: AppColors.primaryColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('خريطة', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                    child: const Text('الاتجاهات', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
                 ),
             ],
@@ -622,17 +632,26 @@ class VendorProfileScreen extends StatelessWidget {
   }
 
   Future<void> _openGoogleMaps(double? lat, double? lng, String? address) async {
+    // Use Maps Directions URL so the app opens in directions mode (not search/pin only).
+    // https://developers.google.com/maps/documentation/urls/get-started#directions-action
+    final Uri? url;
     if (lat != null && lng != null) {
-      final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      url = Uri.https('www.google.com', '/maps/dir/', {
+        'api': '1',
+        'destination': '$lat,$lng',
+        'travelmode': 'driving',
+      });
     } else if (address != null && address.isNotEmpty) {
-      final encodedAddress = Uri.encodeComponent(address);
-      final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encodedAddress');
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      url = Uri.https('www.google.com', '/maps/dir/', {
+        'api': '1',
+        'destination': address,
+        'travelmode': 'driving',
+      });
+    } else {
+      url = null;
+    }
+    if (url != null && await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 

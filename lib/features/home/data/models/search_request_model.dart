@@ -38,15 +38,18 @@ class SearchRequestModel {
     if (modelId != null) {
       json['model_id'] = modelId;
     }
-    
-    // API expects 'year' with the year value (e.g., "2023") not 'year_id'
-    // Use yearName if available
-    if (yearName != null && yearName!.isNotEmpty) {
-      json['year'] = yearName;
-    } else if (yearId != null) {
-      // Fallback: if yearName is not set, we can't send year (API needs the actual year value)
-      // But we'll still send year_id in case API accepts it
+
+    // Prefer catalog id: Laravel often authorizes/validates via year_id on the years table.
+    // Sending only `year` (calendar number) led to 403 "This action is unauthorized" on some APIs.
+    if (yearId != null) {
       json['year_id'] = yearId;
+    } else if (yearName != null && yearName!.isNotEmpty) {
+      final parsed = int.tryParse(yearName!.trim());
+      if (parsed != null) {
+        json['year'] = parsed;
+      } else {
+        json['year'] = yearName;
+      }
     }
     
     if (governorateId != null) {

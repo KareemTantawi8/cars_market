@@ -105,14 +105,17 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Widget _buildContent(PublicAdDetailsModel ad) {
+    // Image PageView lives outside the vertical scroll so horizontal swipes are not
+    // eaten by the parent scroll view (vertical list + horizontal pager).
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildImageSection(ad),
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildImageSection(ad),
                 _buildInfoCard(ad),
                 _buildSpecGrid(ad),
                 _buildDetailsSection(ad),
@@ -299,40 +302,48 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       return '${AppConstants.storageBaseUrl}/$p';
     }).toList();
     final images = imageUrls.isEmpty ? [null] : imageUrls;
+    final screenH = MediaQuery.sizeOf(context).height;
+    final imageHeight = (screenH * 0.40).clamp(280.0, 440.0);
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
             SizedBox(
-              height: 280,
-              child: PageView.builder(
-                controller: _imagePageController,
-                itemCount: images.length,
-                onPageChanged: (i) => setState(() => _currentImageIndex = i),
-                itemBuilder: (context, index) {
-                  final url = images[index];
-                  return GestureDetector(
-                    onTap: url != null
-                        ? () => _openFullScreenImage(context, imageUrls, index)
-                        : null,
-                    child: Container(
-                      color: context.cardBg,
-                      alignment: Alignment.center,
-                      child: url != null
-                          ? CachedNetworkImage(
-                              imageUrl: url,
-                              fit: BoxFit.contain,
-                              placeholder: (_, _) => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                              errorWidget: (_, _, _) => _imagePlaceholder(),
-                            )
-                          : _imagePlaceholder(),
-                    ),
-                  );
-                },
+              height: imageHeight,
+              width: double.infinity,
+              child: ColoredBox(
+                color: context.cardBg,
+                child: PageView.builder(
+                  controller: _imagePageController,
+                  itemCount: images.length,
+                  physics: const PageScrollPhysics(),
+                  onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                  itemBuilder: (context, index) {
+                    final url = images[index];
+                    return GestureDetector(
+                      behavior: HitTestBehavior.deferToChild,
+                      onTap: url != null && imageUrls.isNotEmpty
+                          ? () => _openFullScreenImage(context, imageUrls, index)
+                          : null,
+                      child: Container(
+                        color: context.cardBg,
+                        alignment: Alignment.center,
+                        child: url != null
+                            ? CachedNetworkImage(
+                                imageUrl: url,
+                                fit: BoxFit.contain,
+                                placeholder: (_, _) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                errorWidget: (_, _, _) => _imagePlaceholder(),
+                              )
+                            : _imagePlaceholder(),
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
             if (images.length > 1) ...[

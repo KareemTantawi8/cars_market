@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -422,143 +424,204 @@ class _ModelTile extends StatelessWidget {
 // Ad Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AdCard extends StatelessWidget {
+class _AdCard extends StatefulWidget {
   final AdModel ad;
 
   const _AdCard({required this.ad});
 
-  String? get _imageUrl {
-    final path = ad.firstImageUrl;
-    if (path == null || path.isEmpty) return null;
-    if (path.startsWith('http')) return path;
-    return '${AppConstants.storageBaseUrl}/$path';
+  @override
+  State<_AdCard> createState() => _AdCardState();
+}
+
+class _AdCardState extends State<_AdCard> {
+  late final PageController _pageController;
+  int _pageIndex = 0;
+
+  AdModel get ad => widget.ad;
+
+  List<String> get _imageUrls {
+    final out = <String>[];
+    for (final path in ad.images) {
+      if (path.isEmpty) continue;
+      if (path.startsWith('http')) {
+        out.add(path);
+      } else {
+        out.add('${AppConstants.storageBaseUrl}/$path');
+      }
+    }
+    return out;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _openDetails(BuildContext context) {
+    Navigator.pushNamed(
+      context,
+      AppRoutes.adDetails,
+      arguments: {'adId': ad.id},
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            AppRoutes.adDetails,
-            arguments: {'adId': ad.id},
-          );
-        },
+    final urls = _imageUrls;
+    final pageCount = math.max(1, urls.length);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.cardBg,
         borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: context.cardBg,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: SizedBox(
-              height: 120,
-              child: Row(
-                textDirection: TextDirection.rtl,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 200,
+              width: double.infinity,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  _buildImage(context),
-                  Expanded(child: _buildInfo(context)),
+                  ColoredBox(
+                    color: context.surfaceBg,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: pageCount,
+                      physics: const PageScrollPhysics(),
+                      onPageChanged: (i) => setState(() => _pageIndex = i),
+                      itemBuilder: (context, index) {
+                        final url = urls.isEmpty ? null : urls[index];
+                        return GestureDetector(
+                          behavior: HitTestBehavior.deferToChild,
+                          onTap: () => _openDetails(context),
+                          child: url != null
+                              ? CachedNetworkImage(
+                                  imageUrl: url,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  placeholder: (_, __) => _placeholder(context),
+                                  errorWidget: (_, __, ___) => _placeholder(context),
+                                )
+                              : _placeholder(context),
+                        );
+                      },
+                    ),
+                  ),
+                  if (urls.length > 1)
+                    Positioned(
+                      bottom: 8,
+                      left: 0,
+                      right: 0,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(urls.length, (i) {
+                          final active = i == _pageIndex;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.symmetric(horizontal: 3),
+                            width: active ? 18 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: active ? AppColors.primaryColor : Colors.white54,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
                 ],
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImage(BuildContext context) {
-    return SizedBox(
-      width: 140,
-      height: 120,
-      child: _imageUrl != null
-          ? CachedNetworkImage(
-              imageUrl: _imageUrl!,
-              fit: BoxFit.cover,
-              placeholder: (_, __) => _placeholder(context),
-              errorWidget: (_, __, ___) => _placeholder(context),
-            )
-          : _placeholder(context),
-    );
-  }
-
-  Widget _buildInfo(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 12, 14, 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            ad.title,
-            style: AppTextStyles.bodyLarge.copyWith(
-              fontWeight: FontWeight.bold,
-              color: context.textPrimary,
-              fontSize: 14,
-              height: 1.3,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.right,
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  ad.priceFormatted,
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              if (ad.locationLabel != null && ad.locationLabel!.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        ad.locationLabel!.trim(),
-                        style: AppTextStyles.caption.copyWith(
-                          color: context.textSecondary,
-                          height: 1.25,
+            Material(
+              color: context.cardBg,
+              child: InkWell(
+                onTap: () => _openDetails(context),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        ad.title,
+                        style: AppTextStyles.bodyLarge.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: context.textPrimary,
+                          fontSize: 15,
+                          height: 1.3,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.right,
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 14,
-                      color: context.textSecondary,
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          ad.priceFormatted,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (ad.locationLabel != null && ad.locationLabel!.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                ad.locationLabel!.trim(),
+                                style: AppTextStyles.caption.copyWith(
+                                  color: context.textSecondary,
+                                  height: 1.25,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 14,
+                              color: context.textSecondary,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-              ],
-            ],
-          ),
-        ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

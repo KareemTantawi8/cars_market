@@ -88,9 +88,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (context) => VendorDashboardCubit()..fetchVendorProfile(),
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: BlocBuilder<VendorDashboardCubit, VendorDashboardState>(
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          snackBarTheme: Theme.of(context).snackBarTheme.copyWith(
+            behavior: SnackBarBehavior.fixed,
+          ),
+        ),
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: BlocBuilder<VendorDashboardCubit, VendorDashboardState>(
           builder: (context, state) {
             if (state is VendorDashboardLoading) {
               return const Center(child: LoadingIndicator());
@@ -113,6 +119,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             }
             return const SizedBox.shrink();
           },
+        ),
         ),
       ),
     );
@@ -157,7 +164,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               bottom: 52,
               right: 20,
               left: 20,
-              child: _buildHeroCaption(profile),
+              child: _buildHeroCaption(context, profile),
             ),
           ],
         ),
@@ -165,7 +172,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _buildHeroCaption(VendorProfileModel profile) {
+  Widget _buildHeroCaption(BuildContext context, VendorProfileModel profile) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -223,9 +230,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   ],
                 ],
               ),
-              const SizedBox(height: 6),
-              // Open / Closed pill (tappable to toggle)
-              _buildStatusPill(context, profile),
+              const SizedBox(height: 8),
+              // Explicit button so vendors know this toggles online / offline for search requests.
+              _buildOnlineToggleButton(context, profile),
             ],
           ),
         ),
@@ -233,43 +240,54 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _buildStatusPill(BuildContext context, VendorProfileModel profile) {
+  Widget _buildOnlineToggleButton(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
-    return GestureDetector(
-      onTap: () => _toggleOnlineStatus(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isOpen
-              ? AppColors.success.withOpacity(0.9)
-              : AppColors.error.withOpacity(0.85),
-          borderRadius: BorderRadius.circular(20),
+    final subtitle = isOpen
+        ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
+            ? 'مفتوح حتى ${profile.openUntil}'
+            : 'تستلم طلبات البحث الآن')
+        : 'لن يظهر لك طلبات بحث جديدة';
+    return Align(
+      alignment: Alignment.centerRight,
+      child: FilledButton.icon(
+        onPressed: () => _toggleOnlineStatus(context),
+        style: FilledButton.styleFrom(
+          backgroundColor:
+              isOpen ? AppColors.success.withOpacity(0.92) : AppColors.error.withOpacity(0.9),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          visualDensity: VisualDensity.compact,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
+        icon: Icon(
+          isOpen ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+          size: 22,
+        ),
+        label: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 220),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isOpen ? 'متصل — اضغط لإيقاف الظهور' : 'غير متصل — اضغط للاستلام',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  height: 1.2,
+                ),
               ),
-            ),
-            const SizedBox(width: 5),
-            Text(
-              isOpen
-                  ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-                        ? 'مفتوح حتى ${profile.openUntil}'
-                        : 'متصل')
-                  : 'غير متصل',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withOpacity(0.9),
+                  height: 1.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -377,7 +395,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             iconColor: profile.isOpen ? AppColors.success : AppColors.error,
             value: profile.isOpen ? 'متصل' : 'غير متصل',
             label: 'الحالة',
-            onTap: () => _toggleOnlineStatus(context),
           ),
         ),
       ],
@@ -462,7 +479,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 : 'أنت الآن غير متصل',
           ),
           backgroundColor: isNowOnline ? AppColors.success : AppColors.warning,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (e) {
@@ -471,7 +487,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
           backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -1285,17 +1300,20 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       }
     }
     if (lat != null && lng != null) {
-      final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
-      );
+      final url = Uri.https('www.google.com', '/maps/dir/', {
+        'api': '1',
+        'destination': '$lat,$lng',
+        'travelmode': 'driving',
+      });
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
     } else if (address != null && address.isNotEmpty) {
-      final encoded = Uri.encodeComponent(address);
-      final url = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=$encoded',
-      );
+      final url = Uri.https('www.google.com', '/maps/dir/', {
+        'api': '1',
+        'destination': address,
+        'travelmode': 'driving',
+      });
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }

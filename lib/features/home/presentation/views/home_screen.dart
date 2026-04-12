@@ -47,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Load initial data (brands and governorates)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryCubit>().loadInitialData();
+      context.read<CategoryCubit>().loadInitialData(withSearchFormDefaults: false);
       _bindCustomerRealtime();
     });
   }
@@ -85,6 +85,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearch() {
+    // Vendors are not allowed to create search requests.
+    if (StorageService.getUserType() == AppConstants.userTypeVendor) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('هذه الميزة للعملاء فقط. يرجى تسجيل الدخول بحساب عميل.'),
+          backgroundColor: AppColors.warning,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     if (_requestTimestamps.length >= _maxRequests) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -119,12 +131,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (categoryState.selectedBrand == null ||
         categoryState.selectedModel == null ||
-        categoryState.selectedYear == null ||
         categoryState.selectedGovernorate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'الرجاء اختيار الماركة والموديل وسنة السيارة والمحافظة',
+            'الرجاء اختيار الماركة والموديل والمحافظة',
           ),
           backgroundColor: AppColors.warning,
         ),
@@ -132,17 +143,18 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
+    final y = categoryState.selectedYear;
     searchCubit.searchSuppliers(
       partName: _partNameController.text.trim().isEmpty
           ? null
           : _partNameController.text.trim(),
       brandId: categoryState.selectedBrand!.id,
       modelId: categoryState.selectedModel!.id,
-      yearId: categoryState.selectedYear!.id,
+      yearId: y?.id,
       governorateId: categoryState.selectedGovernorate!.id,
       brandName: categoryState.selectedBrand!.displayName,
       modelName: categoryState.selectedModel!.displayName,
-      yearName: categoryState.selectedYear!.displayName,
+      yearName: y?.displayName,
       governorateName: categoryState.selectedGovernorate!.displayName,
     );
   }
@@ -372,9 +384,15 @@ class _HomeScreenState extends State<HomeScreen> {
               _registerSuccessfulSearchRequest();
               context.read<SearchCubit>().clearSearch();
             } else if (state is SearchError) {
+              final msg = state.message.toLowerCase();
+              final displayMessage = msg.contains('unauthorized') ||
+                      msg.contains('unauthenticated') ||
+                      msg.contains('forbidden')
+                  ? 'غير مصرح لك بإرسال الطلبات. يرجى التأكد من نوع حسابك أو تسجيل الخروج وإعادة الدخول.'
+                  : state.message;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.message),
+                  content: Text(displayMessage),
                   backgroundColor: AppColors.error,
                 ),
               );
@@ -607,8 +625,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildSelectionField(
-                          label: 'السنة',
-                          value: state.selectedYear?.displayName ?? 'اختر السنة',
+                          label: 'السنة (اختياري)',
+                          value: state.selectedYear?.displayName ?? 'بدون سنة محددة',
                           isPlaceholder: state.selectedYear == null,
                           onTap: () => _showYearSelectionDialog(state),
                         ),
@@ -632,7 +650,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
-                        context.read<CategoryCubit>().loadInitialData();
+                        context.read<CategoryCubit>().loadInitialData(
+                              withSearchFormDefaults: false,
+                            );
                       },
                       child: const Text('إعادة المحاولة'),
                     ),

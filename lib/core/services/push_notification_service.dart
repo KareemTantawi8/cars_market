@@ -7,6 +7,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../navigation/root_navigator.dart';
@@ -116,16 +117,19 @@ int _localTrayIdForFcmData(
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    await Firebase.initializeApp();
-  } catch (e, st) {
-    developer.log(
-      'Firebase.initializeApp failed: $e\n$st',
-      name: 'FCM.bg',
-      error: e,
-      stackTrace: st,
-    );
-    return;
+  // Initialize Firebase only if not already initialized in this isolate.
+  if (Firebase.apps.isEmpty) {
+    try {
+      await Firebase.initializeApp();
+    } catch (e, st) {
+      developer.log(
+        'Firebase.initializeApp failed: $e\n$st',
+        name: 'FCM.bg',
+        error: e,
+        stackTrace: st,
+      );
+      return;
+    }
   }
 
   developer.log(
@@ -313,6 +317,30 @@ class PushNotificationService {
     );
     if (kDebugMode) {
       debugPrint('[FCM] Android permission (firebase_messaging): ${settings.authorizationStatus}');
+    }
+
+    // Request battery optimization exemption so FCM works when app is closed.
+    await _requestBatteryOptimizationExemption();
+  }
+
+  static const _batteryChannel = MethodChannel('com.washslender.app/battery');
+
+  /// Asks the user to exempt this app from battery optimization.
+  /// Without this, many Android OEMs (Xiaomi, Huawei, Samsung, Oppo, etc.)
+  /// kill FCM delivery when the app is closed, so no notifications arrive.
+  Future<void> _requestBatteryOptimizationExemption() async {
+    if (!Platform.isAndroid) return;
+    try {
+      final isIgnoring =
+          await _batteryChannel.invokeMethod<bool>('isIgnoringBatteryOptimizations') ?? false;
+      if (!isIgnoring) {
+        if (kDebugMode) debugPrint('[FCM] Requesting battery optimization exemption');
+        await _batteryChannel.invokeMethod('requestIgnoreBatteryOptimizations');
+      } else {
+        if (kDebugMode) debugPrint('[FCM] Already exempt from battery optimization');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[FCM] Battery opt request failed: $e');
     }
   }
 
