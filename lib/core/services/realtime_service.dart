@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart' hide ConnectionState;
 import 'package:pusher_reverb_flutter/pusher_reverb_flutter.dart';
 
 import '../utils/constants.dart';
+import 'notification_payload.dart';
 import 'push_notification_service.dart';
 import 'storage_service.dart';
 
@@ -47,10 +48,10 @@ class RealtimeService with WidgetsBindingObserver {
         }
         unawaited(start());
       }
-      // Reverb disconnects in background — catch missed vendor search rows from REST.
+      // Reverb disconnects in background — catch missed notification rows from REST.
       unawaited(
         PushNotificationService.instance
-            .syncMissedSearchRequestNotificationsFromApiOnResume(),
+            .syncMissedNotificationsFromApiOnResume(),
       );
     }
   }
@@ -87,7 +88,7 @@ class RealtimeService with WidgetsBindingObserver {
         },
         onDisconnected: () {
           if (kDebugMode) debugPrint('[Realtime] disconnected');
-          _scheduleVendorNotificationSyncOnDisconnect();
+          _scheduleNotificationSyncOnDisconnect();
         },
         onError: (e) {
           if (kDebugMode) debugPrint('[Realtime] error: $e');
@@ -108,8 +109,7 @@ class RealtimeService with WidgetsBindingObserver {
     }
   }
 
-  void _scheduleVendorNotificationSyncOnDisconnect() {
-    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
+  void _scheduleNotificationSyncOnDisconnect() {
     final token = StorageService.getAuthToken();
     if (token == null || token.isEmpty) return;
 
@@ -121,7 +121,7 @@ class RealtimeService with WidgetsBindingObserver {
       }
       unawaited(
         PushNotificationService.instance
-            .syncMissedSearchRequestNotificationsFromApiOnDisconnect(),
+            .syncMissedNotificationsFromApiOnDisconnect(),
       );
     });
   }
@@ -193,16 +193,10 @@ class RealtimeService with WidgetsBindingObserver {
 
       ch.bind('new-message.sent', (_, data) {
         final map = coerceMap(data);
-        final notification = map['notification'];
-        if (notification is Map<String, dynamic>) {
-          final meta = notification['meta'];
-          if (meta is Map && meta['chat_id'] != null) {
-            final cid = meta['chat_id'] is int
-                ? meta['chat_id'] as int
-                : int.tryParse(meta['chat_id'].toString());
-            if (cid != null && cid == activeChatId) return;
-          }
-        }
+        if (_isForActiveChat(map)) return;
+        unawaited(
+          PushNotificationService.instance.showChatMessageReverbTray(map),
+        );
         if (onCustomerNewMessage != null) {
           onCustomerNewMessage!.call(map);
         }
@@ -246,16 +240,10 @@ class RealtimeService with WidgetsBindingObserver {
       final ch = c.subscribeToPrivateChannel('private-user.$userId');
       ch.bind('new-message.sent', (_, data) {
         final map = coerceMap(data);
-        final notification = map['notification'];
-        if (notification is Map<String, dynamic>) {
-          final meta = notification['meta'];
-          if (meta is Map && meta['chat_id'] != null) {
-            final cid = meta['chat_id'] is int
-                ? meta['chat_id'] as int
-                : int.tryParse(meta['chat_id'].toString());
-            if (cid != null && cid == activeChatId) return;
-          }
-        }
+        if (_isForActiveChat(map)) return;
+        unawaited(
+          PushNotificationService.instance.showChatMessageReverbTray(map),
+        );
         if (onVendorNewMessage != null) {
           onVendorNewMessage!.call(map);
         }
@@ -287,6 +275,13 @@ class RealtimeService with WidgetsBindingObserver {
 
   void unsubscribeChat(int chatId) {
     _client?.unsubscribeFromChannel('private-chat.$chatId');
+  }
+
+  bool _isForActiveChat(Map<String, dynamic> map) {
+    final active = activeChatId;
+    if (active == null) return false;
+    final cid = parseChatIdFromMap(map);
+    return cid != null && cid == active;
   }
 
   static Map<String, dynamic> coerceMap(dynamic data) {

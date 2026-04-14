@@ -182,6 +182,49 @@ class UserProfileRepository {
     }
   }
 
+  /// PUT /api/v1/profile/brands — يحدّث ماركات التاجر المدعومة بالنقطة الجديدة.
+  /// Body: { "category_ids": [1, 162] }
+  Future<void> updateVendorBrands(List<int> categoryIds) async {
+    final seen = <int>{};
+    final unique = [for (final id in categoryIds) if (id > 0 && seen.add(id)) id];
+    _log('📤 updateVendorBrands: $unique');
+    try {
+      final response = await _apiClient.put(
+        ApiEndpoints.profileBrands,
+        data: {'category_ids': unique},
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('فشل التحديث: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      _log('❌ updateVendorBrands: ${e.message}');
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        if (e.response!.statusCode == 422 && errorData is Map<String, dynamic>) {
+          final msg = errorData['message']?.toString() ?? 'تحقق من البيانات';
+          final errors = errorData['errors'];
+          if (errors is Map<String, dynamic>) {
+            final parts = <String>[];
+            for (final entry in errors.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty) parts.add(v.first.toString());
+            }
+            if (parts.isNotEmpty) throw Exception(parts.join('\n'));
+          }
+          throw Exception(msg);
+        }
+        if (errorData is Map<String, dynamic>) {
+          throw Exception(
+            errorData['message']?.toString() ??
+                errorData['error']?.toString() ??
+                'فشل تحديث الماركات',
+          );
+        }
+      }
+      throw Exception(e.message ?? 'خطأ في الشبكة');
+    }
+  }
+
   /// PUT /api/v1/user/profile — يحدّث ماركات التاجر المدعومة (معرّفات من /categories/brands).
   Future<void> updateVendorSupportedBrandIds(List<int> brandIds) async {
     final seen = <int>{};

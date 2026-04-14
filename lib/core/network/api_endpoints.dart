@@ -31,6 +31,8 @@ class ApiEndpoints {
   static const String profileImages = '$basePath/profile/images';
   // PUT /api/v1/profile/location - Update vendor GPS location (latitude, longitude). Vendors only.
   static const String profileLocation = '$basePath/profile/location';
+  // PUT /api/v1/profile/brands - Update vendor supported brands (body: { category_ids: [1, 2] }). Vendors only.
+  static const String profileBrands = '$basePath/profile/brands';
 
   // Vendor
   // GET /api/v1/vendors

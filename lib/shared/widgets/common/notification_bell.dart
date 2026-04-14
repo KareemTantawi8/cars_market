@@ -22,8 +22,13 @@ class NotificationBell extends StatelessWidget {
             children: [
               IconButton(
                 icon: Icon(Icons.notifications_outlined, color: iconColor),
-                onPressed: () =>
-                    Navigator.pushNamed(context, AppRoutes.notifications),
+                onPressed: () async {
+                  final cubit = context.read<NotificationsCubit>();
+                  await Navigator.pushNamed(context, AppRoutes.notifications);
+                  // Refresh badge after returning — the notifications screen may
+                  // have marked items as read in its own separate cubit instance.
+                  if (context.mounted) cubit.getNotifications();
+                },
               ),
               if (unread > 0)
                 Positioned(

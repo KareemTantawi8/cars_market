@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -12,11 +13,14 @@ import '../cubit/orders_cubit.dart';
 class OrdersScreen extends StatefulWidget {
   final int? orderId;
   final String? orderTitle;
+  /// وقت إنشاء الطلب — يُستخدم لحساب العداد التنازلي لـ 48 ساعة.
+  final DateTime? createdAt;
 
   const OrdersScreen({
     super.key,
     this.orderId,
     this.orderTitle,
+    this.createdAt,
   });
 
   @override
@@ -24,6 +28,37 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  Timer? _countdownTimer;
+  Duration _remaining = const Duration(hours: 48);
+
+  static const _deadline = Duration(hours: 48);
+
+  /// Reference point for the 48-hour window: the order creation time if known,
+  /// otherwise the moment the screen was opened (gives vendor the full window).
+  late final DateTime _startedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    _startedAt = widget.createdAt ?? DateTime.now();
+    _updateRemaining();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _updateRemaining();
+    });
+  }
+
+  void _updateRemaining() {
+    final elapsed = DateTime.now().difference(_startedAt);
+    final rem = _deadline - elapsed;
+    setState(() => _remaining = rem.isNegative ? Duration.zero : rem);
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -122,6 +157,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  _buildCountdown(),
                   const SizedBox(height: 24),
                   PrimaryButton(
                     text: 'قبول الطلب',
@@ -142,6 +179,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
+
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -169,6 +207,64 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCountdown() {
+    final expired = _remaining == Duration.zero;
+    final hours = _remaining.inHours.toString().padLeft(2, '0');
+    final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+
+    final isUrgent = !expired && _remaining.inHours < 6;
+    final color = expired
+        ? AppColors.error
+        : isUrgent
+            ? AppColors.warning
+            : AppColors.success;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.timer_outlined, size: 18, color: color),
+              const SizedBox(width: 6),
+              Text(
+                expired ? 'انتهت مهلة القبول' : 'الوقت المتبقي للرد',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          if (!expired) ...[
+            const SizedBox(height: 8),
+            Text(
+              '$hours:$minutes:$seconds',
+              style: AppTextStyles.headingMedium.copyWith(
+                color: color,
+                fontWeight: FontWeight.w800,
+                fontFeatures: [const FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              'من أصل 48 ساعة',
+              style: AppTextStyles.caption.copyWith(color: color.withOpacity(0.7)),
+            ),
+          ],
+        ],
       ),
     );
   }

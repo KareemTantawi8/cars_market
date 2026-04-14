@@ -20,20 +20,42 @@ import 'storage_service.dart';
 
 // -----------------------------------------------------------------------------
 // Killed / swiped-away app: only FCM can alert. Reverb and GET /notifications
-// do not run until the process starts again — reopen "delayed" toasts are from
-// syncMissedSearchRequestNotificationsFromApi*, not from a push that fired while dead.
+// do not run until the process starts again — reopen "delayed" toasts come from
+// syncMissedNotificationsFromApi*, not from a push that fired while dead.
 //
-// Laravel must send FCM HTTP v1 when a vendor should be notified, to the token
-// from POST /api/v1/device-tokens. Use priority HIGH and include BOTH:
-//   • android.notification (title, body, channel_id: high_importance_channel)
-//   • data (all values strings): type, search_request_id, notification_row_id
-// where notification_row_id equals GET /notifications item "id" (dedupes with API sync tray).
+// REQUIRED backend payload (FCM HTTP v1) for reliable killed-state delivery on
+// BOTH vendor and customer devices, sent to every token from POST /device-tokens:
 //
-// Example data map:
-//   type: search_request
-//   search_request_id: "91"
-//   notification_row_id: "97"   ← same as GET /notifications data[].id (NOT meta.notification_id)
-//   title / body (optional if notification block present)
+//   {
+//     "token": "<fcm_token>",
+//     "android": {
+//       "priority": "high",
+//       "notification": {
+//         "title": "...",
+//         "body":  "...",
+//         "channel_id": "high_importance_channel",
+//         "sound": "default"
+//       }
+//     },
+//     "apns": {
+//       "headers": { "apns-priority": "10" },
+//       "payload": { "aps": { "alert": { "title": "...", "body": "..." }, "sound": "default" } }
+//     },
+//     "notification": { "title": "...", "body": "..." },
+//     "data": {
+//       "type": "search_request" | "new-message" | "order" | "order_accepted",
+//       "search_request_id": "91",      // when type=search_request
+//       "chat_id": "42",                 // when type=new-message
+//       "order_id": "17",                // when type=order*
+//       "notification_row_id": "97"      // == GET /notifications data[].id (dedupe)
+//     }
+//   }
+//
+// Why the `notification` block matters: when it's present, Android/iOS show the
+// tray from the OS kernel — works even if the app is fully killed and Dart never
+// runs. Data-only messages only display if our background isolate can wake, and
+// many OEMs (Xiaomi, Huawei, Samsung, Oppo, Vivo) block that when the app is
+// swiped away. Always include BOTH the notification and data blocks.
 // -----------------------------------------------------------------------------
 
 // Channel constants shared between foreground and background isolates.
@@ -102,17 +124,13 @@ int _localTrayIdForFcmData(
 
 /// Top-level handler for background / killed app (see [FirebaseMessaging.onBackgroundMessage]).
 ///
-/// **Android:** Flutter’s `FlutterFirebaseMessagingReceiver` still starts this isolate for
-/// messages that include a `notification` block, but the system tray is unreliable on some OEMs
-/// (while your in-app UI uses Reverb only when the app is running). We therefore always show a
-/// local notification on Android from this handler. If the OS also draws an FCM tray entry, the
-/// user may see two—have the backend send **data-only** + high priority to avoid that.
+/// When the FCM payload includes a `notification` block, the OS displays the tray itself
+/// (Android system notification, iOS APNs alert) — this is the reliable path for killed apps
+/// and we must NOT duplicate it from this isolate.
 ///
-/// **iOS:** When `message.notification` is set, APNs already presents the alert; skip local show.
-///
-/// **Android:** Always show from this isolate when the background handler runs (data-only or
-/// notification+data). Do not skip data-only here — that previously paired with a native service
-/// that often never ran, leaving no tray UI.
+/// For data-only payloads, the OS will not display anything, so this handler creates a local
+/// tray. Note: data-only delivery to killed apps is unreliable on many Android OEMs; backend
+/// should prefer sending `notification` + `data` together.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,9 +195,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   if (title.isEmpty && body.isEmpty) return;
 
-  if (!Platform.isAndroid && n != null) {
-    return;
-  }
+  // When FCM carries a notification block, the OS already shows the tray
+  // (Android system UI / iOS APNs). Skip local duplication on both platforms.
+  if (n != null) return;
 
   final trayId = _localTrayIdForFcmData(message.data, messageHash: message.hashCode);
 
@@ -575,6 +593,84 @@ class PushNotificationService {
     }
   }
 
+  /// Reverb `new-message.sent` → show a tray so the recipient sees it when the
+  /// app is open but not on the chat screen. Caller is responsible for skipping
+  /// when [RealtimeService.activeChatId] matches the incoming chat id.
+  Future<void> showChatMessageReverbTray(Map<String, dynamic> data) async {
+    final chatId = parseChatIdFromMap(data);
+
+    String? senderName;
+    String? preview;
+
+    final notif = data['notification'];
+    if (notif is Map) {
+      senderName ??= notif['title']?.toString().trim();
+      preview ??= notif['body']?.toString().trim();
+    }
+    final msg = data['message'];
+    if (msg is Map) {
+      preview ??= msg['body']?.toString().trim();
+      final sender = msg['sender'];
+      if (sender is Map) {
+        senderName ??= sender['name']?.toString().trim();
+      }
+    }
+    senderName ??= data['sender_name']?.toString().trim();
+    preview ??= data['body']?.toString().trim();
+
+    final title = (senderName != null && senderName.isNotEmpty)
+        ? senderName
+        : 'رسالة جديدة';
+    final body = (preview != null && preview.isNotEmpty)
+        ? preview
+        : 'افتح التطبيق للمحادثة';
+
+    final notificationId = (chatId != null && chatId > 0)
+        ? 20_000_000 + chatId
+        : data.hashCode.abs() % 0x7fffffff;
+
+    final payload = <String, dynamic>{
+      'type': 'new-message',
+      if (chatId != null) 'chat_id': chatId,
+      'chat_name': senderName ?? '',
+      'sender_name': senderName ?? '',
+    };
+
+    try {
+      await _localNotifications.show(
+        notificationId,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            _androidChannel.id,
+            _androidChannel.name,
+            channelDescription: _androidChannel.description,
+            importance: Importance.max,
+            priority: Priority.max,
+            icon: _androidNotificationIcon,
+            playSound: true,
+            enableVibration: true,
+            visibility: NotificationVisibility.public,
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+          ),
+        ),
+        payload: jsonEncode(payload),
+      );
+    } catch (e, st) {
+      developer.log(
+        'chat tray failed: $e',
+        name: 'FCM.reverb',
+        error: e,
+        stackTrace: st,
+      );
+    }
+  }
+
   Future<void> cancelVendorSearchLocalNotification(int id) async {
     if (id <= 0) return;
     try {
@@ -582,9 +678,8 @@ class PushNotificationService {
     } catch (_) {}
   }
 
-  /// One-time after login / cold start (vendor): record current newest API id — no tray spam for backlog.
+  /// One-time after login / cold start: record current newest API id — no tray spam for backlog.
   Future<void> establishNotificationSyncBaseline() async {
-    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
     final token = StorageService.getAuthToken();
     if (token == null || token.isEmpty) return;
     if (StorageService.isNotificationApiBaselineDone()) return;
@@ -609,20 +704,19 @@ class PushNotificationService {
     }
   }
 
-  /// After app resume or vendor dashboard open (throttled).
-  Future<void> syncMissedSearchRequestNotificationsFromApiOnResume() {
-    return _syncMissedSearchRequestNotificationsFromApi(bypassThrottle: false);
+  /// After app resume or dashboard open (throttled). Applies to both vendor and customer.
+  Future<void> syncMissedNotificationsFromApiOnResume() {
+    return _syncMissedNotificationsFromApi(bypassThrottle: false);
   }
 
   /// When Reverb disconnects — same REST pull, **no** 2s throttle so background drops still notify.
-  Future<void> syncMissedSearchRequestNotificationsFromApiOnDisconnect() {
-    return _syncMissedSearchRequestNotificationsFromApi(bypassThrottle: true);
+  Future<void> syncMissedNotificationsFromApiOnDisconnect() {
+    return _syncMissedNotificationsFromApi(bypassThrottle: true);
   }
 
-  Future<void> _syncMissedSearchRequestNotificationsFromApi({
+  Future<void> _syncMissedNotificationsFromApi({
     required bool bypassThrottle,
   }) async {
-    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
     final token = StorageService.getAuthToken();
     if (token == null || token.isEmpty) return;
 
@@ -655,19 +749,36 @@ class PushNotificationService {
 
         if (!_isUnreadNotificationRow(row)) continue;
         final type = row['type']?.toString() ?? '';
-        if (type != 'search_request') continue;
-
-        final rawTitle = row['title']?.toString().trim() ?? '';
-        final title = rawTitle.isNotEmpty ? rawTitle : 'طلب بحث جديد';
-        var body = row['body']?.toString().trim() ?? '';
-        if (body.isEmpty) body = 'افتح التطبيق لعرض الطلب';
 
         final payload = Map<String, dynamic>.from(row);
-        payload['type'] = 'search_request';
-        final srId = _searchRequestIdFromApiNotificationRow(row);
-        if (srId != null) {
-          payload['search_request_id'] = srId;
+        String defaultTitle;
+        switch (type) {
+          case 'search_request':
+            payload['type'] = 'search_request';
+            final srId = _searchRequestIdFromApiNotificationRow(row);
+            if (srId != null) payload['search_request_id'] = srId;
+            defaultTitle = 'طلب بحث جديد';
+          case 'new_message':
+          case 'new-message':
+          case 'chat':
+            payload['type'] = 'new-message';
+            final chatId = _scalarIdFromRow(row, const ['chat_id']);
+            if (chatId != null) payload['chat_id'] = chatId;
+            defaultTitle = 'رسالة جديدة';
+          case 'order':
+          case 'order_accepted':
+            payload['type'] = type;
+            final orderId = _scalarIdFromRow(row, const ['order_id']);
+            if (orderId != null) payload['order_id'] = orderId;
+            defaultTitle = 'تحديث الطلب';
+          default:
+            continue;
         }
+
+        final rawTitle = row['title']?.toString().trim() ?? '';
+        final title = rawTitle.isNotEmpty ? rawTitle : defaultTitle;
+        var body = row['body']?.toString().trim() ?? '';
+        if (body.isEmpty) body = 'افتح التطبيق للمزيد';
 
         final trayId = 10_000_000 + id;
         await _localNotifications.show(
@@ -695,7 +806,7 @@ class PushNotificationService {
           payload: jsonEncode(payload),
         );
         developer.log(
-          'API tray rowId=$id searchRequestId=$srId '
+          'API tray rowId=$id type=$type '
           'reason=${bypassThrottle ? "disconnect" : "resume"}',
           name: 'FCM.apiSync',
         );
@@ -750,6 +861,29 @@ class PushNotificationService {
     return false;
   }
 
+  int? _scalarIdFromRow(Map<String, dynamic> row, List<String> keys) {
+    for (final k in keys) {
+      final v = row[k];
+      if (v != null) {
+        if (v is int) return v;
+        final p = int.tryParse(v.toString());
+        if (p != null) return p;
+      }
+    }
+    final meta = row['meta'];
+    if (meta is Map) {
+      for (final k in keys) {
+        final v = meta[k];
+        if (v != null) {
+          if (v is int) return v;
+          final p = int.tryParse(v.toString());
+          if (p != null) return p;
+        }
+      }
+    }
+    return null;
+  }
+
   int? _searchRequestIdFromApiNotificationRow(Map<String, dynamic> row) {
     final direct = row['search_request_id'];
     if (direct != null) {
@@ -786,6 +920,12 @@ class PushNotificationService {
     final notification = message.notification;
     final data = message.data;
 
+    // iOS auto-presents the alert in foreground when a notification block is
+    // present (see setForegroundNotificationPresentationOptions). Skip local
+    // show to avoid duplicates. Android never auto-displays in foreground, so
+    // we always show a local tray there.
+    if (Platform.isIOS && notification != null) return;
+
     final title = notification?.title ?? data['title'] ?? AppConstants.appName;
     final body = notification?.body ?? data['body'] ?? '';
 
@@ -800,9 +940,12 @@ class PushNotificationService {
           _androidChannel.id,
           _androidChannel.name,
           channelDescription: _androidChannel.description,
-          importance: Importance.high,
-          priority: Priority.high,
+          importance: Importance.max,
+          priority: Priority.max,
           icon: _androidNotificationIcon,
+          playSound: true,
+          enableVibration: true,
+          visibility: NotificationVisibility.public,
         ),
         iOS: const DarwinNotificationDetails(
           presentAlert: true,

@@ -8,7 +8,7 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 
-/// اختيار ماركات التاجر المدعومة ورفعها عبر PUT /user/profile (brand_ids).
+/// اختيار ماركات التاجر المدعومة ورفعها عبر PUT /profile/brands (category_ids).
 class VendorSupportedBrandsScreen extends StatefulWidget {
   final List<int> initialBrandIds;
 
@@ -36,7 +36,7 @@ class _VendorSupportedBrandsScreenState extends State<VendorSupportedBrandsScree
     setState(() => _saving = true);
     try {
       await UserProfileRepository()
-          .updateVendorSupportedBrandIds(_selectedIds);
+          .updateVendorBrands(_selectedIds);
       if (mounted) {
         CustomToast.showSuccess(context, 'تم حفظ الماركات');
         Navigator.of(context).pop(true);

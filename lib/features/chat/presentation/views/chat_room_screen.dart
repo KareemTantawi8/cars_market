@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -6,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../shared/widgets/common/message_bubble.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
@@ -18,10 +20,26 @@ class ChatRoomScreen extends StatefulWidget {
   final String chatId;
   final String chatName;
 
+  /// Phone number passed from the chat list (pre-fetched from inbox data).
+  final String? peerPhone;
+
+  /// Whether the peer vendor is verified (pre-fetched from inbox/caller data).
+  final bool peerIsVerified;
+
+  /// Avatar URL of the peer (pre-fetched from inbox/caller data).
+  final String? peerAvatarUrl;
+
+  /// Vendor record ID (vendors.id) — used by customers to navigate to the vendor profile.
+  final int? peerVendorId;
+
   const ChatRoomScreen({
     super.key,
     required this.chatId,
     this.chatName = 'مركز النصر لقطع الغيار',
+    this.peerPhone,
+    this.peerIsVerified = false,
+    this.peerAvatarUrl,
+    this.peerVendorId,
   });
 
   @override
@@ -32,8 +50,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isOnline = false;
+  bool _isVerified = false;
   String _displayName = '';
   String? _peerPhone;
+  String? _peerAvatarUrl;
+  /// Vendor record ID (vendors.id) — to navigate to vendor profile.
+  int? _peerVendorId;
+  /// Fallback: user-account ID if vendor record ID is unavailable.
+  int? _peerUserId;
   /// Last chat details from API (for phone fallbacks if nested shape differs).
   Map<String, dynamic>? _chatDetailsSnapshot;
   List<Map<String, dynamic>> _messages = [];
@@ -43,6 +67,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void initState() {
     super.initState();
     _currentUserId = int.tryParse(StorageService.getUserId() ?? '');
+    // Pre-populate from inbox data (available immediately, before API returns).
+    if (widget.peerPhone != null && widget.peerPhone!.trim().isNotEmpty) {
+      _peerPhone = widget.peerPhone!.trim();
+    }
+    _isVerified = widget.peerIsVerified;
+    if (widget.peerAvatarUrl != null && widget.peerAvatarUrl!.trim().isNotEmpty) {
+      _peerAvatarUrl = widget.peerAvatarUrl!.trim();
+    }
+    if (widget.peerVendorId != null && widget.peerVendorId! > 0) {
+      _peerVendorId = widget.peerVendorId;
+    }
     // Defer until the widget is fully mounted so context.read is safe
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _loadChatData();
@@ -278,24 +313,124 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final peer = _peerParticipantFromChat(chat);
     String displayName;
     bool online;
+    bool verified;
     if (userType == AppConstants.userTypeVendor) {
+      // Vendor sees customer: use name, no verified badge for customers
       displayName = peer is Map
           ? (peer['name']?.toString() ?? 'عميل')
           : 'عميل';
       online = peer is Map ? (peer['is_online'] == true) : false;
+      verified = false;
     } else {
+      // Customer sees vendor: prefer company_name, show verified badge
       displayName = peer is Map
-          ? (peer['company_name']?.toString() ?? 'تاجر')
+          ? (peer['company_name']?.toString() ??
+              peer['name']?.toString() ??
+              'تاجر')
           : 'تاجر';
       online = peer is Map ? (peer['is_online'] == true) : false;
+      verified = peer is Map
+          ? (peer['is_verified'] == true ||
+              peer['verified'] == true ||
+              peer['is_certified'] == true)
+          : false;
     }
     final phone = _phoneFromChatEnvelope(chat);
+    final avatarUrl = _avatarFromParticipant(peer);
+
+    // Extract vendor record ID and user account ID for profile navigation.
+    int? vendorId;
+    int? userId;
+    if (userType != AppConstants.userTypeVendor && peer is Map) {
+      final pm = Map<String, dynamic>.from(peer);
+      final rawId = pm['id'];
+      if (rawId is int) vendorId = rawId;
+      else if (rawId is num) vendorId = rawId.toInt();
+      else vendorId = int.tryParse(rawId?.toString() ?? '');
+
+      final rawUid = pm['user_id'];
+      if (rawUid is int) userId = rawUid;
+      else if (rawUid is num) userId = rawUid.toInt();
+      else userId = int.tryParse(rawUid?.toString() ?? '');
+    }
+
     setState(() {
       _chatDetailsSnapshot = chat;
       _displayName = displayName;
       _isOnline = online;
+      _isVerified = verified;
       _peerPhone = phone;
+      if (avatarUrl != null) _peerAvatarUrl = avatarUrl;
+      if (vendorId != null && vendorId > 0) _peerVendorId = vendorId;
+      if (userId != null && userId > 0) _peerUserId = userId;
     });
+  }
+
+  /// Navigate to the vendor profile (customers only).
+  void _openVendorProfile(BuildContext context) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) return;
+    final vid = _peerVendorId;
+    final uid = _peerUserId;
+    if (vid != null && vid > 0) {
+      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
+        'vendorId': vid.toString(),
+        'vendorName': _displayName.isNotEmpty ? _displayName : widget.chatName,
+        'vendorProfileByUserId': false,
+      });
+    } else if (uid != null && uid > 0) {
+      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
+        'vendorId': uid.toString(),
+        'vendorName': _displayName.isNotEmpty ? _displayName : widget.chatName,
+        'vendorProfileByUserId': true,
+      });
+    }
+  }
+
+  String? _avatarFromParticipant(dynamic raw) {
+    if (raw is! Map) return null;
+    final p = Map<String, dynamic>.from(raw);
+    for (final key in ['avatar', 'image_url', 'image', 'logo', 'photo', 'profile_image']) {
+      final v = p[key]?.toString().trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    return null;
+  }
+
+  Widget _buildPeerAvatar(BuildContext context, {double size = 40}) {
+    final isVendorUser = StorageService.getUserType() == AppConstants.userTypeVendor;
+    final fallbackIcon = isVendorUser ? Icons.person : Icons.store;
+    final url = _peerAvatarUrl;
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: context.surfaceBg,
+      ),
+      child: ClipOval(
+        child: url != null && url.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: url,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Icon(
+                  fallbackIcon,
+                  color: context.textSecondary,
+                  size: size * 0.55,
+                ),
+                errorWidget: (_, __, ___) => Icon(
+                  fallbackIcon,
+                  color: context.textSecondary,
+                  size: size * 0.55,
+                ),
+              )
+            : Icon(
+                fallbackIcon,
+                color: context.textSecondary,
+                size: size * 0.55,
+              ),
+      ),
+    );
   }
 
   Future<void> _callPeer() async {
@@ -310,18 +445,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       return;
     }
     final uri = Uri.parse('tel:$number');
-    try {
-      final ok = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!ok && mounted) {
-        CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
-      }
-    } catch (_) {
-      if (mounted) {
-        CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
-      }
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
     }
   }
 
@@ -412,24 +539,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             tooltip: 'اتصال',
           ),
         ],
-        title: Row(
+        title: GestureDetector(
+          onTap: () => _openVendorProfile(context),
+          child: Row(
           children: [
             // Profile Picture
             Stack(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: context.surfaceBg,
-                  ),
-                  child: Icon(
-                    Icons.store,
-                    color: context.textSecondary,
-                    size: 24,
-                  ),
-                ),
+                _buildPeerAvatar(context, size: 40),
                 if (_isOnline)
                   Positioned(
                     bottom: 0,
@@ -443,16 +560,32 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                        _displayName.isNotEmpty ? _displayName : widget.chatName,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _displayName.isNotEmpty
+                              ? _displayName
+                              : widget.chatName,
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_isVerified) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          color: AppColors.primaryColor,
+                          size: 16,
+                        ),
+                      ],
+                    ],
                   ),
                   Text(
-                        _isOnline ? 'متصل الآن' : 'غير متصل',
+                    _isOnline ? 'متصل الآن' : 'غير متصل',
                     style: AppTextStyles.caption.copyWith(
                       color: _isOnline ? AppColors.online : AppColors.offline,
                     ),
@@ -461,6 +594,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
       body: Column(

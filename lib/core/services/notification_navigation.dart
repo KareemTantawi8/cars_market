@@ -72,11 +72,17 @@ Future<void> navigateFromNotificationMap(
               ? orderId.toInt()
               : int.tryParse(orderId.toString()));
       if (oid != null) {
+        final rawTs = notification['created_at'] ?? m?['created_at'];
+        DateTime? createdAt;
+        if (rawTs is String && rawTs.isNotEmpty) {
+          createdAt = DateTime.tryParse(rawTs);
+        }
         nav.pushNamed(
           AppRoutes.orders,
           arguments: {
             'orderId': oid,
             'orderTitle': notification['title']?.toString(),
+            if (createdAt != null) 'createdAt': createdAt,
           },
         );
       }

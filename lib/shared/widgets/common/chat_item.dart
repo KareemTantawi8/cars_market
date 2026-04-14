@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import 'online_indicator.dart';
 
@@ -9,6 +10,7 @@ class ChatItem extends StatelessWidget {
   final String timestamp;
   final String? imageUrl;
   final bool isOnline;
+  final bool isVerified;
   final int? unreadCount;
   final bool isRead;
   final VoidCallback? onTap;
@@ -20,6 +22,7 @@ class ChatItem extends StatelessWidget {
     required this.timestamp,
     this.imageUrl,
     this.isOnline = false,
+    this.isVerified = false,
     this.unreadCount,
     this.isRead = true,
     this.onTap,
@@ -73,13 +76,27 @@ class ChatItem extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          name,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                name,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (isVerified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified,
+                                color: AppColors.primaryColor,
+                                size: 16,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       Text(

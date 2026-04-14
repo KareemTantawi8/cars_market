@@ -883,6 +883,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             'chatId': chatId.toString(),
             'chatName': ad.sellerName,
             'vendorName': ad.sellerName,
+            'peerPhone': ad.sellerPhone,
           },
         );
       } else {

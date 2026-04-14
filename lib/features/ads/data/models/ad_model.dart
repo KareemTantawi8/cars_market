@@ -57,35 +57,45 @@ String? parseAdLocationLabel(Map<String, dynamic> json) {
     if (!parts.contains(s)) parts.add(s);
   }
 
-  addMaybe(json['address']);
-  addMaybe(json['full_address']);
-  addMaybe(json['street_address']);
-  addMaybe(json['pickup_address']);
-  addMaybe(json['location_text']);
-  addMaybe(json['city']);
-  addMaybe(json['city_name']);
-  addMaybe(json['area']);
-  addMaybe(json['district']);
-
-  final gov = json['governorate'];
-  if (gov is String) addMaybe(gov);
-  if (gov is Map) {
-    final m = Map<String, dynamic>.from(gov);
-    addMaybe(m['name_ar'] ?? m['name']);
-    addMaybe(m['governorate_name_ar'] ?? m['governorate_name']);
-  }
-
-  final loc = json['location'];
-  if (loc is String) addMaybe(loc);
-  if (loc is Map) {
-    final m = Map<String, dynamic>.from(loc);
-    addMaybe(m['full_address'] ?? m['address']);
+  void _addFromMap(Map<String, dynamic> m) {
+    addMaybe(m['address']);
+    addMaybe(m['full_address']);
     addMaybe(m['street_address']);
     addMaybe(m['city']);
     addMaybe(m['city_name']);
-    addMaybe(m['name_ar'] ?? m['governorate_name']);
-    addMaybe(m['governorate_name_ar']);
-    // Do not use bare m['name'] — APIs often put a contact/shop label there.
+    addMaybe(m['area']);
+    addMaybe(m['district']);
+    final g = m['governorate'];
+    if (g is String) addMaybe(g);
+    if (g is Map) {
+      final gm = Map<String, dynamic>.from(g);
+      addMaybe(gm['name_ar'] ?? gm['name']);
+      addMaybe(gm['governorate_name_ar'] ?? gm['governorate_name']);
+    }
+    final loc = m['location'];
+    if (loc is String) addMaybe(loc);
+    if (loc is Map) {
+      final lm = Map<String, dynamic>.from(loc);
+      addMaybe(lm['full_address'] ?? lm['address']);
+      addMaybe(lm['city'] ?? lm['city_name']);
+      addMaybe(lm['name_ar'] ?? lm['governorate_name']);
+      addMaybe(lm['governorate_name_ar']);
+    }
+  }
+
+  // 1. Top-level ad fields
+  addMaybe(json['pickup_address']);
+  addMaybe(json['location_text']);
+  _addFromMap(json);
+
+  // 2. Vendor profile nested inside user
+  final u = json['user'] ?? json['seller'] ?? json['owner'];
+  if (u is Map) {
+    final um = Map<String, dynamic>.from(u);
+    final v = um['vendor'];
+    if (v is Map) _addFromMap(Map<String, dynamic>.from(v));
+    // user-level address as last fallback
+    _addFromMap(um);
   }
 
   if (parts.isEmpty) return null;
@@ -100,27 +110,65 @@ class AdUserModel {
   /// `vendors.id` when present — use for chat/profile APIs, distinct from [id] (user account id).
   final int? vendorRecordId;
 
+  /// Vendor company name (from nested vendor object).
+  final String? companyName;
+
+  /// Vendor avatar/logo URL.
+  final String? avatarUrl;
+
+  /// Whether the vendor is verified.
+  final bool isVerified;
+
   AdUserModel({
     required this.id,
     this.name,
     this.phone,
     this.vendorRecordId,
+    this.companyName,
+    this.avatarUrl,
+    this.isVerified = false,
   });
+
+  /// Display name: company name if vendor, otherwise personal name.
+  String get displayName => companyName?.trim().isNotEmpty == true
+      ? companyName!.trim()
+      : name?.trim() ?? '';
 
   factory AdUserModel.fromJson(Map<String, dynamic> json) {
     int? vendorRecordId = _parseIntOrNull(json['vendor_id'] ?? json['vendorId']);
     vendorRecordId ??= _parseIntOrNull(json['vendor_record_id']);
     vendorRecordId ??= _parseIntOrNull(json['seller_vendor_id']);
+    String? companyName;
+    String? avatarUrl;
+    bool isVerified = false;
     final nested = json['vendor'];
     if (nested is Map) {
       final m = Map<String, dynamic>.from(nested);
       vendorRecordId ??= _parseIntOrNull(m['id']);
+      companyName = m['company_name']?.toString() ?? m['name']?.toString();
+      isVerified = m['is_verified'] == true ||
+          m['verified'] == true ||
+          m['is_certified'] == true;
+      for (final k in ['avatar', 'image_url', 'image', 'logo', 'photo']) {
+        final v = m[k]?.toString().trim();
+        if (v != null && v.isNotEmpty) { avatarUrl = v; break; }
+      }
+    }
+    // Fallback: avatar may be on the user object itself
+    if (avatarUrl == null) {
+      for (final k in ['avatar', 'image_url', 'image', 'photo']) {
+        final v = json[k]?.toString().trim();
+        if (v != null && v.isNotEmpty) { avatarUrl = v; break; }
+      }
     }
     return AdUserModel(
       id: _parseInt(json['id']),
       name: json['name'] as String?,
       phone: json['phone']?.toString(),
       vendorRecordId: vendorRecordId,
+      companyName: companyName,
+      avatarUrl: avatarUrl,
+      isVerified: isVerified,
     );
   }
 

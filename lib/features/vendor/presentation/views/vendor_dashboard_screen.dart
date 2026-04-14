@@ -50,7 +50,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     unawaited(RealtimeService.instance.start());
     unawaited(
       PushNotificationService.instance
-          .syncMissedSearchRequestNotificationsFromApiOnResume(),
+          .syncMissedNotificationsFromApiOnResume(),
     );
   }
 
@@ -126,97 +126,70 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 
   Widget _buildDashboard(BuildContext context, VendorProfileModel profile) {
-    return CustomScrollView(
-      slivers: [
-        _buildSliverHero(context, profile),
-        SliverToBoxAdapter(
-          child: Transform.translate(
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        children: [
+          _buildFlatHeader(context, profile),
+          Transform.translate(
             offset: const Offset(0, -32),
             child: _buildContentSheet(context, profile),
           ),
-        ),
-      ],
-    );
-  }
-
-  // ─── Hero / AppBar ────────────────────────────────────────────────────────
-
-  Widget _buildSliverHero(BuildContext context, VendorProfileModel profile) {
-    return SliverAppBar(
-      expandedHeight: 260,
-      pinned: true,
-      backgroundColor: AppColors.primaryDark,
-      elevation: 0,
-      actions: [
-        const Padding(
-          padding: EdgeInsets.only(left: 8),
-          child: NotificationBell(iconColor: Colors.white),
-        ),
-      ],
-      automaticallyImplyLeading: false,
-      flexibleSpace: FlexibleSpaceBar(
-        collapseMode: CollapseMode.parallax,
-        background: Stack(
-          fit: StackFit.expand,
-          children: [
-            Container(color: AppColors.primaryDark),
-            Positioned(
-              bottom: 52,
-              right: 20,
-              left: 20,
-              child: _buildHeroCaption(context, profile),
-            ),
-          ],
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildHeroCaption(BuildContext context, VendorProfileModel profile) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Avatar
-        CircleAvatar(
-          radius: 36,
-          backgroundColor: AppColors.primaryDark,
-          backgroundImage:
-              profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-              ? CachedNetworkImageProvider(profile.imageUrl!)
-              : null,
-          child: profile.imageUrl == null || profile.imageUrl!.isEmpty
-              ? const Icon(
-                  Icons.storefront,
-                  size: 36,
-                  color: AppColors.primaryLight,
-                )
-              : null,
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Name + verified
-              Row(
+  // ─── Flat Header (like customer profile) ─────────────────────────────────
+
+  Widget _buildFlatHeader(BuildContext context, VendorProfileModel profile) {
+    return Container(
+      width: double.infinity,
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // Top bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 48),
+                  Text(
+                    'لوحة التحكم',
+                    style: AppTextStyles.headingSmall.copyWith(
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: NotificationBell(iconColor: context.textPrimary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Avatar
+            _buildFlatAvatar(profile),
+            const SizedBox(height: 16),
+            // Name
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Flexible(
                     child: Text(
                       profile.name,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black54,
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
+                      style: AppTextStyles.headingMedium.copyWith(
+                        color: context.textPrimary,
+                        fontWeight: FontWeight.bold,
                       ),
-                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -224,19 +197,77 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     const SizedBox(width: 6),
                     const Icon(
                       Icons.verified,
-                      color: AppColors.primaryLight,
+                      color: AppColors.primaryColor,
                       size: 20,
                     ),
                   ],
                 ],
               ),
-              const SizedBox(height: 8),
-              // Explicit button so vendors know this toggles online / offline for search requests.
-              _buildOnlineToggleButton(context, profile),
-            ],
-          ),
+            ),
+            const SizedBox(height: 8),
+            // Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primaryColor.withOpacity(0.5)),
+              ),
+              child: Text(
+                'تاجر',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Online toggle button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildOnlineToggleButton(context, profile),
+            ),
+            const SizedBox(height: 56),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildFlatAvatar(VendorProfileModel profile) {
+    return Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primaryColor.withOpacity(0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+            ? CachedNetworkImage(
+                imageUrl: profile.imageUrl!,
+                fit: BoxFit.cover,
+                placeholder: (_, __) => Container(
+                  color: AppColors.primaryDark,
+                  child: const Icon(Icons.storefront, size: 52, color: Colors.white70),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  color: AppColors.primaryDark,
+                  child: const Icon(Icons.storefront, size: 52, color: Colors.white70),
+                ),
+              )
+            : Container(
+                color: AppColors.primaryDark,
+                child: const Icon(Icons.storefront, size: 52, color: Colors.white70),
+              ),
+      ),
     );
   }
 
@@ -247,8 +278,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             ? 'مفتوح حتى ${profile.openUntil}'
             : 'تستلم طلبات البحث الآن')
         : 'لن يظهر لك طلبات بحث جديدة';
-    return Align(
-      alignment: Alignment.centerRight,
+    return SizedBox(
+      width: double.infinity,
       child: FilledButton.icon(
         onPressed: () => _toggleOnlineStatus(context),
         style: FilledButton.styleFrom(
@@ -1645,18 +1676,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             title: 'الإشعارات',
             isFirst: true,
             onTap: () => Navigator.pushNamed(context, AppRoutes.notifications),
-          ),
-          Divider(
-            height: 1,
-            indent: 68,
-            color: context.textSecondary.withOpacity(0.1),
-          ),
-          _buildAccountTile(
-            icon: Icons.chat_bubble_outline_rounded,
-            iconBg: AppColors.primaryColor.withOpacity(0.1),
-            iconColor: AppColors.primaryColor,
-            title: 'الرسائل',
-            onTap: () => Navigator.pushNamed(context, AppRoutes.chatList),
           ),
           Divider(
             height: 1,

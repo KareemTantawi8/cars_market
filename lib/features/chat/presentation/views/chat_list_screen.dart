@@ -100,10 +100,67 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   String? _inboxAvatarUrl(Map<String, dynamic> chat) {
     final userType = StorageService.getUserType();
-    if (userType == AppConstants.userTypeVendor) {
-      return chat['customer']?['avatar']?.toString();
+    final peer = userType == AppConstants.userTypeVendor
+        ? (chat['customer'] ?? chat['buyer'] ?? chat['client'])
+        : (chat['vendor'] ?? chat['seller'] ?? chat['shop']);
+    if (peer is! Map) return null;
+    for (final key in ['avatar', 'image_url', 'image', 'logo', 'photo', 'profile_image']) {
+      final v = peer[key]?.toString().trim();
+      if (v != null && v.isNotEmpty) return v;
     }
-    return chat['vendor']?['avatar']?.toString();
+    return null;
+  }
+
+  bool _inboxPeerIsVerified(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    // Only vendors can be verified; customers never show a verified badge.
+    if (userType == AppConstants.userTypeVendor) return false;
+    final vendor = chat['vendor'] ?? chat['seller'] ?? chat['shop'];
+    if (vendor is! Map) return false;
+    return vendor['is_verified'] == true ||
+        vendor['verified'] == true ||
+        vendor['is_certified'] == true;
+  }
+
+  /// Returns the vendor record ID (vendors.id) for navigating to the vendor profile.
+  /// Only meaningful when the current user is a customer.
+  int? _inboxVendorId(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    if (userType == AppConstants.userTypeVendor) return null;
+    final vendor = chat['vendor'] ?? chat['seller'] ?? chat['shop'];
+    if (vendor is! Map) return null;
+    final raw = vendor['id'];
+    if (raw is int) return raw;
+    if (raw is num) return raw.toInt();
+    return int.tryParse(raw?.toString() ?? '');
+  }
+
+  String? _inboxPeerPhone(Map<String, dynamic> chat) {
+    final userType = StorageService.getUserType();
+    final peer = userType == AppConstants.userTypeVendor
+        ? (chat['customer'] ?? chat['buyer'] ?? chat['client'])
+        : (chat['vendor'] ?? chat['seller'] ?? chat['shop']);
+    if (peer is! Map) return null;
+    for (final key in [
+      'phone',
+      'mobile',
+      'phone_number',
+      'tel',
+      'shop_phone',
+      'shop_mobile',
+      'company_phone',
+    ]) {
+      final v = peer[key]?.toString().trim();
+      if (v != null && v.isNotEmpty) return v;
+    }
+    final user = peer['user'];
+    if (user is Map) {
+      for (final key in ['phone', 'mobile', 'phone_number']) {
+        final v = user[key]?.toString().trim();
+        if (v != null && v.isNotEmpty) return v;
+      }
+    }
+    return null;
   }
 
   @override
@@ -183,25 +240,32 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         final lastMessageAt = _inboxLastActivityAt(chat);
                         final unreadCount = _toInt(chat['unread_count']);
                         final isOnline = _inboxPeerOnline(chat);
+                        final isVerified = _inboxPeerIsVerified(chat);
+                        final avatarUrl = _inboxAvatarUrl(chat);
 
                         return ChatItem(
                           name: chatName,
                           lastMessage: lastMessageBody,
                           timestamp: _formatTimestamp(lastMessageAt),
                           isOnline: isOnline,
+                          isVerified: isVerified,
                           unreadCount: unreadCount > 0 ? unreadCount : null,
                           isRead: unreadCount == 0,
-                  imageUrl: _inboxAvatarUrl(chat),
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.chatRoom,
-                      arguments: {
-                                'chatId': chatId, // Use actual chat ID from API
+                          imageUrl: avatarUrl,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.chatRoom,
+                              arguments: {
+                                'chatId': chatId,
                                 'chatName': chatName,
-                      },
-                    );
-                  },
+                                'peerPhone': _inboxPeerPhone(chat),
+                                'peerIsVerified': isVerified,
+                                'peerAvatarUrl': avatarUrl,
+                                'peerVendorId': _inboxVendorId(chat),
+                              },
+                            );
+                          },
                         );
                       },
                     ),

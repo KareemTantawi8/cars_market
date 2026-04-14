@@ -218,56 +218,54 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        textDirection: TextDirection.rtl,
-        children: [
-          Material(
-            color: AppColors.primaryColor,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: _onSearchPressed,
-              borderRadius: BorderRadius.circular(12),
-              child: const SizedBox(
-                width: 48,
-                height: 48,
-                child: Icon(Icons.filter_list, color: Colors.white, size: 24),
-              ),
+      child: Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.inputBorderColor),
+        ),
+        child: Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Icon(Icons.search, color: context.textSecondary, size: 22),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: context.cardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.inputBorderColor),
-              ),
-              child: Row(
+            Expanded(
+              child: TextField(
+                controller: _searchController,
+                style: AppTextStyles.input.copyWith(color: context.textPrimary),
                 textDirection: TextDirection.rtl,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Icon(Icons.search, color: context.textSecondary, size: 22),
+                onChanged: (text) {
+                  setState(() {
+                    _myAdsSearch = text.trim().isEmpty ? null : text.trim();
+                  });
+                },
+                onSubmitted: (_) => _onSearchPressed(),
+                decoration: InputDecoration(
+                  hintText: 'ابحث في إعلاناتك...',
+                  hintStyle: AppTextStyles.input.copyWith(
+                    color: context.textHint,
                   ),
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      style: AppTextStyles.input.copyWith(color: context.textPrimary),
-                      textDirection: TextDirection.rtl,
-                      onSubmitted: (_) => _onSearchPressed(),
-                      decoration: const InputDecoration(
-                        hintText: 'ابحث في إعلاناتك...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      ),
-                    ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
                   ),
-                ],
+                ),
               ),
             ),
-          ),
-        ],
+            if (_myAdsSearch != null && _myAdsSearch!.isNotEmpty)
+              IconButton(
+                icon: Icon(Icons.close, color: context.textSecondary, size: 18),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _myAdsSearch = null);
+                },
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -280,40 +278,35 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   }
 
   Widget _buildFilterChips() {
-    return BlocBuilder<MyAdsCubit, MyAdsState>(
-      buildWhen: (a, b) => a is MyAdsLoaded && b is MyAdsLoaded,
-      builder: (context, state) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: _FilterChip(
-                  label: 'الكل',
-                  isSelected: _selectedFilter == MyAdsFilter.all,
-                  onTap: () => setState(() => _selectedFilter = MyAdsFilter.all),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _FilterChip(
-                  label: 'نشط',
-                  isSelected: _selectedFilter == MyAdsFilter.active,
-                  onTap: () => setState(() => _selectedFilter = MyAdsFilter.active),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _FilterChip(
-                  label: 'قيد المراجعة',
-                  isSelected: _selectedFilter == MyAdsFilter.underReview,
-                  onTap: () => setState(() => _selectedFilter = MyAdsFilter.underReview),
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: _FilterChip(
+              label: 'الكل',
+              isSelected: _selectedFilter == MyAdsFilter.all,
+              onTap: () => setState(() => _selectedFilter = MyAdsFilter.all),
+            ),
           ),
-        );
-      },
+          const SizedBox(width: 10),
+          Expanded(
+            child: _FilterChip(
+              label: 'نشط',
+              isSelected: _selectedFilter == MyAdsFilter.active,
+              onTap: () => setState(() => _selectedFilter = MyAdsFilter.active),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _FilterChip(
+              label: 'قيد المراجعة',
+              isSelected: _selectedFilter == MyAdsFilter.underReview,
+              onTap: () => setState(() => _selectedFilter = MyAdsFilter.underReview),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

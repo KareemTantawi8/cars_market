@@ -107,6 +107,11 @@ class AppRouter {
 
       case AppRoutes.chatRoom:
         final args = settings.arguments as Map<String, dynamic>?;
+        int? peerVendorId;
+        final rawVid = args?['peerVendorId'];
+        if (rawVid is int) peerVendorId = rawVid;
+        if (rawVid is num) peerVendorId = rawVid.toInt();
+        if (rawVid is String) peerVendorId = int.tryParse(rawVid);
         return MaterialPageRoute(
           builder: (_) => BlocProvider(
             create: (_) => ChatCubit(),
@@ -116,6 +121,10 @@ class AppRouter {
                   args?['chatName'] ??
                   args?['vendorName'] ??
                   'مركز النصر لقطع الغيار',
+              peerPhone: args?['peerPhone'] as String?,
+              peerIsVerified: args?['peerIsVerified'] == true,
+              peerAvatarUrl: args?['peerAvatarUrl'] as String?,
+              peerVendorId: peerVendorId,
             ),
           ),
         );
@@ -249,9 +258,19 @@ class AppRouter {
         }
         final orderTitle =
             args?['orderTitle'] as String? ?? args?['order_title'] as String?;
+        DateTime? createdAt;
+        final rawCreatedAt = args?['createdAt'] ?? args?['created_at'];
+        if (rawCreatedAt is DateTime) {
+          createdAt = rawCreatedAt;
+        } else if (rawCreatedAt is String && rawCreatedAt.isNotEmpty) {
+          createdAt = DateTime.tryParse(rawCreatedAt);
+        }
         return MaterialPageRoute(
-          builder: (_) =>
-              OrdersScreen(orderId: orderId, orderTitle: orderTitle),
+          builder: (_) => OrdersScreen(
+            orderId: orderId,
+            orderTitle: orderTitle,
+            createdAt: createdAt,
+          ),
         );
 
       case AppRoutes.permissions:

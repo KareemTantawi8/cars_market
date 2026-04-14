@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -596,6 +597,9 @@ class VendorProfileScreen extends StatelessWidget {
           arguments: {
             'chatId': chatId.toString(),
             'chatName': profile.name,
+            'peerPhone': profile.phone ?? profile.shopPhone,
+            'peerIsVerified': profile.isVerified,
+            'peerAvatarUrl': profile.imageUrl,
           },
         );
       } else {
@@ -632,26 +636,48 @@ class VendorProfileScreen extends StatelessWidget {
   }
 
   Future<void> _openGoogleMaps(double? lat, double? lng, String? address) async {
-    // Use Maps Directions URL so the app opens in directions mode (not search/pin only).
-    // https://developers.google.com/maps/documentation/urls/get-started#directions-action
-    final Uri? url;
+    if (lat == null && lng == null && (address == null || address.isEmpty)) return;
+
+    // Try native app URI first (opens Maps directly in directions mode),
+    // then fall back to universal web URL.
+    final List<Uri> candidates = [];
+
     if (lat != null && lng != null) {
-      url = Uri.https('www.google.com', '/maps/dir/', {
+      if (Platform.isAndroid) {
+        // geo: intent opens any maps app; google.navigation forces Google Maps + directions
+        candidates.add(Uri.parse('google.navigation:q=$lat,$lng&mode=d'));
+        candidates.add(Uri.parse('geo:$lat,$lng?q=$lat,$lng'));
+      } else if (Platform.isIOS) {
+        candidates.add(Uri.parse('comgooglemaps://?daddr=$lat,$lng&directionsmode=driving'));
+        // Apple Maps fallback
+        candidates.add(Uri.parse('maps://?daddr=$lat,$lng&dirflg=d'));
+      }
+      // Universal web fallback (always last)
+      candidates.add(Uri.https('www.google.com', '/maps/dir/', {
         'api': '1',
         'destination': '$lat,$lng',
         'travelmode': 'driving',
-      });
+      }));
     } else if (address != null && address.isNotEmpty) {
-      url = Uri.https('www.google.com', '/maps/dir/', {
+      final encoded = Uri.encodeComponent(address);
+      if (Platform.isAndroid) {
+        candidates.add(Uri.parse('google.navigation:q=$encoded&mode=d'));
+      } else if (Platform.isIOS) {
+        candidates.add(Uri.parse('comgooglemaps://?daddr=$encoded&directionsmode=driving'));
+        candidates.add(Uri.parse('maps://?daddr=$encoded&dirflg=d'));
+      }
+      candidates.add(Uri.https('www.google.com', '/maps/dir/', {
         'api': '1',
         'destination': address,
         'travelmode': 'driving',
-      });
-    } else {
-      url = null;
+      }));
     }
-    if (url != null && await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+
+    for (final uri in candidates) {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
     }
   }
 
