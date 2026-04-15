@@ -55,8 +55,10 @@ class ApiEndpoints {
   static String sendMessage(int chatId) => '$basePath/chats/$chatId/messages';
   // POST /api/v1/chats/:id/read - Mark all messages in chat as read (response: { message, read_count }), 403 Forbidden
   static String markChatAsRead(int chatId) => '$basePath/chats/$chatId/read';
-  // POST /api/v1/ads/:adId/chats - Start or resume chat with the ad owner (response: { data: { id, last_message_at, participant, ad }, success })
-  static String startChatForAd(int adId) => '$basePath/ads/$adId/chats';
+  // POST /api/v1/ads/:adId/chat - Start or resume chat with the ad owner (response: { data: { id, last_message_at, participant, ad }, success })
+  static String startChatForAd(int adId) => '$basePath/ads/$adId/chat';
+  // Legacy compatibility on older backends
+  static String startChatForAdLegacy(int adId) => '$basePath/ads/$adId/chats';
 
   // Subscription / Plans
   // GET /api/v1/plans - Get all subscription plans

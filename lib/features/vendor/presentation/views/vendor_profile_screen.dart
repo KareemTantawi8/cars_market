@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
@@ -37,44 +36,44 @@ class VendorProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parsedId = int.tryParse(vendorId) ?? 0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Theme(
-      data: AppTheme.lightTheme,
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: AppTheme.lightTheme.appBarTheme.systemOverlayStyle ??
-            const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              statusBarIconBrightness: Brightness.dark,
-            ),
-        child: Scaffold(
-          backgroundColor: AppTheme.lightTheme.scaffoldBackgroundColor,
-          body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
-            builder: (context, state) {
-              if (state is VendorProfileLoading) {
-                return const Center(child: LoadingIndicator());
-              }
-
-              if (state is VendorProfileError) {
-                return Center(
-                  child: ErrorState(
-                    message: state.message,
-                    onRetry: () {
-                      context.read<VendorProfileCubit>().fetchVendorProfile(
-                            parsedId,
-                            bySellerUserId: bySellerUserId,
-                          );
-                    },
-                  ),
-                );
-              }
-
-              if (state is VendorProfileLoaded) {
-                return _buildProfileContent(context, state.profile);
-              }
-
-              return const SizedBox.shrink();
-            },
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: Theme.of(context).appBarTheme.systemOverlayStyle ??
+          SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
           ),
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: BlocBuilder<VendorProfileCubit, VendorProfileState>(
+          builder: (context, state) {
+            if (state is VendorProfileLoading) {
+              return const Center(child: LoadingIndicator());
+            }
+
+            if (state is VendorProfileError) {
+              return Center(
+                child: ErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    context.read<VendorProfileCubit>().fetchVendorProfile(
+                          parsedId,
+                          bySellerUserId: bySellerUserId,
+                        );
+                  },
+                ),
+              );
+            }
+
+            if (state is VendorProfileLoaded) {
+              return _buildProfileContent(context, state.profile);
+            }
+
+            return const SizedBox.shrink();
+          },
         ),
       ),
     );
@@ -133,79 +132,104 @@ class VendorProfileScreen extends StatelessWidget {
   }
 
   Widget _buildVendorInfoCard(BuildContext context, VendorProfileModel profile) {
-    // Flat layout: same background as scaffold (like customer profile / create ad).
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Circular avatar
-          Center(
-            child: CircleAvatar(
-              radius: 42,
-              backgroundColor: context.surfaceBg,
-              backgroundImage: profile.imageUrl != null && profile.imageUrl!.isNotEmpty
-                  ? CachedNetworkImageProvider(profile.imageUrl!)
-                  : null,
-              child: profile.imageUrl == null || profile.imageUrl!.isEmpty
-                  ? Icon(Icons.storefront, size: 42, color: AppColors.primaryColor)
-                  : null,
-            ),
+          CircleAvatar(
+            radius: 42,
+            backgroundColor: context.surfaceBg,
+            backgroundImage:
+                profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                    ? CachedNetworkImageProvider(profile.imageUrl!)
+                    : null,
+            child: profile.imageUrl == null || profile.imageUrl!.isEmpty
+                ? Icon(
+                    Icons.storefront_rounded,
+                    size: 40,
+                    color: AppColors.primaryColor,
+                  )
+                : null,
           ),
           const SizedBox(height: 12),
-          // Name and Verification
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Expanded(
+              Flexible(
                 child: Text(
                   profile.name,
-                  style: AppTextStyles.headingMedium,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.headingMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (profile.isVerified)
+              if (profile.isVerified) ...[
+                const SizedBox(width: 6),
                 const Icon(
-                  Icons.verified,
+                  Icons.verified_rounded,
                   color: AppColors.primaryColor,
-                  size: 24,
+                  size: 20,
                 ),
+              ],
             ],
           ),
-          if (profile.description != null) ...[
+          if (profile.description != null && profile.description!.trim().isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               profile.description!,
+              textAlign: TextAlign.center,
               style: AppTextStyles.bodyMedium.copyWith(
                 color: context.textSecondary,
+                height: 1.35,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
-          const SizedBox(height: 20),
-          // Key Metrics
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
-                child: _buildMetricCard(context,
-                  icon: Icons.access_time,
+                child: _buildMetricCard(
+                  context,
+                  icon: Icons.access_time_rounded,
                   value: profile.isOpen ? 'مفتوح' : 'مغلق',
                   subtitle: profile.openUntil ?? '',
                   color: profile.isOpen ? AppColors.success : AppColors.error,
                 ),
               ),
               if (profile.responseTimeMinutes != null) ...[
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: _buildMetricCard(context,
-                    icon: Icons.speed,
+                  child: _buildMetricCard(
+                    context,
+                    icon: Icons.speed_rounded,
                     value: '${profile.responseTimeMinutes} دقائق',
                     subtitle: 'سرعة الرد',
                     color: AppColors.primaryColor,
                   ),
                 ),
               ],
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: _buildMetricCard(context,
-                  icon: Icons.star,
+                child: _buildMetricCard(
+                  context,
+                  icon: Icons.star_rounded,
                   value: profile.rating.toStringAsFixed(1),
                   subtitle: '${profile.ratingCount} تقييم',
                   color: AppColors.ratingStar,
@@ -225,15 +249,24 @@ class VendorProfileScreen extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
         color: context.surfaceBg,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 6),
           Text(
             value,
             style: AppTextStyles.bodyMedium.copyWith(
@@ -243,11 +276,15 @@ class VendorProfileScreen extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           if (subtitle.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               subtitle,
-              style: AppTextStyles.caption,
+              style: AppTextStyles.caption.copyWith(
+                color: context.textSecondary,
+              ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ],
@@ -403,124 +440,99 @@ class VendorProfileScreen extends StatelessWidget {
   Widget _buildActionButtons(BuildContext context, VendorProfileModel profile) {
     final userType = StorageService.getUserType();
     final isCustomer = userType != AppConstants.userTypeVendor;
-    
-    if (isCustomer) {
-      // For customers: Show both Chat and WhatsApp buttons
-      return Column(
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Start Chat Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
+          Text(
+            'التواصل مع التاجر',
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (isCustomer) ...[
+            _buildFilledActionButton(
+              context,
+              title: 'بدء محادثة',
+              icon: Icons.chat_bubble_outline_rounded,
+              color: AppColors.primaryColor,
               onPressed: () => _openChatWithVendor(context, profile),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.chat_bubble, size: 24),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'بدء محادثة',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          _buildFilledActionButton(
+            context,
+            title: 'واتساب',
+            icon: Icons.phone_in_talk_rounded,
+            color: AppColors.success,
+            onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
+          ),
+          if (isCustomer) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showRatingDialog(context, profile),
+                icon: const Icon(Icons.star_outline_rounded, size: 18),
+                label: Text(
+                  'تقييم التاجر',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // WhatsApp Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.success,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.phone, size: 24),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'واتساب',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  foregroundColor: AppColors.ratingStar,
+                  side: BorderSide(
+                    color: AppColors.ratingStar.withOpacity(0.75),
                   ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Rate Vendor Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _showRatingDialog(context, profile),
-              icon: const Icon(Icons.star_outline, size: 20),
-              label: const Text(
-                'تقييم التاجر',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.ratingStar,
-                side: const BorderSide(color: AppColors.ratingStar),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
-      );
-    } else {
-      // For vendors: Only show WhatsApp button
+      ),
+    );
+  }
+
+  Widget _buildFilledActionButton(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+  }) {
     return SizedBox(
       width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 19),
+        label: Text(
+          title,
+          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+        ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.success,
+          minimumSize: const Size.fromHeight(50),
+          backgroundColor: color,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.phone, size: 24),
-            const SizedBox(width: 8),
-            const Text(
-              'واتساب',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
       ),
     );
-    }
   }
 
   Widget _buildTextAddressSection(BuildContext context, VendorProfileModel profile) {

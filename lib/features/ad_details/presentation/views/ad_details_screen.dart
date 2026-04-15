@@ -941,11 +941,20 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       if (mounted) CustomToast.showError(context, 'تعذّر تحديد الإعلان');
       return;
     }
+    final sellerUserId = int.tryParse(ad.sellerId ?? '');
+    final currentUserId = int.tryParse(StorageService.getUserId() ?? '');
+    if (sellerUserId != null &&
+        currentUserId != null &&
+        sellerUserId == currentUserId) {
+      if (mounted) {
+        CustomToast.showError(context, 'لا يمكنك بدء محادثة على إعلانك الخاص');
+      }
+      return;
+    }
     try {
       final repo = ChatRepository();
       int? chatId = await repo.startChatForAd(adId);
       if (chatId == null) {
-        final sellerUserId = int.tryParse(ad.sellerId ?? '');
         if (sellerUserId != null && sellerUserId > 0) {
           chatId = await repo.openChatWithAdSeller(
             sellerUserId: sellerUserId,
@@ -953,6 +962,8 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
           );
         }
       }
+      // Fallback for APIs that create/reuse chat but don't return id reliably.
+      chatId ??= await repo.findChatIdForAd(adId);
       if (!mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(
@@ -974,6 +985,32 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
         );
       }
     } catch (e) {
+      final repo = ChatRepository();
+      int? fallbackChatId;
+      // If start endpoint fails, continue with user-based fallback.
+      if (sellerUserId != null && sellerUserId > 0) {
+        fallbackChatId = await repo.openChatWithAdSeller(
+          sellerUserId: sellerUserId,
+          sellerVendorRecordId: ad.sellerVendorRecordId,
+        );
+      }
+      fallbackChatId ??= await repo.findChatIdForAd(adId);
+      if (!mounted) return;
+      if (fallbackChatId != null) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.chatRoom,
+          arguments: {
+            'chatId': fallbackChatId.toString(),
+            'chatName': ad.sellerName,
+            'vendorName': ad.sellerName,
+            'peerPhone': ad.sellerPhone,
+            'peerAvatarUrl': ad.sellerAvatarUrl,
+            'peerVendorId': ad.sellerVendorRecordId,
+          },
+        );
+        return;
+      }
       if (mounted) {
         CustomToast.showError(
           context,

@@ -16,6 +16,16 @@ class ChatRepository {
     }
   }
 
+  int? _extractChatIdFromPayload(dynamic payload) {
+    if (payload is! Map<String, dynamic>) return null;
+    final inner = payload['data'];
+    final chatData = inner is Map<String, dynamic> ? inner : payload;
+    final id = chatData['id'];
+    if (id is int) return id;
+    if (id is num) return id.toInt();
+    return int.tryParse(id?.toString() ?? '');
+  }
+
   /// GET /api/v1/chats - Chat inbox (last message, unread count), sorted by most recent. 401 Unauthenticated.
   Future<List<Map<String, dynamic>>> getChats() async {
     _log('📋 Getting chats list');
@@ -65,6 +75,17 @@ class ChatRepository {
     if (id is int) return id;
     if (id is num) return id.toInt();
     return int.tryParse(id?.toString() ?? '');
+  }
+
+  static int? _chatAdId(Map<String, dynamic> c) {
+    final direct = _asInt(c['ad_id']);
+    if (direct != null && direct > 0) return direct;
+    final ad = _asMap(c['ad']);
+    if (ad != null) {
+      final nested = _asInt(ad['id']);
+      if (nested != null && nested > 0) return nested;
+    }
+    return null;
   }
 
   static Map<String, dynamic>? _asMap(dynamic v) {
@@ -256,6 +277,18 @@ class ChatRepository {
     return verified ? chatId : null;
   }
 
+  /// Looks for an inbox chat linked to [adId] via chat `ad.id`/`ad_id`.
+  Future<int?> findChatIdForAd(int adId) async {
+    if (adId <= 0) return null;
+    final chats = await getChats();
+    for (final c in chats) {
+      final cid = _chatRowId(c);
+      if (cid == null || cid <= 0) continue;
+      if (_chatAdId(c) == adId) return cid;
+    }
+    return null;
+  }
+
   /// GET /api/v1/chats/{id} - Chat details with customer, vendor, linked search request. Must be participant. 403 Forbidden.
   Future<Map<String, dynamic>> getChatDetails(int chatId) async {
     _log('📄 Getting chat details: $chatId');
@@ -440,37 +473,62 @@ class ChatRepository {
   /// Returns the chat id on success, or null on failure.
   Future<int?> startChatForAd(int adId) async {
     _log('💬 Starting chat for ad: $adId');
-    try {
-      final response = await _apiClient.post(
-        ApiEndpoints.startChatForAd(adId),
-        data: <String, dynamic>{},
-      );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
-        if (data is Map<String, dynamic>) {
-          final inner = data['data'];
-          final chatData = inner is Map<String, dynamic> ? inner : data;
-          final id = chatData['id'];
-          if (id is int) return id;
-          if (id is num) return id.toInt();
-          return int.tryParse(id?.toString() ?? '');
+    final routeCandidates = <String>[
+      ApiEndpoints.startChatForAd(adId),
+      ApiEndpoints.startChatForAdLegacy(adId),
+    ];
+
+    for (final route in routeCandidates) {
+      try {
+        final response = await _apiClient.post(
+          route,
+          data: <String, dynamic>{},
+        );
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return _extractChatIdFromPayload(response.data);
         }
-      }
-      return null;
-    } on DioException catch (e) {
-      _log('❌ Error starting chat for ad: ${e.message}');
-      if (e.response != null) {
-        final code = e.response!.statusCode;
-        final body = e.response!.data;
+      } on DioException catch (e) {
+        _log('❌ Error starting chat for ad on $route: ${e.message}');
+        final code = e.response?.statusCode;
+        final body = e.response?.data;
         final msg = body is Map<String, dynamic>
             ? body['message']?.toString()
             : null;
+
+        // Try next known route variant if this one does not exist.
+        if (code == 404) continue;
+
         if (code == 401) throw Exception(msg ?? 'Unauthenticated.');
         if (code == 403) throw Exception(msg ?? 'Unauthorized action.');
-        if (code == 404) throw Exception('الإعلان غير موجود');
+        if (code == 422) throw Exception(msg ?? 'تعذّر بدء المحادثة');
         if (msg != null && msg.isNotEmpty) throw Exception(msg);
+        throw Exception('تعذّر بدء المحادثة');
       }
-      throw Exception('تعذّر بدء المحادثة');
+    }
+
+    // Last compatibility fallback: some deployments create chat via /chats + ad_id.
+    _log('⚠️ ad chat endpoints unavailable, trying /chats with ad_id');
+    return _startChatForAdViaChatsEndpoint(adId);
+  }
+
+  Future<int?> _startChatForAdViaChatsEndpoint(int adId) async {
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.chats,
+        data: {'ad_id': adId},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return _extractChatIdFromPayload(response.data);
+      }
+      return null;
+    } on DioException catch (e) {
+      _log('❌ /chats ad_id fallback failed: ${e.message}');
+      final code = e.response?.statusCode;
+      final data = e.response?.data;
+      if (code == 422 || code == 409) {
+        return _extractChatIdFromPayload(data);
+      }
+      return null;
     }
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -109,25 +110,29 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (!mounted) return;
     RealtimeService.instance.activeChatId = chatId;
     await RealtimeService.instance.start();
-    RealtimeService.instance.subscribeChat(
-      chatId,
-      onMessage: (data) {
-        if (!mounted) return;
-        final row = _mapRealtimeMessageRow(data);
-        final mid = row['id'];
-        if (mid != null && _messages.any((m) => m['id'] == mid)) return;
-        setState(() => _messages.insert(0, row));
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              0.0,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-            );
-          }
-        });
-      },
-    );
+    runZonedGuarded(() {
+      RealtimeService.instance.subscribeChat(
+        chatId,
+        onMessage: (data) {
+          if (!mounted) return;
+          final row = _mapRealtimeMessageRow(data);
+          final mid = row['id'];
+          if (mid != null && _messages.any((m) => m['id'] == mid)) return;
+          setState(() => _messages.insert(0, row));
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                0.0,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        },
+      );
+    }, (error, stackTrace) {
+      debugPrint('[ChatRoom] realtime subscribe failed: $error');
+    });
   }
 
   Map<String, dynamic> _mapRealtimeMessageRow(Map<String, dynamic> data) {
