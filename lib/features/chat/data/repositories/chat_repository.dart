@@ -8,7 +8,7 @@ class ChatRepository {
   final ApiClient _apiClient;
 
   ChatRepository({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient();
+    : _apiClient = apiClient ?? ApiClient();
 
   void _log(String message) {
     if (kDebugMode) {
@@ -42,7 +42,9 @@ class ChatRepository {
       if (e.response != null) {
         if (e.response!.statusCode == 401) {
           final msg = e.response!.data is Map<String, dynamic>
-              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthenticated.'
+              ? (e.response!.data as Map<String, dynamic>)['message']
+                        ?.toString() ??
+                    'Unauthenticated.'
               : 'Unauthenticated.';
           throw Exception(msg);
         }
@@ -63,6 +65,20 @@ class ChatRepository {
     if (id is int) return id;
     if (id is num) return id.toInt();
     return int.tryParse(id?.toString() ?? '');
+  }
+
+  static Map<String, dynamic>? _asMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
+  }
+
+  static Map<String, dynamic>? _participantFromChatEnvelope(
+    Map<String, dynamic> c,
+  ) {
+    final participant = _asMap(c['participant']);
+    if (participant != null) return participant;
+    return null;
   }
 
   /// True when [vendor] map is the ad seller / target vendor.
@@ -89,6 +105,59 @@ class ChatRepository {
     return false;
   }
 
+  /// True when unified [participant] map matches seller account and/or vendor row.
+  static bool _participantMatchesSeller(
+    Map<String, dynamic> participant, {
+    required int? sellerUserId,
+    required int? sellerVendorRecordId,
+  }) {
+    if (sellerVendorRecordId != null && sellerVendorRecordId > 0) {
+      for (final raw in [
+        participant['vendor_id'],
+        participant['seller_vendor_id'],
+        participant['vendorId'],
+      ]) {
+        if (_asInt(raw) == sellerVendorRecordId) return true;
+      }
+      final vendor = participant['vendor'];
+      if (vendor is Map) {
+        if (_asInt(Map<String, dynamic>.from(vendor)['id']) ==
+            sellerVendorRecordId) {
+          return true;
+        }
+      }
+      final role =
+          participant['type']?.toString().toLowerCase() ??
+          participant['role']?.toString().toLowerCase() ??
+          '';
+      final looksLikeVendor =
+          role.contains('vendor') || participant['company_name'] != null;
+      if (looksLikeVendor &&
+          _asInt(participant['id']) == sellerVendorRecordId) {
+        return true;
+      }
+    }
+
+    if (sellerUserId != null && sellerUserId > 0) {
+      for (final raw in [
+        participant['user_id'],
+        participant['account_id'],
+        participant['owner_id'],
+        participant['id'],
+      ]) {
+        if (_asInt(raw) == sellerUserId) return true;
+      }
+      final user = participant['user'];
+      if (user is Map) {
+        if (_asInt(Map<String, dynamic>.from(user)['id']) == sellerUserId) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
   /// Resolves inbox chat with the seller. Pass [sellerVendorRecordId] when known (`vendors.id`).
   Future<int?> findChatIdWithSeller({
     int? sellerUserId,
@@ -101,6 +170,15 @@ class ChatRepository {
 
     final chats = await getChats();
     for (final c in chats) {
+      final participant = _participantFromChatEnvelope(c);
+      if (participant != null &&
+          _participantMatchesSeller(
+            participant,
+            sellerUserId: sellerUserId,
+            sellerVendorRecordId: sellerVendorRecordId,
+          )) {
+        return _chatRowId(c);
+      }
       final vendor = c['vendor'];
       if (vendor is Map) {
         final vm = Map<String, dynamic>.from(vendor);
@@ -124,6 +202,15 @@ class ChatRepository {
   }) async {
     try {
       final raw = await getChatDetails(chatId);
+      final participant = _participantFromChatEnvelope(raw);
+      if (participant != null &&
+          _participantMatchesSeller(
+            participant,
+            sellerUserId: sellerUserId,
+            sellerVendorRecordId: sellerVendorRecordId,
+          )) {
+        return true;
+      }
       final vendor = raw['vendor'];
       if (vendor is! Map) return false;
       return _vendorParticipantMatches(
@@ -191,13 +278,17 @@ class ChatRepository {
       if (e.response != null) {
         if (e.response!.statusCode == 401) {
           final msg = e.response!.data is Map<String, dynamic>
-              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthenticated.'
+              ? (e.response!.data as Map<String, dynamic>)['message']
+                        ?.toString() ??
+                    'Unauthenticated.'
               : 'Unauthenticated.';
           throw Exception(msg);
         }
         if (e.response!.statusCode == 403) {
           final msg = e.response!.data is Map<String, dynamic>
-              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthorized action.'
+              ? (e.response!.data as Map<String, dynamic>)['message']
+                        ?.toString() ??
+                    'Unauthorized action.'
               : 'Unauthorized action.';
           throw Exception(msg);
         }
@@ -225,8 +316,22 @@ class ChatRepository {
       if (response.statusCode == 200) {
         final data = response.data;
         if (data is Map<String, dynamic>) return data;
-        if (data is List) return {'data': data, 'meta': {'current_page': 1, 'last_page': 1, 'per_page': perPage, 'total': data.length, 'from': 1, 'to': data.length}};
-        return <String, dynamic>{'data': [], 'meta': {'current_page': 1, 'last_page': 1}};
+        if (data is List)
+          return {
+            'data': data,
+            'meta': {
+              'current_page': 1,
+              'last_page': 1,
+              'per_page': perPage,
+              'total': data.length,
+              'from': 1,
+              'to': data.length,
+            },
+          };
+        return <String, dynamic>{
+          'data': [],
+          'meta': {'current_page': 1, 'last_page': 1},
+        };
       } else {
         throw Exception('Failed to get messages: ${response.statusCode}');
       }
@@ -235,7 +340,9 @@ class ChatRepository {
       if (e.response != null) {
         if (e.response!.statusCode == 403) {
           final msg = e.response!.data is Map<String, dynamic>
-              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthorized action.'
+              ? (e.response!.data as Map<String, dynamic>)['message']
+                        ?.toString() ??
+                    'Unauthorized action.'
               : 'Unauthorized action.';
           throw Exception(msg);
         }
@@ -275,26 +382,33 @@ class ChatRepository {
       if (e.response != null) {
         if (e.response!.statusCode == 403) {
           final msg = e.response!.data is Map<String, dynamic>
-              ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthorized action.'
+              ? (e.response!.data as Map<String, dynamic>)['message']
+                        ?.toString() ??
+                    'Unauthorized action.'
               : 'Unauthorized action.';
           throw Exception(msg);
         }
         if (e.response!.statusCode == 422) {
           final errorData = e.response!.data;
           if (errorData is Map<String, dynamic>) {
-            final message = errorData['message']?.toString() ?? 'Validation failed';
+            final message =
+                errorData['message']?.toString() ?? 'Validation failed';
             final errors = errorData['errors'];
             if (errors != null && errors is Map<String, dynamic>) {
               final parts = <String>[message];
               for (final entry in errors.entries) {
                 final v = entry.value;
-                final text = v is List && v.isNotEmpty ? v.map((e) => e.toString()).join(', ') : v?.toString() ?? '';
+                final text = v is List && v.isNotEmpty
+                    ? v.map((e) => e.toString()).join(', ')
+                    : v?.toString() ?? '';
                 if (text.isNotEmpty) parts.add('${entry.key}: $text');
               }
               throw Exception(parts.join('\n'));
             }
           }
-          throw Exception(errorData['message']?.toString() ?? 'Validation failed');
+          throw Exception(
+            errorData['message']?.toString() ?? 'Validation failed',
+          );
         }
         if (e.response!.statusCode == 500) {
           final errorData = e.response!.data;
@@ -304,8 +418,12 @@ class ChatRepository {
           if (errorMessage.contains('Broadcasting') ||
               errorMessage.contains('MessageSent') ||
               errorMessage.contains('Permission denied')) {
-            _log('⚠️ Server error (likely logging issue), but message may have been sent');
-            throw Exception('تم إرسال الرسالة ولكن حدث خطأ في السيرفر. يرجى التحقق من الرسائل.');
+            _log(
+              '⚠️ Server error (likely logging issue), but message may have been sent',
+            );
+            throw Exception(
+              'تم إرسال الرسالة ولكن حدث خطأ في السيرفر. يرجى التحقق من الرسائل.',
+            );
           }
         }
         final errorData = e.response!.data;
@@ -402,7 +520,9 @@ class ChatRepository {
   Future<int> markChatAsRead(int chatId) async {
     _log('✅ Marking chat as read: $chatId');
     try {
-      final response = await _apiClient.post(ApiEndpoints.markChatAsRead(chatId));
+      final response = await _apiClient.post(
+        ApiEndpoints.markChatAsRead(chatId),
+      );
       if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
         final data = response.data as Map<String, dynamic>;
         final count = data['read_count'];
@@ -414,7 +534,9 @@ class ChatRepository {
       _log('❌ Error marking chat as read: ${e.message}');
       if (e.response?.statusCode == 403) {
         final msg = e.response!.data is Map<String, dynamic>
-            ? (e.response!.data as Map<String, dynamic>)['message']?.toString() ?? 'Unauthorized action.'
+            ? (e.response!.data as Map<String, dynamic>)['message']
+                      ?.toString() ??
+                  'Unauthorized action.'
             : 'Unauthorized action.';
         throw Exception(msg);
       }
@@ -423,4 +545,3 @@ class ChatRepository {
     }
   }
 }
-

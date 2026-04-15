@@ -15,11 +15,19 @@ import '../cubit/chat_cubit.dart';
 /// e.g. "users/profile/12.jpg" → "http://…/storage/users/profile/12.jpg"
 /// Already-absolute URLs are returned unchanged.
 String _resolveStorageUrl(String path) {
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  final raw = path.trim();
+  if (raw.isEmpty) return raw;
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
   final base = AppConstants.storageBaseUrl.endsWith('/')
-      ? AppConstants.storageBaseUrl.substring(0, AppConstants.storageBaseUrl.length - 1)
+      ? AppConstants.storageBaseUrl.substring(
+          0,
+          AppConstants.storageBaseUrl.length - 1,
+        )
       : AppConstants.storageBaseUrl;
-  final sanitized = path.startsWith('/') ? path.substring(1) : path;
+  var sanitized = raw.startsWith('/') ? raw.substring(1) : raw;
+  if (sanitized.startsWith('storage/')) {
+    sanitized = sanitized.substring('storage/'.length);
+  }
   return '$base/$sanitized';
 }
 
@@ -94,9 +102,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String _getChatName(Map<String, dynamic> chat) {
     final peer = _peerFromChat(chat);
     if (peer == null) return 'محادثة';
-    return peer['company_name']?.toString()
-        ?? peer['name']?.toString()
-        ?? 'محادثة';
+    return peer['company_name']?.toString() ??
+        peer['name']?.toString() ??
+        'محادثة';
   }
 
   String _inboxPreviewLastMessage(Map<String, dynamic> chat) {
@@ -172,10 +180,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (userType == AppConstants.userTypeVendor) return null;
     final peer = _peerFromChat(chat);
     if (peer == null) return null;
-    final raw = peer['id'];
-    if (raw is int) return raw;
-    if (raw is num) return raw.toInt();
-    return int.tryParse(raw?.toString() ?? '');
+    for (final key in ['vendor_id', 'seller_vendor_id']) {
+      final raw = peer[key];
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+      final parsed = int.tryParse(raw?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    final vendor = peer['vendor'];
+    if (vendor is Map) {
+      final raw = vendor['id'];
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+      final parsed = int.tryParse(raw?.toString() ?? '');
+      if (parsed != null) return parsed;
+    }
+    // Unified participant payload usually exposes account user id in `id`,
+    // not vendor row id. Returning null here avoids opening the wrong profile.
+    return null;
   }
 
   String? _inboxPeerPhone(Map<String, dynamic> chat) {
@@ -231,118 +253,115 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ],
       ),
       body: BlocConsumer<ChatCubit, ChatState>(
-              listener: (context, state) {
-                if (state is ChatError) {
-                  CustomToast.showError(context, state.message);
-                }
-              },
-              builder: (context, state) {
-                if (state is ChatLoading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+        listener: (context, state) {
+          if (state is ChatError) {
+            CustomToast.showError(context, state.message);
+          }
+        },
+        builder: (context, state) {
+          if (state is ChatLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                if (state is ChatsLoaded) {
-                  final chats = state.chats;
+          if (state is ChatsLoaded) {
+            final chats = state.chats;
 
-                  if (chats.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline,
-                            size: 64,
-                            color: context.textSecondary,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'لا توجد محادثات بعد',
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: context.textSecondary,
-                            ),
-                          ),
-                        ],
+            if (chats.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline,
+                      size: 64,
+                      color: context.textSecondary,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'لا توجد محادثات بعد',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: context.textSecondary,
                       ),
-                    );
-                  }
+                    ),
+                  ],
+                ),
+              );
+            }
 
-                  return RefreshIndicator(
-                    onRefresh: () async {
+            return RefreshIndicator(
+              onRefresh: () async {
+                context.read<ChatCubit>().getChats();
+              },
+              child: ListView.separated(
+                itemCount: chats.length,
+                separatorBuilder: (context, index) =>
+                    const Divider(height: 1, color: AppColors.dividerColor),
+                itemBuilder: (context, index) {
+                  final chat = chats[index];
+                  final chatId = chat['id']?.toString() ?? '';
+                  final chatName = _getChatName(chat);
+                  final lastMessageBody = _inboxPreviewLastMessage(chat);
+                  final lastMessageAt = _inboxLastActivityAt(chat);
+                  final unreadCount = _toInt(chat['unread_count']);
+                  final isOnline = _inboxPeerOnline(chat);
+                  final isVerified = _inboxPeerIsVerified(chat);
+                  final avatarUrl = _inboxAvatarUrl(chat);
+
+                  return ChatItem(
+                    name: chatName,
+                    lastMessage: lastMessageBody,
+                    timestamp: _formatTimestamp(lastMessageAt),
+                    isOnline: isOnline,
+                    isVerified: isVerified,
+                    unreadCount: unreadCount > 0 ? unreadCount : null,
+                    isRead: unreadCount == 0,
+                    imageUrl: avatarUrl,
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.chatRoom,
+                        arguments: {
+                          'chatId': chatId,
+                          'chatName': chatName,
+                          'peerPhone': _inboxPeerPhone(chat),
+                          'peerIsVerified': isVerified,
+                          'peerAvatarUrl': avatarUrl,
+                          'peerVendorId': _inboxVendorId(chat),
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            );
+          }
+
+          if (state is ChatError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    state.message,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.error,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  PrimaryButton(
+                    text: 'إعادة المحاولة',
+                    onPressed: () {
                       context.read<ChatCubit>().getChats();
                     },
-                    child: ListView.separated(
-                      itemCount: chats.length,
-                      separatorBuilder: (context, index) => const Divider(
-                        height: 1,
-                        color: AppColors.dividerColor,
-                      ),
-                      itemBuilder: (context, index) {
-                        final chat = chats[index];
-                        final chatId = chat['id']?.toString() ?? '';
-                        final chatName = _getChatName(chat);
-                        final lastMessageBody = _inboxPreviewLastMessage(chat);
-                        final lastMessageAt = _inboxLastActivityAt(chat);
-                        final unreadCount = _toInt(chat['unread_count']);
-                        final isOnline = _inboxPeerOnline(chat);
-                        final isVerified = _inboxPeerIsVerified(chat);
-                        final avatarUrl = _inboxAvatarUrl(chat);
+                  ),
+                ],
+              ),
+            );
+          }
 
-                        return ChatItem(
-                          name: chatName,
-                          lastMessage: lastMessageBody,
-                          timestamp: _formatTimestamp(lastMessageAt),
-                          isOnline: isOnline,
-                          isVerified: isVerified,
-                          unreadCount: unreadCount > 0 ? unreadCount : null,
-                          isRead: unreadCount == 0,
-                          imageUrl: avatarUrl,
-                          onTap: () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRoutes.chatRoom,
-                              arguments: {
-                                'chatId': chatId,
-                                'chatName': chatName,
-                                'peerPhone': _inboxPeerPhone(chat),
-                                'peerIsVerified': isVerified,
-                                'peerAvatarUrl': avatarUrl,
-                                'peerVendorId': _inboxVendorId(chat),
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  );
-                }
-
-                if (state is ChatError) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          state.message,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.error,
-                          ),
-                ),
-                        const SizedBox(height: 16),
-                        PrimaryButton(
-                          text: 'إعادة المحاولة',
-                          onPressed: () {
-                            context.read<ChatCubit>().getChats();
-                          },
-                        ),
-                      ],
-                    ),
-                    );
-                }
-
-                return const SizedBox.shrink();
-              },
-            ),
+          return const SizedBox.shrink();
+        },
+      ),
     );
   }
 }
-

@@ -22,11 +22,7 @@ class AdDetailsScreen extends StatefulWidget {
   final String? adId;
   final PublicAdDetailsModel? ad;
 
-  const AdDetailsScreen({
-    super.key,
-    this.adId,
-    this.ad,
-  });
+  const AdDetailsScreen({super.key, this.adId, this.ad});
 
   @override
   State<AdDetailsScreen> createState() => _AdDetailsScreenState();
@@ -53,10 +49,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: true,
-      child: _buildScreen(context),
-    );
+    return PopScope(canPop: true, child: _buildScreen(context));
   }
 
   Widget _buildScreen(BuildContext context) {
@@ -86,9 +79,18 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(state.message, style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error), textAlign: TextAlign.center),
+                    Text(
+                      state.message,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.error,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                     const SizedBox(height: 16),
-                    TextButton(onPressed: () => Navigator.maybePop(context), child: const Text('رجوع')),
+                    TextButton(
+                      onPressed: () => Navigator.maybePop(context),
+                      child: const Text('رجوع'),
+                    ),
                   ],
                 ),
               ),
@@ -135,7 +137,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   PreferredSizeWidget _buildAppBar(BuildContext context, AdModel? ad) {
     final currentUserId = StorageService.getUserId();
     final abilities = StorageService.getAbilities();
-    final isOwner = ad != null && currentUserId != null && ad.userId.toString() == currentUserId;
+    final isOwner =
+        ad != null &&
+        currentUserId != null &&
+        ad.userId.toString() == currentUserId;
     final canAdminAds = abilities.contains('ads.update');
     final isPending = ad?.statusNormalized == 'pending';
 
@@ -144,7 +149,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       if (isOwner) {
         actions.addAll([
           IconButton(
-            icon: Icon(Icons.edit_outlined, color: context.textPrimary, size: 22),
+            icon: Icon(
+              Icons.edit_outlined,
+              color: context.textPrimary,
+              size: 22,
+            ),
             onPressed: () => _navigateToEdit(context, ad),
           ),
           IconButton(
@@ -156,7 +165,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       if (canAdminAds && isPending) {
         actions.addAll([
           IconButton(
-            icon: Icon(Icons.check_circle_outline, color: AppColors.success, size: 22),
+            icon: Icon(
+              Icons.check_circle_outline,
+              color: AppColors.success,
+              size: 22,
+            ),
             tooltip: 'موافقة',
             onPressed: () => _approveAd(context, ad.id),
           ),
@@ -185,7 +198,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   void _navigateToEdit(BuildContext context, AdModel ad) async {
-    final result = await Navigator.pushNamed(context, AppRoutes.editAd, arguments: ad);
+    final result = await Navigator.pushNamed(
+      context,
+      AppRoutes.editAd,
+      arguments: ad,
+    );
     if (context.mounted && result == true) {
       context.read<AdDetailsCubit>().loadAd(ad.id);
     }
@@ -209,14 +226,20 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 await AdsRepository().deleteAd(adId);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم حذف الإعلان'), backgroundColor: AppColors.success),
+                    const SnackBar(
+                      content: Text('تم حذف الإعلان'),
+                      backgroundColor: AppColors.success,
+                    ),
                   );
                   Navigator.pop(context);
                 }
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('فشل الحذف: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('فشل الحذف: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }
@@ -233,7 +256,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       await context.read<AdDetailsCubit>().approveAd(adId);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تمت الموافقة على الإعلان'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('تمت الموافقة على الإعلان'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
@@ -281,10 +307,18 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
     if (result != true || !context.mounted) return;
     try {
-      await context.read<AdDetailsCubit>().rejectAd(adId, rejectionReason: reasonController.text.trim().isEmpty ? null : reasonController.text.trim());
+      await context.read<AdDetailsCubit>().rejectAd(
+        adId,
+        rejectionReason: reasonController.text.trim().isEmpty
+            ? null
+            : reasonController.text.trim(),
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفض الإعلان'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('تم رفض الإعلان'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
@@ -325,7 +359,8 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                     return GestureDetector(
                       behavior: HitTestBehavior.deferToChild,
                       onTap: url != null && imageUrls.isNotEmpty
-                          ? () => _openFullScreenImage(context, imageUrls, index)
+                          ? () =>
+                                _openFullScreenImage(context, imageUrls, index)
                           : null,
                       child: Container(
                         color: context.cardBg,
@@ -389,7 +424,9 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 ),
                 child: Text(
                   '${_currentImageIndex + 1}/${images.length}',
-                  style: AppTextStyles.captionSmall.copyWith(color: Colors.white),
+                  style: AppTextStyles.captionSmall.copyWith(
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -414,10 +451,15 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     );
   }
 
-  void _openFullScreenImage(BuildContext context, List<String> urls, int initialIndex) {
+  void _openFullScreenImage(
+    BuildContext context,
+    List<String> urls,
+    int initialIndex,
+  ) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _FullScreenImageViewer(urls: urls, initialIndex: initialIndex),
+        builder: (_) =>
+            _FullScreenImageViewer(urls: urls, initialIndex: initialIndex),
       ),
     );
   }
@@ -454,7 +496,10 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
@@ -470,10 +515,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            ad.title,
-            style: AppTextStyles.headingSmall,
-          ),
+          Text(ad.title, style: AppTextStyles.headingSmall),
           const SizedBox(height: 8),
           Text(
             ad.priceFormatted,
@@ -554,10 +596,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'التفاصيل',
-            style: AppTextStyles.headingSmall,
-          ),
+          Text('التفاصيل', style: AppTextStyles.headingSmall),
           const SizedBox(height: 10),
           Text(
             ad.description,
@@ -569,7 +608,9 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: GestureDetector(
-                onTap: () => setState(() => _descriptionExpanded = !_descriptionExpanded),
+                onTap: () => setState(
+                  () => _descriptionExpanded = !_descriptionExpanded,
+                ),
                 child: Text(
                   _descriptionExpanded ? 'اقرأ أقل' : 'اقرأ المزيد',
                   style: AppTextStyles.link,
@@ -590,10 +631,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'الموقع',
-            style: AppTextStyles.headingSmall,
-          ),
+          Text('الموقع', style: AppTextStyles.headingSmall),
           const SizedBox(height: 12),
           Container(
             width: double.infinity,
@@ -632,10 +670,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'معلومات البائع',
-            style: AppTextStyles.headingSmall,
-          ),
+          Text('معلومات البائع', style: AppTextStyles.headingSmall),
           const SizedBox(height: 12),
           InkWell(
             onTap: _sellerProfileTapEnabled(ad)
@@ -667,98 +702,106 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                 : null,
             borderRadius: BorderRadius.circular(12),
             child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: context.cardBg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: context.inputBorderColor),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.chevron_left, color: context.textSecondary, size: 22),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              ad.sellerName,
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                fontWeight: FontWeight.w600,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.inputBorderColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.chevron_left,
+                    color: context.textSecondary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                ad.sellerName,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          if (ad.sellerIsVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified,
-                              color: AppColors.primaryColor,
-                              size: 16,
-                            ),
+                            if (ad.sellerIsVerified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified,
+                                color: AppColors.primaryColor,
+                                size: 16,
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
+                        const SizedBox(height: 4),
+                        RatingStars(
+                          rating: ad.sellerRating,
+                          size: 16,
+                          reviewCount: ad.sellerReviewCount,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'عرض البروفايل',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.primaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: context.surfaceBg,
+                        child: ClipOval(
+                          child: ad.sellerAvatarUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: ad.sellerAvatarUrl!,
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, __) => Icon(
+                                    Icons.store,
+                                    color: context.textHint,
+                                    size: 32,
+                                  ),
+                                  errorWidget: (_, __, ___) => Icon(
+                                    Icons.store,
+                                    color: context.textHint,
+                                    size: 32,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.store,
+                                  color: context.textHint,
+                                  size: 32,
+                                ),
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      RatingStars(
-                        rating: ad.sellerRating,
-                        size: 16,
-                        reviewCount: ad.sellerReviewCount,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'عرض البروفايل',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.primaryColor,
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: OnlineIndicator(
+                          isOnline: ad.sellerIsOnline,
+                          size: 14,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: context.surfaceBg,
-                      child: ClipOval(
-                        child: ad.sellerAvatarUrl != null
-                            ? CachedNetworkImage(
-                                imageUrl: ad.sellerAvatarUrl!,
-                                width: 56,
-                                height: 56,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => Icon(
-                                  Icons.store,
-                                  color: context.textHint,
-                                  size: 32,
-                                ),
-                                errorWidget: (_, __, ___) => Icon(
-                                  Icons.store,
-                                  color: context.textHint,
-                                  size: 32,
-                                ),
-                              )
-                            : Icon(Icons.store, color: context.textHint, size: 32),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: OnlineIndicator(
-                        isOnline: ad.sellerIsOnline,
-                        size: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -771,7 +814,11 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.shield_outlined, color: AppColors.primaryColor, size: 24),
+                Icon(
+                  Icons.shield_outlined,
+                  color: AppColors.primaryColor,
+                  size: 24,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -806,10 +853,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'إعلانات مشابهة',
-            style: AppTextStyles.headingSmall,
-          ),
+          Text('إعلانات مشابهة', style: AppTextStyles.headingSmall),
           const SizedBox(height: 12),
           SizedBox(
             height: 140,
@@ -898,7 +942,17 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       return;
     }
     try {
-      final chatId = await ChatRepository().startChatForAd(adId);
+      final repo = ChatRepository();
+      int? chatId = await repo.startChatForAd(adId);
+      if (chatId == null) {
+        final sellerUserId = int.tryParse(ad.sellerId ?? '');
+        if (sellerUserId != null && sellerUserId > 0) {
+          chatId = await repo.openChatWithAdSeller(
+            sellerUserId: sellerUserId,
+            sellerVendorRecordId: ad.sellerVendorRecordId,
+          );
+        }
+      }
       if (!mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(
@@ -909,6 +963,8 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
             'chatName': ad.sellerName,
             'vendorName': ad.sellerName,
             'peerPhone': ad.sellerPhone,
+            'peerAvatarUrl': ad.sellerAvatarUrl,
+            'peerVendorId': ad.sellerVendorRecordId,
           },
         );
       } else {
@@ -957,7 +1013,9 @@ class _SimilarAdCard extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                   child: item.imageUrl != null
                       ? Image.network(
                           item.imageUrl!,
@@ -1016,7 +1074,10 @@ class _SimilarAdCard extends StatelessWidget {
 class _FullScreenImageViewer extends StatefulWidget {
   final List<String> urls;
   final int initialIndex;
-  const _FullScreenImageViewer({required this.urls, required this.initialIndex});
+  const _FullScreenImageViewer({
+    required this.urls,
+    required this.initialIndex,
+  });
 
   @override
   State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
@@ -1034,14 +1095,13 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
     super.initState();
     _current = widget.initialIndex;
     _pageCtrl = PageController(initialPage: widget.initialIndex);
-    _zoomCtrl = List<TransformationController>.generate(
-      widget.urls.length,
-      (_) {
-        final c = TransformationController();
-        c.addListener(_onMatrixChanged);
-        return c;
-      },
-    );
+    _zoomCtrl = List<TransformationController>.generate(widget.urls.length, (
+      _,
+    ) {
+      final c = TransformationController();
+      c.addListener(_onMatrixChanged);
+      return c;
+    });
   }
 
   @override

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -54,10 +56,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   String _displayName = '';
   String? _peerPhone;
   String? _peerAvatarUrl;
+  String? _myAvatarUrl;
+
   /// Vendor record ID (vendors.id) — to navigate to vendor profile.
   int? _peerVendorId;
+
   /// Fallback: user-account ID if vendor record ID is unavailable.
   int? _peerUserId;
+
   /// Last chat details from API (for phone fallbacks if nested shape differs).
   Map<String, dynamic>? _chatDetailsSnapshot;
   List<Map<String, dynamic>> _messages = [];
@@ -67,12 +73,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   void initState() {
     super.initState();
     _currentUserId = int.tryParse(StorageService.getUserId() ?? '');
+    _myAvatarUrl = _currentUserAvatarFromStorage();
     // Pre-populate from inbox data (available immediately, before API returns).
     if (widget.peerPhone != null && widget.peerPhone!.trim().isNotEmpty) {
       _peerPhone = widget.peerPhone!.trim();
     }
     _isVerified = widget.peerIsVerified;
-    if (widget.peerAvatarUrl != null && widget.peerAvatarUrl!.trim().isNotEmpty) {
+    if (widget.peerAvatarUrl != null &&
+        widget.peerAvatarUrl!.trim().isNotEmpty) {
       _peerAvatarUrl = _resolveStorageUrl(widget.peerAvatarUrl!.trim());
     }
     if (widget.peerVendorId != null && widget.peerVendorId! > 0) {
@@ -135,10 +143,17 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'is_read': 0,
       'read_at': null,
       'created_at': data['created_at']?.toString(),
-      'updated_at': data['updated_at']?.toString() ?? data['created_at']?.toString(),
+      'updated_at':
+          data['updated_at']?.toString() ?? data['created_at']?.toString(),
       'sender': {
         'id': sender['id'],
         'name': sender['name']?.toString() ?? '',
+        'profile_image': sender['profile_image'],
+        'profile_image_url': sender['profile_image_url'],
+        'avatar': sender['avatar'],
+        'image_url': sender['image_url'],
+        'image': sender['image'],
+        'photo': sender['photo'],
       },
     };
   }
@@ -177,7 +192,11 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'read_at': null,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
-      'sender': {'id': _currentUserId, 'name': 'You'},
+      'sender': {
+        'id': _currentUserId,
+        'name': 'You',
+        'profile_image': _myAvatarUrl,
+      },
     };
 
     setState(() {
@@ -197,10 +216,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     });
 
     // Send message via Cubit (will reload messages and replace optimistic one)
-    context.read<ChatCubit>().sendMessage(
-      chatId: chatId,
-      body: messageText,
-    );
+    context.read<ChatCubit>().sendMessage(chatId: chatId, body: messageText);
   }
 
   bool _isMessageFromMe(Map<String, dynamic> message) {
@@ -303,9 +319,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final sr = chat['search_request'];
     if (sr is Map) {
       for (final key in ['phone', 'contact_phone', 'customer_phone']) {
-        n = _sanitizeDialNumber(
-          Map<String, dynamic>.from(sr)[key]?.toString(),
-        );
+        n = _sanitizeDialNumber(Map<String, dynamic>.from(sr)[key]?.toString());
         if (n != null) return n;
       }
     }
@@ -314,29 +328,28 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
 
   void _applyChatDetails(Map<String, dynamic> chat) {
     final userType = StorageService.getUserType();
+    final hasUnifiedParticipant = chat['participant'] != null;
     final peer = _peerParticipantFromChat(chat);
     String displayName;
     bool online;
     bool verified;
     if (userType == AppConstants.userTypeVendor) {
       // Vendor sees customer
-      displayName = peer is Map
-          ? (peer['name']?.toString() ?? 'عميل')
-          : 'عميل';
+      displayName = peer is Map ? (peer['name']?.toString() ?? 'عميل') : 'عميل';
       online = peer is Map ? (peer['is_online'] == true) : false;
       verified = false;
     } else {
       // Customer sees vendor: prefer company_name, fallback to name
       displayName = peer is Map
           ? (peer['company_name']?.toString() ??
-              peer['name']?.toString() ??
-              'تاجر')
+                peer['name']?.toString() ??
+                'تاجر')
           : 'تاجر';
       online = peer is Map ? (peer['is_online'] == true) : false;
       verified = peer is Map
           ? (peer['is_verified'] == true ||
-              peer['verified'] == true ||
-              peer['is_certified'] == true)
+                peer['verified'] == true ||
+                peer['is_certified'] == true)
           : false;
     }
     final phone = _phoneFromChatEnvelope(chat);
@@ -347,15 +360,30 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     int? userId;
     if (userType != AppConstants.userTypeVendor && peer is Map) {
       final pm = Map<String, dynamic>.from(peer);
-      final rawId = pm['id'];
-      if (rawId is int) vendorId = rawId;
-      else if (rawId is num) vendorId = rawId.toInt();
-      else vendorId = int.tryParse(rawId?.toString() ?? '');
+      int? parseInt(dynamic raw) {
+        if (raw is int) return raw;
+        if (raw is num) return raw.toInt();
+        return int.tryParse(raw?.toString() ?? '');
+      }
 
-      final rawUid = pm['user_id'];
-      if (rawUid is int) userId = rawUid;
-      else if (rawUid is num) userId = rawUid.toInt();
-      else userId = int.tryParse(rawUid?.toString() ?? '');
+      // Prefer explicit vendor identifiers when backend includes them.
+      vendorId = parseInt(pm['vendor_id']) ?? parseInt(pm['seller_vendor_id']);
+      final vendor = pm['vendor'];
+      if (vendorId == null && vendor is Map) {
+        vendorId = parseInt(Map<String, dynamic>.from(vendor)['id']);
+      }
+
+      // Unified `participant` payload usually carries account id in `id`.
+      if (hasUnifiedParticipant) {
+        userId =
+            parseInt(pm['user_id']) ??
+            parseInt(pm['account_id']) ??
+            parseInt(pm['id']);
+      } else {
+        // Legacy vendor payload: `id` is vendor row id, `user_id` is account id.
+        vendorId ??= parseInt(pm['id']);
+        userId = parseInt(pm['user_id']) ?? parseInt(pm['id']);
+      }
     }
 
     setState(() {
@@ -377,32 +405,50 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     final vid = _peerVendorId;
     final uid = _peerUserId;
     if (vid != null && vid > 0) {
-      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
-        'vendorId': vid.toString(),
-        'vendorName': _displayName.isNotEmpty ? _displayName : widget.chatName,
-        'vendorProfileByUserId': false,
-      });
+      Navigator.pushNamed(
+        context,
+        AppRoutes.vendorProfile,
+        arguments: {
+          'vendorId': vid.toString(),
+          'vendorName': _displayName.isNotEmpty
+              ? _displayName
+              : widget.chatName,
+          'vendorProfileByUserId': false,
+        },
+      );
     } else if (uid != null && uid > 0) {
-      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
-        'vendorId': uid.toString(),
-        'vendorName': _displayName.isNotEmpty ? _displayName : widget.chatName,
-        'vendorProfileByUserId': true,
-      });
+      Navigator.pushNamed(
+        context,
+        AppRoutes.vendorProfile,
+        arguments: {
+          'vendorId': uid.toString(),
+          'vendorName': _displayName.isNotEmpty
+              ? _displayName
+              : widget.chatName,
+          'vendorProfileByUserId': true,
+        },
+      );
     }
   }
 
   static String _resolveStorageUrl(String path) {
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final raw = path.trim();
+    if (raw.isEmpty) return raw;
+    if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
     final base = AppConstants.storageBaseUrl.endsWith('/')
-        ? AppConstants.storageBaseUrl.substring(0, AppConstants.storageBaseUrl.length - 1)
+        ? AppConstants.storageBaseUrl.substring(
+            0,
+            AppConstants.storageBaseUrl.length - 1,
+          )
         : AppConstants.storageBaseUrl;
-    final sanitized = path.startsWith('/') ? path.substring(1) : path;
+    var sanitized = raw.startsWith('/') ? raw.substring(1) : raw;
+    if (sanitized.startsWith('storage/')) {
+      sanitized = sanitized.substring('storage/'.length);
+    }
     return '$base/$sanitized';
   }
 
-  String? _avatarFromParticipant(dynamic raw) {
-    if (raw is! Map) return null;
-    final p = Map<String, dynamic>.from(raw);
+  String? _extractAvatarFromMap(Map<String, dynamic> source) {
     for (final key in [
       'avatar',
       'image_url',
@@ -412,14 +458,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'profile_image',
       'profile_image_url',
     ]) {
-      final v = p[key]?.toString().trim();
+      final v = source[key]?.toString().trim();
       if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
     }
-    // Also check nested user/profile objects (e.g. vendor.user.profile_image_url)
     for (final nestKey in ['user', 'profile', 'account']) {
-      final nest = p[nestKey];
+      final nest = source[nestKey];
       if (nest is Map) {
-        final nm = Map<String, dynamic>.from(nest);
+        final nestedMap = Map<String, dynamic>.from(nest);
         for (final key in [
           'avatar',
           'image_url',
@@ -428,7 +473,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           'profile_image',
           'profile_image_url',
         ]) {
-          final v = nm[key]?.toString().trim();
+          final v = nestedMap[key]?.toString().trim();
           if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
         }
       }
@@ -436,8 +481,40 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return null;
   }
 
+  String? _currentUserAvatarFromStorage() {
+    final raw = StorageService.getUserData();
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final map = Map<String, dynamic>.from(decoded);
+      return _extractAvatarFromMap(map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String? _senderAvatarFromMessage(
+    Map<String, dynamic> message, {
+    required bool isSentByMe,
+  }) {
+    final sender = message['sender'];
+    if (sender is Map) {
+      final senderMap = Map<String, dynamic>.from(sender);
+      final fromSender = _extractAvatarFromMap(senderMap);
+      if (fromSender != null && fromSender.isNotEmpty) return fromSender;
+    }
+    return isSentByMe ? _myAvatarUrl : _peerAvatarUrl;
+  }
+
+  String? _avatarFromParticipant(dynamic raw) {
+    if (raw is! Map) return null;
+    return _extractAvatarFromMap(Map<String, dynamic>.from(raw));
+  }
+
   Widget _buildPeerAvatar(BuildContext context, {double size = 40}) {
-    final isVendorUser = StorageService.getUserType() == AppConstants.userTypeVendor;
+    final isVendorUser =
+        StorageService.getUserType() == AppConstants.userTypeVendor;
     final fallbackIcon = isVendorUser ? Icons.person : Icons.store;
     final url = _peerAvatarUrl;
     return Container(
@@ -494,7 +571,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     try {
       final date = DateTime.parse(timestamp).toLocal();
       final now = DateTime.now();
-      final sameDay = date.year == now.year &&
+      final sameDay =
+          date.year == now.year &&
           date.month == now.month &&
           date.day == now.day;
       if (sameDay) {
@@ -520,7 +598,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         if (state is ChatError) {
           // Only show error if it's not about server logging issues
           // (in that case, message might have been sent successfully)
-          if (!state.message.contains('تم إرسال الرسالة ولكن حدث خطأ في السيرفر')) {
+          if (!state.message.contains(
+            'تم إرسال الرسالة ولكن حدث خطأ في السيرفر',
+          )) {
             CustomToast.showError(context, state.message);
           } else {
             // Show info message instead of error
@@ -561,202 +641,211 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         }
       },
       builder: (context, state) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.phone),
-            onPressed: _callPeer,
-            tooltip: 'اتصال',
-          ),
-        ],
-        title: GestureDetector(
-          onTap: () => _openVendorProfile(context),
-          child: Row(
-          children: [
-            // Profile Picture
-            Stack(
-              children: [
-                _buildPeerAvatar(context, size: 40),
-                if (_isOnline)
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: OnlineIndicator(isOnline: true, size: 12),
-                  ),
-              ],
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: AppBar(
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_forward),
+              onPressed: () => Navigator.of(context).pop(),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.phone),
+                onPressed: _callPeer,
+                tooltip: 'اتصال',
+              ),
+            ],
+            title: GestureDetector(
+              onTap: () => _openVendorProfile(context),
+              child: Row(
                 children: [
-                  Row(
+                  // Profile Picture
+                  Stack(
                     children: [
-                      Flexible(
-                        child: Text(
-                          _displayName.isNotEmpty
-                              ? _displayName
-                              : widget.chatName,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      _buildPeerAvatar(context, size: 40),
+                      if (_isOnline)
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: OnlineIndicator(isOnline: true, size: 12),
                         ),
-                      ),
-                      if (_isVerified) ...[
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.verified,
-                          color: AppColors.primaryColor,
-                          size: 16,
-                        ),
-                      ],
                     ],
                   ),
-                  Text(
-                    _isOnline ? 'متصل الآن' : 'غير متصل',
-                    style: AppTextStyles.caption.copyWith(
-                      color: _isOnline ? AppColors.online : AppColors.offline,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                _displayName.isNotEmpty
+                                    ? _displayName
+                                    : widget.chatName,
+                                style: AppTextStyles.bodyMedium.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (_isVerified) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified,
+                                color: AppColors.primaryColor,
+                                size: 16,
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          _isOnline ? 'متصل الآن' : 'غير متصل',
+                          style: AppTextStyles.caption.copyWith(
+                            color: _isOnline
+                                ? AppColors.online
+                                : AppColors.offline,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // Chat Messages
-          Expanded(
+          ),
+          body: Column(
+            children: [
+              // Chat Messages
+              Expanded(
                 child: state is ChatLoading && _messages.isEmpty
                     ? const Center(child: CircularProgressIndicator())
                     : _messages.isEmpty
-                        ? Center(
-                            child: Text(
-                              'لا توجد رسائل بعد',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: context.textSecondary,
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-              controller: _scrollController,
-              reverse: true,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-                            itemCount: _messages.length,
-                            itemBuilder: (context, index) {
-                              final message = _messages[index];
-                              final isSentByMe = _isMessageFromMe(message);
-                              final body = message['body']?.toString() ?? '';
-                              final timestamp = message['created_at']?.toString() ?? '';
-                              final isSystemRaw = message['is_system'];
-                              final isSystem = isSystemRaw == true ||
-                                  isSystemRaw == 1 ||
-                                  isSystemRaw == '1';
+                    ? Center(
+                        child: Text(
+                          'لا توجد رسائل بعد',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: context.textSecondary,
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        reverse: true,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final message = _messages[index];
+                          final isSentByMe = _isMessageFromMe(message);
+                          final body = message['body']?.toString() ?? '';
+                          final timestamp =
+                              message['created_at']?.toString() ?? '';
+                          final isSystemRaw = message['is_system'];
+                          final isSystem =
+                              isSystemRaw == true ||
+                              isSystemRaw == 1 ||
+                              isSystemRaw == '1';
 
-                              if (isSystem) {
-                                return Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    child: Text(
-                                      body,
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: context.textSecondary,
-                                        fontStyle: FontStyle.italic,
-                ),
-                                    ),
+                          if (isSystem) {
+                            return Center(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                child: Text(
+                                  body,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: context.textSecondary,
+                                    fontStyle: FontStyle.italic,
                                   ),
-                                );
-                              }
+                                ),
+                              ),
+                            );
+                          }
 
-                              return MessageBubble(
-                                message: body,
-                                timestamp: _formatTimestamp(timestamp),
-                                isSentByMe: isSentByMe,
-                                imageUrl: message['image_url']?.toString(),
-                                senderImageUrl: isSentByMe ? null : _peerAvatarUrl,
-                                peerDisplayName:
-                                    isSentByMe ? null : _peerCaption(message),
-                              );
-                            },
-            ),
-          ),
-          // Message Input Field
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: context.surfaceBg,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      style: AppTextStyles.input,
-                      decoration: InputDecoration(
-                        hintText: 'أكتب رسالة...',
-                        hintStyle: AppTextStyles.inputHint,
-                        filled: true,
-                        fillColor: context.inputBg,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
+                          return MessageBubble(
+                            message: body,
+                            timestamp: _formatTimestamp(timestamp),
+                            isSentByMe: isSentByMe,
+                            imageUrl: message['image_url']?.toString(),
+                            senderImageUrl: _senderAvatarFromMessage(
+                              message,
+                              isSentByMe: isSentByMe,
+                            ),
+                            peerDisplayName: isSentByMe
+                                ? null
+                                : _peerCaption(message),
+                          );
+                        },
                       ),
-                      maxLines: null,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Send Button
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryColor,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      onPressed: _sendMessage,
-                    ),
-                  ),
-                ],
               ),
-            ),
+              // Message Input Field
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.surfaceBg,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _messageController,
+                          style: AppTextStyles.input,
+                          decoration: InputDecoration(
+                            hintText: 'أكتب رسالة...',
+                            hintStyle: AppTextStyles.inputHint,
+                            filled: true,
+                            fillColor: context.inputBg,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(24),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                          ),
+                          maxLines: null,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _sendMessage(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Send Button
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryColor,
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          onPressed: _sendMessage,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
         );
       },
     );
   }
 }
-
