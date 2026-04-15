@@ -318,6 +318,44 @@ class ChatRepository {
     }
   }
 
+  /// POST /api/v1/ads/{adId}/chats - Start or resume chat with the ad owner.
+  /// Returns the chat id on success, or null on failure.
+  Future<int?> startChatForAd(int adId) async {
+    _log('💬 Starting chat for ad: $adId');
+    try {
+      final response = await _apiClient.post(
+        ApiEndpoints.startChatForAd(adId),
+        data: <String, dynamic>{},
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        if (data is Map<String, dynamic>) {
+          final inner = data['data'];
+          final chatData = inner is Map<String, dynamic> ? inner : data;
+          final id = chatData['id'];
+          if (id is int) return id;
+          if (id is num) return id.toInt();
+          return int.tryParse(id?.toString() ?? '');
+        }
+      }
+      return null;
+    } on DioException catch (e) {
+      _log('❌ Error starting chat for ad: ${e.message}');
+      if (e.response != null) {
+        final code = e.response!.statusCode;
+        final body = e.response!.data;
+        final msg = body is Map<String, dynamic>
+            ? body['message']?.toString()
+            : null;
+        if (code == 401) throw Exception(msg ?? 'Unauthenticated.');
+        if (code == 403) throw Exception(msg ?? 'Unauthorized action.');
+        if (code == 404) throw Exception('الإعلان غير موجود');
+        if (msg != null && msg.isNotEmpty) throw Exception(msg);
+      }
+      throw Exception('تعذّر بدء المحادثة');
+    }
+  }
+
   /// POST /api/v1/chats - Create/start a new chat with a user. Body: { user_id }.
   /// Returns the new chat id, or null if not supported.
   Future<int?> createChatWithUser(int userId) async {

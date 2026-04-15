@@ -73,7 +73,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
     _isVerified = widget.peerIsVerified;
     if (widget.peerAvatarUrl != null && widget.peerAvatarUrl!.trim().isNotEmpty) {
-      _peerAvatarUrl = widget.peerAvatarUrl!.trim();
+      _peerAvatarUrl = _resolveStorageUrl(widget.peerAvatarUrl!.trim());
     }
     if (widget.peerVendorId != null && widget.peerVendorId! > 0) {
       _peerVendorId = widget.peerVendorId;
@@ -391,6 +391,15 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
   }
 
+  static String _resolveStorageUrl(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    final base = AppConstants.storageBaseUrl.endsWith('/')
+        ? AppConstants.storageBaseUrl.substring(0, AppConstants.storageBaseUrl.length - 1)
+        : AppConstants.storageBaseUrl;
+    final sanitized = path.startsWith('/') ? path.substring(1) : path;
+    return '$base/$sanitized';
+  }
+
   String? _avatarFromParticipant(dynamic raw) {
     if (raw is! Map) return null;
     final p = Map<String, dynamic>.from(raw);
@@ -404,7 +413,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'profile_image_url',
     ]) {
       final v = p[key]?.toString().trim();
-      if (v != null && v.isNotEmpty) return v;
+      if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
     }
     // Also check nested user/profile objects (e.g. vendor.user.profile_image_url)
     for (final nestKey in ['user', 'profile', 'account']) {
@@ -420,7 +429,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
           'profile_image_url',
         ]) {
           final v = nm[key]?.toString().trim();
-          if (v != null && v.isNotEmpty) return v;
+          if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
         }
       }
     }
@@ -675,6 +684,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
                                 timestamp: _formatTimestamp(timestamp),
                                 isSentByMe: isSentByMe,
                                 imageUrl: message['image_url']?.toString(),
+                                senderImageUrl: isSentByMe ? null : _peerAvatarUrl,
                                 peerDisplayName:
                                     isSentByMe ? null : _peerCaption(message),
                               );

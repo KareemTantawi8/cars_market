@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
@@ -50,11 +51,11 @@ class ChatItem extends StatelessWidget {
                   ),
                   child: imageUrl != null
                       ? ClipOval(
-                          child: Image.network(
-                            imageUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                _buildPlaceholder(cs),
+                            placeholder: (_, __) => _buildPlaceholder(cs),
+                            errorWidget: (_, __, ___) => _buildPlaceholder(cs),
                           ),
                         )
                       : _buildPlaceholder(cs),

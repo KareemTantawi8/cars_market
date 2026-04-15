@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/extensions.dart';
@@ -253,11 +254,11 @@ class MessageBubble extends StatelessWidget {
       ),
       child: senderImageUrl != null && senderImageUrl!.isNotEmpty
           ? ClipOval(
-              child: Image.network(
-                senderImageUrl!,
+              child: CachedNetworkImage(
+                imageUrl: senderImageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (ctx, error, stackTrace) =>
-                    _buildPlaceholder(context),
+                placeholder: (_, __) => _buildPlaceholder(context),
+                errorWidget: (_, __, ___) => _buildPlaceholder(context),
               ),
             )
           : _buildPlaceholder(context),

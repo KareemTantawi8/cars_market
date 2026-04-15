@@ -892,18 +892,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Future<void> _openChat(PublicAdDetailsModel ad) async {
-    final sellerUserId = int.tryParse(ad.sellerId ?? '');
-    if (sellerUserId == null || sellerUserId <= 0) {
-      if (mounted) {
-        CustomToast.showError(context, 'تعذّر تحديد البائع');
-      }
+    final adId = int.tryParse(ad.id);
+    if (adId == null || adId <= 0) {
+      if (mounted) CustomToast.showError(context, 'تعذّر تحديد الإعلان');
       return;
     }
     try {
-      final chatId = await ChatRepository().openChatWithAdSeller(
-        sellerUserId: sellerUserId,
-        sellerVendorRecordId: ad.sellerVendorRecordId,
-      );
+      final chatId = await ChatRepository().startChatForAd(adId);
       if (!mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(
@@ -919,7 +914,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       } else {
         CustomToast.showError(
           context,
-          'لا يمكن بدء المحادثة مع صاحب هذا الإعلان. جرّب الاتصال أو واتساب، أو أعد المحاولة لاحقاً.',
+          'لا يمكن بدء المحادثة مع صاحب هذا الإعلان. جرّب الاتصال أو أعد المحاولة لاحقاً.',
         );
       }
     } catch (e) {

@@ -11,6 +11,18 @@ import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../cubit/chat_cubit.dart';
 
+/// Resolves a possibly-relative storage path to a full URL.
+/// e.g. "users/profile/12.jpg" → "http://…/storage/users/profile/12.jpg"
+/// Already-absolute URLs are returned unchanged.
+String _resolveStorageUrl(String path) {
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  final base = AppConstants.storageBaseUrl.endsWith('/')
+      ? AppConstants.storageBaseUrl.substring(0, AppConstants.storageBaseUrl.length - 1)
+      : AppConstants.storageBaseUrl;
+  final sanitized = path.startsWith('/') ? path.substring(1) : path;
+  return '$base/$sanitized';
+}
+
 /// Chat List Screen
 class ChatListScreen extends StatefulWidget {
   /// When false (e.g. inside [HomeScreen]'s [IndexedStack]), the parent should
@@ -120,7 +132,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       'profile_image_url',
     ]) {
       final v = pm[key]?.toString().trim();
-      if (v != null && v.isNotEmpty) return v;
+      if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
     }
     // Also check nested user/profile objects (e.g. vendor.user.profile_image_url)
     for (final nestKey in ['user', 'profile', 'account']) {
@@ -136,7 +148,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           'profile_image_url',
         ]) {
           final v = nm[key]?.toString().trim();
-          if (v != null && v.isNotEmpty) return v;
+          if (v != null && v.isNotEmpty) return _resolveStorageUrl(v);
         }
       }
     }
