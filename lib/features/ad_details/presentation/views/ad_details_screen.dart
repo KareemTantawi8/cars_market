@@ -681,11 +681,27 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        ad.sellerName,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              ad.sellerName,
+                              style: AppTextStyles.bodyLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (ad.sellerIsVerified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.verified,
+                              color: AppColors.primaryColor,
+                              size: 16,
+                            ),
+                          ],
+                        ],
                       ),
                       const SizedBox(height: 4),
                       RatingStars(
@@ -709,12 +725,26 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                     CircleAvatar(
                       radius: 28,
                       backgroundColor: context.surfaceBg,
-                      backgroundImage: ad.sellerAvatarUrl != null
-                          ? NetworkImage(ad.sellerAvatarUrl!)
-                          : null,
-                      child: ad.sellerAvatarUrl == null
-                          ? Icon(Icons.person, color: context.textHint, size: 32)
-                          : null,
+                      child: ClipOval(
+                        child: ad.sellerAvatarUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: ad.sellerAvatarUrl!,
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Icon(
+                                  Icons.store,
+                                  color: context.textHint,
+                                  size: 32,
+                                ),
+                                errorWidget: (_, __, ___) => Icon(
+                                  Icons.store,
+                                  color: context.textHint,
+                                  size: 32,
+                                ),
+                              )
+                            : Icon(Icons.store, color: context.textHint, size: 32),
+                      ),
                     ),
                     Positioned(
                       bottom: 0,

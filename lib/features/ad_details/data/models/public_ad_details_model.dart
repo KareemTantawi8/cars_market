@@ -24,6 +24,7 @@ class PublicAdDetailsModel {
   /// Backend `vendors.id` for the seller, when included on ad `user` — avoids wrong chat matches.
   final int? sellerVendorRecordId;
   final String? sellerPhone;
+  final bool sellerIsVerified;
   final List<SimilarAdItem> similarAds;
 
   /// Build from API AdModel
@@ -41,14 +42,15 @@ class PublicAdDetailsModel {
       warranty: 'متاح',
       vehicleModelLine: _vehicleModelLine(a),
       description: a.description ?? '',
-      sellerName: a.user?.name ?? '',
+      sellerName: a.user?.displayName ?? a.user?.name ?? '',
       sellerRating: 0,
       sellerReviewCount: 0,
-      sellerAvatarUrl: null,
+      sellerAvatarUrl: a.user?.avatarUrl,
       sellerIsOnline: false,
       sellerId: a.user?.id.toString(),
       sellerVendorRecordId: a.user?.vendorRecordId,
       sellerPhone: a.isPhoneVisible ? a.user?.phone : null,
+      sellerIsVerified: a.user?.isVerified ?? false,
       similarAds: const [],
     );
   }
@@ -102,6 +104,7 @@ class PublicAdDetailsModel {
     this.sellerId,
     this.sellerVendorRecordId,
     this.sellerPhone,
+    this.sellerIsVerified = false,
     this.similarAds = const [],
   });
 }

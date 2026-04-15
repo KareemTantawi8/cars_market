@@ -89,9 +89,9 @@ String? parseAdLocationLabel(Map<String, dynamic> json) {
   _addFromMap(json);
 
   // 2. Vendor profile nested inside user
-  final u = json['user'] ?? json['seller'] ?? json['owner'];
-  if (u is Map) {
-    final um = Map<String, dynamic>.from(u);
+  final ua = json['user'] ?? json['seller'] ?? json['owner'];
+  if (ua is Map) {
+    final um = Map<String, dynamic>.from(ua);
     final v = um['vendor'];
     if (v is Map) _addFromMap(Map<String, dynamic>.from(v));
     // user-level address as last fallback

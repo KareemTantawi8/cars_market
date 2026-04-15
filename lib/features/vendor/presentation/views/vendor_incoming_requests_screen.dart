@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -250,6 +251,7 @@ class _VendorIncomingRequestsScreenState
     );
   }
 
+  // ignore: unused_element
   Widget _buildRequestCard({
     required String requestId,
     required String customerName,
@@ -509,6 +511,15 @@ class _VendorIncomingRequestsScreenState
     );
   }
 
+  static String _formatTimeAgo(DateTime? dt) {
+    if (dt == null) return 'منذ قليل';
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'منذ قليل';
+    if (diff.inHours < 1) return 'منذ ${diff.inMinutes} دقيقة';
+    if (diff.inDays < 1) return 'منذ ${diff.inHours} ساعة';
+    return 'منذ ${diff.inDays} يوم';
+  }
+
   Widget _buildRequestCardFromData(Map<String, dynamic> request) {
     final requestId = request['id']?.toString() ?? '';
     final rid = int.tryParse(requestId);
@@ -516,26 +527,31 @@ class _VendorIncomingRequestsScreenState
         rid == widget.initialHighlightSearchRequestId;
     final customer = request['customer'] as Map<String, dynamic>? ?? {};
     final customerName = customer['name']?.toString() ?? 'عميل';
+    final isOnline = customer['is_online'] == true;
     final partText = request['part_text']?.toString() ?? '';
     final brand = request['brand'] as Map<String, dynamic>?;
     final model = request['model'] as Map<String, dynamic>?;
-    final carDetails = '${brand?['name'] ?? ''} ${model?['name'] ?? ''}';
+    final carDetails = [brand?['name'], model?['name']]
+        .where((s) => s != null && s.toString().isNotEmpty)
+        .join(' ');
 
-    // Calculate time ago (simplified - you might want to use a date package)
-    final timeAgo = 'منذ قليل';
-    
-    return _buildRequestCard(
+    // Parse created_at for countdown and timeAgo
+    final createdAtRaw = request['created_at']?.toString();
+    final createdAt = createdAtRaw != null ? DateTime.tryParse(createdAtRaw) : null;
+    final timeAgo = _formatTimeAgo(createdAt);
+
+    return _RequestCard(
       requestId: requestId,
       customerName: customerName,
-      isOnline: false, // You can add online status if available in API
+      isOnline: isOnline,
       timeAgo: timeAgo,
-      status: 'جاهز للرد',
       partName: partText,
       carDetails: carDetails,
-      remainingTime: '05:00', // You can calculate this from created_at
-      isUrgent: true,
+      createdAt: createdAt,
       icon: Icons.build,
       highlight: highlight,
+      onAccept: () => _handleAccept(requestId),
+      onReject: () => _handleReject(requestId),
     );
   }
 
@@ -632,6 +648,317 @@ class _VendorIncomingRequestsScreenState
                 }
               }
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Request card with live 48-hour countdown ────────────────────────────────
+
+class _RequestCard extends StatefulWidget {
+  final String requestId;
+  final String customerName;
+  final bool isOnline;
+  final String timeAgo;
+  final String partName;
+  final String carDetails;
+  final DateTime? createdAt;
+  final IconData icon;
+  final bool highlight;
+  final VoidCallback onAccept;
+  final VoidCallback onReject;
+
+  const _RequestCard({
+    required this.requestId,
+    required this.customerName,
+    required this.isOnline,
+    required this.timeAgo,
+    required this.partName,
+    required this.carDetails,
+    this.createdAt,
+    required this.icon,
+    required this.highlight,
+    required this.onAccept,
+    required this.onReject,
+  });
+
+  @override
+  State<_RequestCard> createState() => _RequestCardState();
+}
+
+class _RequestCardState extends State<_RequestCard> {
+  Timer? _timer;
+  Duration _remaining = const Duration(hours: 48);
+  static const _deadline = Duration(hours: 48);
+
+  @override
+  void initState() {
+    super.initState();
+    _updateRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _updateRemaining();
+    });
+  }
+
+  void _updateRemaining() {
+    final start = widget.createdAt ?? DateTime.now();
+    final elapsed = DateTime.now().difference(start);
+    final rem = _deadline - elapsed;
+    setState(() => _remaining = rem.isNegative ? Duration.zero : rem);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final expired = _remaining == Duration.zero;
+    final hours = _remaining.inHours.toString().padLeft(2, '0');
+    final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final isUrgent = !expired && _remaining.inHours < 6;
+    final timerColor = expired
+        ? AppColors.error
+        : isUrgent
+            ? AppColors.warning
+            : AppColors.success;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(12),
+        border: widget.highlight
+            ? Border.all(color: AppColors.primaryColor, width: 2)
+            : null,
+        boxShadow: widget.highlight
+            ? [
+                BoxShadow(
+                  color: AppColors.primaryColor.withValues(alpha: 0.25),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Countdown row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    expired
+                        ? Icons.timer_off_outlined
+                        : isUrgent
+                            ? Icons.timer
+                            : Icons.timer_outlined,
+                    color: timerColor,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 4),
+                  expired
+                      ? Text(
+                          'انتهت مهلة القبول',
+                          style: AppTextStyles.caption.copyWith(
+                            color: timerColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : Row(
+                          children: [
+                            Text(
+                              'متبقي: ',
+                              style: AppTextStyles.caption.copyWith(
+                                color: timerColor,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '$hours:$minutes:$seconds',
+                              style: AppTextStyles.caption.copyWith(
+                                color: timerColor,
+                                fontWeight: FontWeight.w800,
+                                fontFeatures: [
+                                  const FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                ],
+              ),
+              Text(
+                widget.timeAgo,
+                style: AppTextStyles.caption.copyWith(
+                  color: context.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Customer info row
+          Row(
+            children: [
+              Stack(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: context.surfaceBg,
+                    ),
+                    child: Center(
+                      child: Text(
+                        widget.customerName.isNotEmpty
+                            ? widget.customerName[0].toUpperCase()
+                            : '؟',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (widget.isOnline)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: OnlineIndicator(isOnline: true, size: 12),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.customerName,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    if (widget.isOnline)
+                      Row(
+                        children: [
+                          OnlineIndicator(isOnline: true, size: 8),
+                          const SizedBox(width: 4),
+                          Text(
+                            'متصل',
+                            style: AppTextStyles.caption.copyWith(
+                              color: AppColors.online,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Part info
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  widget.icon,
+                  color: AppColors.primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'القطعة المطلوبة',
+                      style: AppTextStyles.caption.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.partName,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (widget.carDetails.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.directions_car,
+                            color: context.textSecondary,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              widget.carDetails,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: context.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Action buttons
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: widget.onReject,
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: context.surfaceBg,
+                    side: BorderSide.none,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'تجاهل',
+                    style: AppTextStyles.button.copyWith(
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: PrimaryButton(
+                  text: 'قبول',
+                  icon: Icons.check,
+                  onPressed: expired ? null : widget.onAccept,
+                ),
+              ),
+            ],
           ),
         ],
       ),

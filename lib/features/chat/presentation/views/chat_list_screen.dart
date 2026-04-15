@@ -64,15 +64,27 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  String _getChatName(Map<String, dynamic> chat) {
+  /// Resolves the other party from a chat object.
+  /// New API returns a unified `participant` key; legacy used `vendor`/`customer`.
+  Map<String, dynamic>? _peerFromChat(Map<String, dynamic> chat) {
+    final p = chat['participant'];
+    if (p is Map<String, dynamic>) return p;
+    if (p is Map) return Map<String, dynamic>.from(p);
     final userType = StorageService.getUserType();
-    if (userType == AppConstants.userTypeVendor) {
-      // Vendor sees customer name
-      return chat['customer']?['name']?.toString() ?? 'عميل';
-    } else {
-      // Customer sees vendor company name
-      return chat['vendor']?['company_name']?.toString() ?? 'تاجر';
-    }
+    final legacy = userType == AppConstants.userTypeVendor
+        ? (chat['customer'] ?? chat['buyer'] ?? chat['client'])
+        : (chat['vendor'] ?? chat['seller'] ?? chat['shop']);
+    if (legacy is Map<String, dynamic>) return legacy;
+    if (legacy is Map) return Map<String, dynamic>.from(legacy);
+    return null;
+  }
+
+  String _getChatName(Map<String, dynamic> chat) {
+    final peer = _peerFromChat(chat);
+    if (peer == null) return 'محادثة';
+    return peer['company_name']?.toString()
+        ?? peer['name']?.toString()
+        ?? 'محادثة';
   }
 
   String _inboxPreviewLastMessage(Map<String, dynamic> chat) {
@@ -91,22 +103,42 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   bool _inboxPeerOnline(Map<String, dynamic> chat) {
-    final userType = StorageService.getUserType();
-    if (userType == AppConstants.userTypeVendor) {
-      return chat['customer']?['is_online'] == true;
-    }
-    return chat['vendor']?['is_online'] == true;
+    final peer = _peerFromChat(chat);
+    return peer?['is_online'] == true;
   }
 
   String? _inboxAvatarUrl(Map<String, dynamic> chat) {
-    final userType = StorageService.getUserType();
-    final peer = userType == AppConstants.userTypeVendor
-        ? (chat['customer'] ?? chat['buyer'] ?? chat['client'])
-        : (chat['vendor'] ?? chat['seller'] ?? chat['shop']);
-    if (peer is! Map) return null;
-    for (final key in ['avatar', 'image_url', 'image', 'logo', 'photo', 'profile_image']) {
-      final v = peer[key]?.toString().trim();
+    final pm = _peerFromChat(chat);
+    if (pm == null) return null;
+    for (final key in [
+      'avatar',
+      'image_url',
+      'image',
+      'logo',
+      'photo',
+      'profile_image',
+      'profile_image_url',
+    ]) {
+      final v = pm[key]?.toString().trim();
       if (v != null && v.isNotEmpty) return v;
+    }
+    // Also check nested user/profile objects (e.g. vendor.user.profile_image_url)
+    for (final nestKey in ['user', 'profile', 'account']) {
+      final nest = pm[nestKey];
+      if (nest is Map) {
+        final nm = Map<String, dynamic>.from(nest);
+        for (final key in [
+          'avatar',
+          'image_url',
+          'image',
+          'photo',
+          'profile_image',
+          'profile_image_url',
+        ]) {
+          final v = nm[key]?.toString().trim();
+          if (v != null && v.isNotEmpty) return v;
+        }
+      }
     }
     return null;
   }
@@ -115,40 +147,40 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final userType = StorageService.getUserType();
     // Only vendors can be verified; customers never show a verified badge.
     if (userType == AppConstants.userTypeVendor) return false;
-    final vendor = chat['vendor'] ?? chat['seller'] ?? chat['shop'];
-    if (vendor is! Map) return false;
-    return vendor['is_verified'] == true ||
-        vendor['verified'] == true ||
-        vendor['is_certified'] == true;
+    final peer = _peerFromChat(chat);
+    if (peer == null) return false;
+    return peer['is_verified'] == true ||
+        peer['verified'] == true ||
+        peer['is_certified'] == true;
   }
 
-  /// Returns the vendor record ID (vendors.id) for navigating to the vendor profile.
-  /// Only meaningful when the current user is a customer.
+  /// Returns the peer ID for profile navigation (only meaningful for customers).
   int? _inboxVendorId(Map<String, dynamic> chat) {
     final userType = StorageService.getUserType();
     if (userType == AppConstants.userTypeVendor) return null;
-    final vendor = chat['vendor'] ?? chat['seller'] ?? chat['shop'];
-    if (vendor is! Map) return null;
-    final raw = vendor['id'];
+    final peer = _peerFromChat(chat);
+    if (peer == null) return null;
+    final raw = peer['id'];
     if (raw is int) return raw;
     if (raw is num) return raw.toInt();
     return int.tryParse(raw?.toString() ?? '');
   }
 
   String? _inboxPeerPhone(Map<String, dynamic> chat) {
-    final userType = StorageService.getUserType();
-    final peer = userType == AppConstants.userTypeVendor
-        ? (chat['customer'] ?? chat['buyer'] ?? chat['client'])
-        : (chat['vendor'] ?? chat['seller'] ?? chat['shop']);
-    if (peer is! Map) return null;
+    final peer = _peerFromChat(chat);
+    if (peer == null) return null;
     for (final key in [
       'phone',
       'mobile',
       'phone_number',
       'tel',
+      'telephone',
+      'contact_phone',
+      'primary_phone',
       'shop_phone',
       'shop_mobile',
       'company_phone',
+      'business_phone',
     ]) {
       final v = peer[key]?.toString().trim();
       if (v != null && v.isNotEmpty) return v;

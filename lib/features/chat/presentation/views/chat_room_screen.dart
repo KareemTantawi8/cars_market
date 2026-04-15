@@ -276,6 +276,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   dynamic _peerParticipantFromChat(Map<String, dynamic> chat) {
+    // New unified API returns a single `participant` key (the other party).
+    final p = chat['participant'];
+    if (p != null) return p;
+    // Legacy fallback: vendor/customer separated by user type.
     final userType = StorageService.getUserType();
     if (userType == AppConstants.userTypeVendor) {
       return chat['customer'] ?? chat['buyer'] ?? chat['client'];
@@ -315,14 +319,14 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     bool online;
     bool verified;
     if (userType == AppConstants.userTypeVendor) {
-      // Vendor sees customer: use name, no verified badge for customers
+      // Vendor sees customer
       displayName = peer is Map
           ? (peer['name']?.toString() ?? 'عميل')
           : 'عميل';
       online = peer is Map ? (peer['is_online'] == true) : false;
       verified = false;
     } else {
-      // Customer sees vendor: prefer company_name, show verified badge
+      // Customer sees vendor: prefer company_name, fallback to name
       displayName = peer is Map
           ? (peer['company_name']?.toString() ??
               peer['name']?.toString() ??
@@ -359,7 +363,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _displayName = displayName;
       _isOnline = online;
       _isVerified = verified;
-      _peerPhone = phone;
+      _peerPhone = phone ?? _peerPhone;
       if (avatarUrl != null) _peerAvatarUrl = avatarUrl;
       if (vendorId != null && vendorId > 0) _peerVendorId = vendorId;
       if (userId != null && userId > 0) _peerUserId = userId;
@@ -390,9 +394,35 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   String? _avatarFromParticipant(dynamic raw) {
     if (raw is! Map) return null;
     final p = Map<String, dynamic>.from(raw);
-    for (final key in ['avatar', 'image_url', 'image', 'logo', 'photo', 'profile_image']) {
+    for (final key in [
+      'avatar',
+      'image_url',
+      'image',
+      'logo',
+      'photo',
+      'profile_image',
+      'profile_image_url',
+    ]) {
       final v = p[key]?.toString().trim();
       if (v != null && v.isNotEmpty) return v;
+    }
+    // Also check nested user/profile objects (e.g. vendor.user.profile_image_url)
+    for (final nestKey in ['user', 'profile', 'account']) {
+      final nest = p[nestKey];
+      if (nest is Map) {
+        final nm = Map<String, dynamic>.from(nest);
+        for (final key in [
+          'avatar',
+          'image_url',
+          'image',
+          'photo',
+          'profile_image',
+          'profile_image_url',
+        ]) {
+          final v = nm[key]?.toString().trim();
+          if (v != null && v.isNotEmpty) return v;
+        }
+      }
     }
     return null;
   }
@@ -438,18 +468,16 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if ((number == null || number.isEmpty) && _chatDetailsSnapshot != null) {
       number = _phoneFromChatEnvelope(_chatDetailsSnapshot!);
     }
-    if (number == null || number.isEmpty) {
+    final uri = number != null && number.isNotEmpty
+        ? Uri.parse('tel:$number')
+        : null;
+    if (uri == null) {
       if (mounted) {
         CustomToast.showError(context, 'لا يتوفر رقم هاتف لهذا الطرف');
       }
       return;
     }
-    final uri = Uri.parse('tel:$number');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      CustomToast.showError(context, 'تعذّر فتح تطبيق الاتصال');
-    }
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   String _formatTimestamp(String? timestamp) {

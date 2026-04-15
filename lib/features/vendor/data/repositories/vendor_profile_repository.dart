@@ -80,62 +80,23 @@ class VendorProfileRepository {
     }
   }
 
-  static int? _vendorRecordIdFromUserPayload(Map<String, dynamic> map) {
-    final v = map['vendor'];
-    if (v is Map) {
-      final vm = Map<String, dynamic>.from(v);
-      final raw = vm['id'];
-      if (raw is int && raw > 0) return raw;
-      final p = int.tryParse(raw?.toString() ?? '');
-      if (p != null && p > 0) return p;
-    }
-    for (final key in ['vendor_id', 'vendorId', 'vendor_record_id', 'seller_vendor_id']) {
-      final rawId = map[key];
-      if (rawId is int && rawId > 0) return rawId;
-      final p = int.tryParse(rawId?.toString() ?? '');
-      if (p != null && p > 0) return p;
-    }
-    return null;
-  }
-
-  /// Resolves [userId] (ad owner / account user id) to vendor profile via
-  /// GET /api/v1/users/:id then GET /api/v1/vendors/:vendorId/profile.
+  /// Fetch vendor profile by user account ID.
+  /// GET /api/v1/users/:userId/profile — returns user fields + nested vendor object.
   Future<VendorProfileModel> getVendorProfilePageForAdOwnerUser(int userId) async {
-    _log('📋 Resolving vendor profile from ad owner user ID: $userId');
+    _log('📋 Fetching vendor profile from user ID: $userId');
     try {
-      final response = await _apiClient.get(ApiEndpoints.userProfileById(userId));
+      final response = await _apiClient.get(ApiEndpoints.userProfilePageById(userId));
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('Failed to fetch user: ${response.statusCode}');
+        throw Exception('Failed to fetch user profile: ${response.statusCode}');
       }
       final data = response.data;
       if (data is! Map<String, dynamic>) throw Exception('Invalid response format');
-
       final payload = data['data'] is Map<String, dynamic>
           ? data['data'] as Map<String, dynamic>
           : data;
-
-      Map<String, dynamic> userMap;
-      final userRaw = payload['user'];
-      if (userRaw is Map<String, dynamic>) {
-        userMap = userRaw;
-      } else {
-        userMap = payload;
-      }
-
-      var vendorRecordId = _vendorRecordIdFromUserPayload(userMap);
-      vendorRecordId ??= _vendorRecordIdFromUserPayload(payload);
-      if (vendorRecordId != null) {
-        return getVendorProfilePage(vendorRecordId);
-      }
-
-      try {
-        return await getVendorProfilePage(userId);
-      } on DioException catch (e) {
-        if (e.response?.statusCode == 404) {
-          throw Exception('التاجر غير موجود');
-        }
-        rethrow;
-      }
+      final result = VendorProfileModel.fromUserProfileJson(payload);
+      _log('✅ Parsed vendor profile from user profile: ${result.name}');
+      return result;
     } on DioException catch (e) {
       _log('❌ getVendorProfilePageForAdOwnerUser: ${e.message}');
       if (e.response?.statusCode == 404) throw Exception('التاجر غير موجود');

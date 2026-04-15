@@ -23,8 +23,10 @@ class ApiEndpoints {
   // User
   // GET /api/v1/user/profile
   static const String userProfile = '$basePath/user/profile';
-  // GET /api/v1/users/:id - Get user/vendor profile by ID
+  // GET /api/v1/users/:id - Get user/vendor profile by ID (legacy)
   static String userProfileById(int userId) => '$basePath/users/$userId';
+  // GET /api/v1/users/:id/profile - Get full user+vendor profile page by user ID
+  static String userProfilePageById(int userId) => '$basePath/users/$userId/profile';
   // PUT /api/v1/user/profile
   static const String updateProfile = '$basePath/user/profile';
   // POST /api/v1/profile/images - Upload profile and/or background image (multipart: profile_image, background_image). 200/401/422

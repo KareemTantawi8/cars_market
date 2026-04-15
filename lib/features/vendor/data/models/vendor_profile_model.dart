@@ -264,6 +264,76 @@ class VendorProfileModel {
     );
   }
 
+  /// Parse from GET /api/v1/users/:id/profile response.
+  /// [userData] is the `data` object: user fields at root, vendor nested under `vendor`.
+  factory VendorProfileModel.fromUserProfileJson(Map<String, dynamic> userData) {
+    final vendorRaw = userData['vendor'];
+    final vendor = vendorRaw is Map<String, dynamic>
+        ? vendorRaw
+        : vendorRaw is Map
+            ? Map<String, dynamic>.from(vendorRaw)
+            : null;
+
+    final vendorRecordId = (vendor?['id'] as num?)?.toInt();
+    final userAccountId = (userData['id'] as num?)?.toInt();
+
+    // Preferred display name: company_name from vendor, fallback to user name
+    final name = vendor?['company_name']?.toString()?.trim().isNotEmpty == true
+        ? vendor!['company_name'].toString()
+        : userData['name']?.toString() ?? '';
+
+    // Brands from vendor.categories
+    final brands = <String>[];
+    final brandIds = <int>[];
+    final categoriesRaw = vendor?['categories'];
+    if (categoriesRaw is List) {
+      for (final e in categoriesRaw) {
+        if (e is Map) {
+          final bid = e['id'];
+          if (bid is int && bid > 0) {
+            brandIds.add(bid);
+          } else if (bid is num && bid > 0) {
+            brandIds.add(bid.toInt());
+          }
+          final n = e['name']?.toString() ?? '';
+          if (n.isNotEmpty) brands.add(n);
+        }
+      }
+    }
+
+    // Governorate (may be null, string, or map)
+    String? governorate;
+    final govRaw = userData['governorate'];
+    if (govRaw is String) {
+      governorate = govRaw;
+    } else if (govRaw is Map) {
+      governorate = govRaw['name']?.toString();
+    }
+
+    return VendorProfileModel(
+      id: vendorRecordId ?? userAccountId ?? 0,
+      userAccountId: userAccountId,
+      name: name,
+      description: vendor?['description']?.toString(),
+      isVerified: vendor?['is_verified'] == true,
+      isOpen: vendor?['is_online'] == true || vendor?['is_open'] == true,
+      responseTimeHuman: vendor?['response_time_human']?.toString(),
+      rating: (vendor?['average_rating'] as num?)?.toDouble() ?? 0.0,
+      ratingCount: (vendor?['ratings_count'] as num?)?.toInt() ?? 0,
+      supportedBrands: brands,
+      supportedBrandIds: brandIds,
+      availableServices: const [],
+      phone: userData['phone']?.toString(),
+      shopPhone: vendor?['company_phone']?.toString()
+          ?? vendor?['shop_phone']?.toString(),
+      whatsapp: vendor?['company_phone']?.toString()
+          ?? userData['phone']?.toString(),
+      governorate: governorate,
+      imageUrl: userData['profile_image_url']?.toString(),
+      backgroundImageUrl: userData['background_image_url']?.toString(),
+    );
+  }
+
   /// Convert to JSON
   Map<String, dynamic> toJson() {
     return {
