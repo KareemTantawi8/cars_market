@@ -27,12 +27,16 @@ class ApiEndpoints {
   static String userProfileById(int userId) => '$basePath/users/$userId';
   // GET /api/v1/users/:id/profile - Get full user+vendor profile page by user ID
   static String userProfilePageById(int userId) => '$basePath/users/$userId/profile';
+  /// Public listings for a user (when backend is ready). GET …/users/:id/ads
+  static String userPublicAds(int userId) => '$basePath/users/$userId/ads';
   // PUT /api/v1/user/profile
   static const String updateProfile = '$basePath/user/profile';
   // POST /api/v1/profile/images - Upload profile and/or background image (multipart: profile_image, background_image). 200/401/422
   static const String profileImages = '$basePath/profile/images';
   // PUT /api/v1/profile/location - Update vendor GPS location (latitude, longitude). Vendors only.
   static const String profileLocation = '$basePath/profile/location';
+  // PUT /api/v1/profile/address - Body: { governorate_id, address }
+  static const String profileAddress = '$basePath/profile/address';
   // PUT /api/v1/profile/brands - Update vendor supported brands (body: { category_ids: [1, 2] }). Vendors only.
   static const String profileBrands = '$basePath/profile/brands';
 

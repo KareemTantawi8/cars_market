@@ -7,6 +7,9 @@ class UserProfileModel {
   final String phone;
   final String? email;
   final String? address;
+  /// User governorate (from `governorate` on auth/me or PUT /profile/address response).
+  final int? governorateId;
+  final String? governorateName;
   final String? imageUrl;
   final String? backgroundImageUrl;
   final bool isVerified;
@@ -23,6 +26,8 @@ class UserProfileModel {
     required this.phone,
     this.email,
     this.address,
+    this.governorateId,
+    this.governorateName,
     this.imageUrl,
     this.backgroundImageUrl,
     this.isVerified = false,
@@ -92,6 +97,19 @@ class UserProfileModel {
       }
     }
 
+    int? governorateId;
+    String? governorateName;
+    final govTop = json['governorate'];
+    if (govTop is Map) {
+      final gm = Map<String, dynamic>.from(govTop);
+      governorateId = (gm['id'] as num?)?.toInt();
+      governorateName =
+          gm['name']?.toString() ?? gm['name_ar']?.toString();
+    } else if (vendorData?.governorate != null) {
+      governorateId = vendorData!.governorate!.id;
+      governorateName = vendorData.governorate!.name;
+    }
+
     // isVerified from vendor.is_verified or user-level fields
     final isVerified = vendorData?.isVerified ?? 
                       (json['is_verified'] as bool? ?? false) ||
@@ -122,6 +140,8 @@ class UserProfileModel {
       phone: phone,
       email: json['email'] as String?,
       address: addressValue,
+      governorateId: governorateId,
+      governorateName: governorateName,
       imageUrl: imageUrlValue,
       backgroundImageUrl: json['background_image_url'] as String?,
       isVerified: isVerified,
@@ -142,6 +162,8 @@ class UserProfileModel {
       'phone': phone,
       if (email != null) 'email': email,
       if (address != null) 'address': address,
+      if (governorateId != null) 'governorate_id': governorateId,
+      if (governorateName != null) 'governorate_name': governorateName,
       if (imageUrl != null) 'image_url': imageUrl,
       if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
       'is_verified': isVerified,

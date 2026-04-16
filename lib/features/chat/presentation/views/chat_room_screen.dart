@@ -76,7 +76,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     _currentUserId = int.tryParse(StorageService.getUserId() ?? '');
     _myAvatarUrl = _currentUserAvatarFromStorage();
     // Pre-populate from inbox data (available immediately, before API returns).
-    if (widget.peerPhone != null && widget.peerPhone!.trim().isNotEmpty) {
+    if (StorageService.getUserType() == AppConstants.userTypeCustomer &&
+        widget.peerPhone != null &&
+        widget.peerPhone!.trim().isNotEmpty) {
       _peerPhone = widget.peerPhone!.trim();
     }
     _isVerified = widget.peerIsVerified;
@@ -396,7 +398,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _displayName = displayName;
       _isOnline = online;
       _isVerified = verified;
-      _peerPhone = phone ?? _peerPhone;
+      _peerPhone = userType == AppConstants.userTypeVendor
+          ? null
+          : (phone ?? _peerPhone);
       if (avatarUrl != null) _peerAvatarUrl = avatarUrl;
       if (vendorId != null && vendorId > 0) _peerVendorId = vendorId;
       if (userId != null && userId > 0) _peerUserId = userId;
@@ -555,6 +559,8 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   }
 
   Future<void> _callPeer() async {
+    // Only customers may place calls (e.g. to vendor shop); vendors chat in-app only.
+    if (StorageService.getUserType() != AppConstants.userTypeCustomer) return;
     var number = _peerPhone;
     if ((number == null || number.isEmpty) && _chatDetailsSnapshot != null) {
       number = _phoneFromChatEnvelope(_chatDetailsSnapshot!);
@@ -655,11 +661,13 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
               onPressed: () => Navigator.of(context).pop(),
             ),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.phone),
-                onPressed: _callPeer,
-                tooltip: 'اتصال',
-              ),
+              if (StorageService.getUserType() ==
+                  AppConstants.userTypeCustomer)
+                IconButton(
+                  icon: const Icon(Icons.phone),
+                  onPressed: _callPeer,
+                  tooltip: 'اتصال',
+                ),
             ],
             title: GestureDetector(
               onTap: () => _openVendorProfile(context),

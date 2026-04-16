@@ -13,6 +13,9 @@ class SupplierModel {
   final String? companyName;
   final String? governorate;
 
+  /// Whether the vendor account is verified (`is_verified` from API).
+  final bool isVerified;
+
   SupplierModel({
     required this.id,
     required this.name,
@@ -26,7 +29,14 @@ class SupplierModel {
     this.phone,
     this.companyName,
     this.governorate,
+    this.isVerified = false,
   });
+
+  static bool _verifiedFromMap(Map<String, dynamic> m) {
+    return m['is_verified'] == true ||
+        m['verified'] == true ||
+        m['is_certified'] == true;
+  }
 
   /// Create from JSON
   factory SupplierModel.fromJson(Map<String, dynamic> json) {
@@ -63,6 +73,14 @@ class SupplierModel {
           '';
     }
     
+    var isVerified = _verifiedFromMap(json);
+    if (!isVerified) {
+      final nestedV = json['vendor'];
+      if (nestedV is Map) {
+        isVerified = _verifiedFromMap(Map<String, dynamic>.from(nestedV));
+      }
+    }
+
     return SupplierModel(
       id: id,
       name: name,
@@ -82,6 +100,7 @@ class SupplierModel {
       phone: json['phone'] as String? ?? json['mobile'] as String?,
       companyName: json['company_name'] as String?,
       governorate: json['governorate'] as String? ?? json['governorate_name'] as String?,
+      isVerified: isVerified,
     );
   }
 
@@ -100,6 +119,7 @@ class SupplierModel {
       if (phone != null) 'phone': phone,
       if (companyName != null) 'company_name': companyName,
       if (governorate != null) 'governorate': governorate,
+      'is_verified': isVerified,
     };
   }
 }

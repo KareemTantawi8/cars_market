@@ -32,7 +32,10 @@ class VendorProfileModel {
   final String? imageUrl;
   final String? backgroundImageUrl;
 
-  VendorProfileModel copyWith({bool? isOpen, String? openUntil}) {
+  /// True when this profile is a vendor shop account. False for a customer (e.g. GET /users/:id/profile).
+  final bool isVendorAccount;
+
+  VendorProfileModel copyWith({bool? isOpen, String? openUntil, bool? isVendorAccount}) {
     return VendorProfileModel(
       id: id,
       userAccountId: userAccountId,
@@ -58,6 +61,7 @@ class VendorProfileModel {
       googleMapsUrl: googleMapsUrl,
       imageUrl: imageUrl,
       backgroundImageUrl: backgroundImageUrl,
+      isVendorAccount: isVendorAccount ?? this.isVendorAccount,
     );
   }
 
@@ -86,7 +90,30 @@ class VendorProfileModel {
     this.googleMapsUrl,
     this.imageUrl,
     this.backgroundImageUrl,
+    this.isVendorAccount = true,
   });
+
+  static bool _isVendorAccountFromUserPayload(
+    Map<String, dynamic> userData,
+    Map<String, dynamic>? vendor,
+  ) {
+    final type = (userData['type'] ??
+            userData['user_type'] ??
+            userData['role'] ??
+            '')
+        .toString()
+        .toLowerCase();
+    if (type == 'customer' || type == 'buyer') {
+      return false;
+    }
+    if (type == 'vendor' || type == 'seller') return true;
+    if (vendor == null) return false;
+    final id = vendor['id'];
+    if (id is int) return id > 0;
+    if (id is num) return id > 0;
+    final p = int.tryParse(id?.toString() ?? '');
+    return p != null && p > 0;
+  }
 
   /// Parse governorate - can be String or object {id, name, slug}
   static String? _parseGovernorate(dynamic gov) {
@@ -195,6 +222,7 @@ class VendorProfileModel {
     return VendorProfileModel(
       id: vendorRecordId ?? userAccountId ?? 0,
       userAccountId: userAccountId,
+      isVendorAccount: true,
       name:
           json['name'] as String? ??
           json['vendor_name'] as String? ??
@@ -278,9 +306,14 @@ class VendorProfileModel {
     final userAccountId = (userData['id'] as num?)?.toInt();
 
     // Preferred display name: company_name from vendor, fallback to user name
-    final name = vendor?['company_name']?.toString()?.trim().isNotEmpty == true
-        ? vendor!['company_name'].toString()
-        : userData['name']?.toString() ?? '';
+    final name = () {
+      final v = vendor;
+      if (v != null) {
+        final cn = v['company_name']?.toString().trim();
+        if (cn != null && cn.isNotEmpty) return cn;
+      }
+      return userData['name']?.toString() ?? '';
+    }();
 
     // Brands from vendor.categories
     final brands = <String>[];
@@ -310,16 +343,26 @@ class VendorProfileModel {
       governorate = govRaw['name']?.toString();
     }
 
+    final isVendor = _isVendorAccountFromUserPayload(userData, vendor);
+
     return VendorProfileModel(
       id: vendorRecordId ?? userAccountId ?? 0,
       userAccountId: userAccountId,
+      isVendorAccount: isVendor,
       name: name,
       description: vendor?['description']?.toString(),
-      isVerified: vendor?['is_verified'] == true,
-      isOpen: vendor?['is_online'] == true || vendor?['is_open'] == true,
+      isVerified: vendor?['is_verified'] == true ||
+          userData['is_verified'] == true ||
+          userData['verified'] == true,
+      isOpen: isVendor &&
+          (vendor?['is_online'] == true || vendor?['is_open'] == true),
       responseTimeHuman: vendor?['response_time_human']?.toString(),
-      rating: (vendor?['average_rating'] as num?)?.toDouble() ?? 0.0,
-      ratingCount: (vendor?['ratings_count'] as num?)?.toInt() ?? 0,
+      rating: isVendor
+          ? ((vendor?['average_rating'] as num?)?.toDouble() ?? 0.0)
+          : 0.0,
+      ratingCount: isVendor
+          ? ((vendor?['ratings_count'] as num?)?.toInt() ?? 0)
+          : 0,
       supportedBrands: brands,
       supportedBrandIds: brandIds,
       availableServices: const [],
@@ -361,6 +404,7 @@ class VendorProfileModel {
       if (imageUrl != null) 'image_url': imageUrl,
       if (backgroundImageUrl != null)
         'background_image_url': backgroundImageUrl,
+      'is_vendor_account': isVendorAccount,
     };
   }
 }

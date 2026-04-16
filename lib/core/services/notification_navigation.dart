@@ -39,6 +39,25 @@ bool notificationTypeOpensChat(String? type) {
       (t.contains('search') && t.contains('approv'));
 }
 
+/// Chat/message API rows — must not appear on the orders-only notifications screen
+/// (messages stay in the chat list). Safe if the API already omits them.
+bool isChatMessageNotificationType(String? type) {
+  if (type == null || type.isEmpty) return false;
+  final t = type.toLowerCase();
+  if (t == 'new_message') return true;
+  if (t.contains('new_message')) return true;
+  if (t.contains('message') && t.contains('chat')) return true;
+  // Laravel class suffixes e.g. …\NewChatMessage
+  if (t.contains(r'\') || t.contains('/')) {
+    final seg = t.split(RegExp(r'[\\/]')).last;
+    if (seg.contains('message') &&
+        (seg.contains('chat') || seg.contains('newmessage'))) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /// Opens the right screen for an API notification row or a synthetic map (Reverb / local payload).
 Future<void> navigateFromNotificationMap(
   BuildContext context,

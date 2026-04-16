@@ -149,6 +149,27 @@ class _RequestCardState extends State<_RequestCard> {
   bool _canRate(String? status) =>
       (status == 'accepted' || status == 'completed') && !_rated;
 
+  static bool _mapIsVerified(Map<String, dynamic> m) {
+    return m['is_verified'] == true ||
+        m['verified'] == true ||
+        m['is_certified'] == true;
+  }
+
+  /// True if API marks the accepting vendor as verified (root or nested `vendor`).
+  bool _vendorIsVerified() {
+    for (final key in ['vendor', 'accepted_by']) {
+      final raw = _req[key];
+      if (raw is! Map) continue;
+      final m = Map<String, dynamic>.from(raw);
+      if (_mapIsVerified(m)) return true;
+      final nested = m['vendor'];
+      if (nested is Map && _mapIsVerified(Map<String, dynamic>.from(nested))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final status = _req['status'] as String?;
@@ -158,6 +179,7 @@ class _RequestCardState extends State<_RequestCard> {
     final id = _req['id'];
     final vendorName = (_req['vendor'] as Map?)?['name'] as String? ??
         (_req['accepted_by'] as Map?)?['name'] as String?;
+    final vendorVerified = _vendorIsVerified();
     final ratingData = _req['rating'];
     final existingRating = ratingData is Map ? ratingData['rating'] : null;
 
@@ -214,10 +236,28 @@ class _RequestCardState extends State<_RequestCard> {
                 Icon(Icons.store_outlined,
                     size: 14, color: context.textSecondary),
                 const SizedBox(width: 4),
-                Text(
-                  vendorName,
-                  style: AppTextStyles.bodySmall
-                      .copyWith(color: context.textSecondary),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          vendorName,
+                          style: AppTextStyles.bodySmall
+                              .copyWith(color: context.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (vendorVerified) ...[
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.verified,
+                          size: 14,
+                          color: AppColors.primaryColor,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

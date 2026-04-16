@@ -1,4 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/services/notification_navigation.dart';
 import '../../data/repositories/notifications_repository.dart';
 
 /// Notifications State
@@ -22,7 +24,7 @@ class NotificationsLoaded extends NotificationsState {
     required this.total,
   }) : hasMore = currentPage < lastPage;
 
-  /// Count of unread notifications (includes chat — same as bell + list).
+  /// Unread count for rows shown in this list (orders/requests; chat messages excluded).
   int get unreadCount =>
       notifications.where((n) => isNotificationUnread(n)).length;
 }
@@ -68,7 +70,11 @@ class NotificationsCubit extends Cubit<NotificationsState> {
           ? (meta['total'] as num?)?.toInt() ?? (response['total'] as num?)?.toInt() ?? 0
           : (response['total'] as num?)?.toInt() ?? 0;
 
-      final notificationsList = data.whereType<Map<String, dynamic>>().toList();
+      final notificationsList = data
+          .whereType<Map<String, dynamic>>()
+          .where((n) =>
+              !isChatMessageNotificationType(n['type']?.toString()))
+          .toList();
 
       if (page == 1) {
         emit(NotificationsLoaded(

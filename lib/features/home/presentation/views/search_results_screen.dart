@@ -214,6 +214,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                             imageUrl: supplier.imageUrl,
                             name: supplier.name,
                             isOnline: supplier.isOnline,
+                            isVerified: supplier.isVerified,
                             rating: supplier.rating,
                             reviewCount: supplier.reviewCount,
                             location: supplier.location,
@@ -242,6 +243,7 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
     required String? imageUrl,
     required String name,
     required bool isOnline,
+    bool isVerified = false,
     required double rating,
     required int reviewCount,
     required String location,
@@ -315,10 +317,26 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Name
-                Text(
-                  name,
-                  style: AppTextStyles.headingSmall,
+                // Name + verified
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: AppTextStyles.headingSmall,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isVerified) ...[
+                      const SizedBox(width: 6),
+                      const Icon(
+                        Icons.verified,
+                        color: AppColors.primaryColor,
+                        size: 20,
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 8),
                 // Rating

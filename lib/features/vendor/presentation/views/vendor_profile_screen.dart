@@ -17,6 +17,8 @@ import '../../data/models/vendor_profile_model.dart';
 import '../../../chat/data/repositories/chat_repository.dart';
 import '../../../home/data/repositories/search_requests_repository.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../ads/data/repositories/ads_repository.dart';
+import '../../../ads/data/models/ad_model.dart';
 
 /// Vendor Profile Screen
 class VendorProfileScreen extends StatelessWidget {
@@ -92,43 +94,230 @@ class VendorProfileScreen extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        // Content
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Vendor Info Card
-                _buildVendorInfoCard(context, profile),
-                const SizedBox(height: 24),
-                // Supported Brands Section
-                if (profile.supportedBrands.isNotEmpty)
-                  _buildSupportedBrandsSection(context, profile.supportedBrands),
-                if (profile.supportedBrands.isNotEmpty) const SizedBox(height: 24),
-                // Available Services Section
-                if (profile.availableServices.isNotEmpty)
-                  _buildAvailableServicesSection(context, profile.availableServices),
-                if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
-                // Shop phone (if different from account phone)
-                if (profile.shopPhone != null &&
-                    profile.shopPhone!.isNotEmpty) ...[
-                  _buildShopPhoneRow(context, profile.shopPhone!),
-                  const SizedBox(height: 16),
-                ],
-                // Action Buttons (WhatsApp only)
-                _buildActionButtons(context, profile),
-                const SizedBox(height: 24),
-                // Location Section - only show if profile has actual location data and show as text only
-                if (profile.address != null && profile.address!.isNotEmpty)
-                  _buildTextAddressSection(context, profile),
-                const SizedBox(height: 32),
-              ],
-            ),
+            child: profile.isVendorAccount
+                ? _buildVendorProfileBody(context, profile)
+                : _buildCustomerProfileBody(context, profile),
           ),
         ),
       ],
     );
+  }
+
+  /// Vendor shop: brands, rating, address, verified, etc.
+  Widget _buildVendorProfileBody(
+      BuildContext context, VendorProfileModel profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildVendorInfoCard(context, profile),
+        const SizedBox(height: 24),
+        if (profile.supportedBrands.isNotEmpty)
+          _buildSupportedBrandsSection(context, profile.supportedBrands),
+        if (profile.supportedBrands.isNotEmpty) const SizedBox(height: 24),
+        if (profile.availableServices.isNotEmpty)
+          _buildAvailableServicesSection(context, profile.availableServices),
+        if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
+        if (profile.shopPhone != null && profile.shopPhone!.isNotEmpty) ...[
+          _buildShopPhoneRow(context, profile.shopPhone!),
+          const SizedBox(height: 16),
+        ],
+        _buildActionButtons(context, profile),
+        const SizedBox(height: 24),
+        if (profile.address != null && profile.address!.isNotEmpty)
+          _buildTextAddressSection(context, profile),
+        if (profile.address != null && profile.address!.isNotEmpty)
+          const SizedBox(height: 24),
+        _UserPublicAdsSection(userId: profile.userAccountId ?? profile.id),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  /// Customer account: name, phone, ads. No vendor metrics or «تقييم التاجر».
+  Widget _buildCustomerProfileBody(
+      BuildContext context, VendorProfileModel profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCustomerInfoCard(context, profile),
+        const SizedBox(height: 24),
+        _UserPublicAdsSection(userId: profile.userAccountId ?? profile.id),
+        const SizedBox(height: 24),
+        _buildCustomerActionButtons(context, profile),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildCustomerInfoCard(
+      BuildContext context, VendorProfileModel profile) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 42,
+            backgroundColor: context.surfaceBg,
+            backgroundImage:
+                profile.imageUrl != null && profile.imageUrl!.isNotEmpty
+                    ? CachedNetworkImageProvider(profile.imageUrl!)
+                    : null,
+            child: profile.imageUrl == null || profile.imageUrl!.isEmpty
+                ? Icon(
+                    Icons.person_rounded,
+                    size: 40,
+                    color: AppColors.primaryColor,
+                  )
+                : null,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  profile.name,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.headingMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (profile.isVerified) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.verified_rounded,
+                  color: AppColors.primaryColor,
+                  size: 20,
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (profile.phone != null && profile.phone!.trim().isNotEmpty)
+            Row(
+              children: [
+                Icon(Icons.phone_outlined,
+                    size: 18, color: context.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    profile.phone!,
+                    textDirection: TextDirection.ltr,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerActionButtons(
+      BuildContext context, VendorProfileModel profile) {
+    final myId = int.tryParse(StorageService.getUserId() ?? '');
+    final otherId = profile.userAccountId ?? profile.id;
+    final canChat =
+        myId != null && otherId > 0 && myId != otherId;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'التواصل',
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (canChat)
+            _buildFilledActionButton(
+              context,
+              title: 'بدء محادثة',
+              icon: Icons.chat_bubble_outline_rounded,
+              color: AppColors.primaryColor,
+              onPressed: () => _openChatWithUser(context, profile),
+            ),
+          if (canChat) const SizedBox(height: 10),
+          _buildFilledActionButton(
+            context,
+            title: 'واتساب',
+            icon: Icons.phone_in_talk_rounded,
+            color: AppColors.success,
+            onPressed: () => _openWhatsApp(profile.whatsapp ?? profile.phone),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openChatWithUser(
+      BuildContext context, VendorProfileModel profile) async {
+    final otherUserId = profile.userAccountId ?? profile.id;
+    if (otherUserId <= 0) {
+      if (context.mounted) {
+        CustomToast.showError(context, 'لا يمكن تحديد حساب المستخدم للمحادثة.');
+      }
+      return;
+    }
+    try {
+      final chatId =
+          await ChatRepository().createChatWithUser(otherUserId);
+      if (!context.mounted) return;
+      if (chatId != null) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.chatRoom,
+          arguments: {
+            'chatId': chatId.toString(),
+            'chatName': profile.name,
+            'peerPhone': profile.phone,
+            'peerIsVerified': profile.isVerified,
+            'peerAvatarUrl': profile.imageUrl,
+          },
+        );
+      } else {
+        CustomToast.showError(
+          context,
+          'لا يمكن بدء المحادثة الآن. جرّب واتساب أو أعد المحاولة لاحقاً.',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        CustomToast.showError(
+          context,
+          'تعذّر فتح المحادثة. ${e.toString().replaceAll('Exception: ', '')}',
+        );
+      }
+    }
   }
 
   Widget _buildVendorInfoCard(BuildContext context, VendorProfileModel profile) {
@@ -813,6 +1002,227 @@ class VendorProfileScreen extends StatelessWidget {
               child: const Text('إرسال'),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /users/:id/ads — public listings on profile visit
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _UserPublicAdsSection extends StatefulWidget {
+  final int userId;
+
+  const _UserPublicAdsSection({required this.userId});
+
+  @override
+  State<_UserPublicAdsSection> createState() => _UserPublicAdsSectionState();
+}
+
+class _UserPublicAdsSectionState extends State<_UserPublicAdsSection> {
+  late final Future<List<AdModel>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AdsRepository().getAdsByUserId(widget.userId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.userId <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('الإعلانات', style: AppTextStyles.headingSmall),
+        const SizedBox(height: 12),
+        FutureBuilder<List<AdModel>>(
+          future: _future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: LoadingIndicator()),
+              );
+            }
+            if (snapshot.hasError) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: context.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.inputBorderColor),
+                ),
+                child: Text(
+                  'تعذّر تحميل الإعلانات.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: context.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+            final ads = snapshot.data ?? [];
+            if (ads.isEmpty) {
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                decoration: BoxDecoration(
+                  color: context.cardBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.inputBorderColor),
+                ),
+                child: Text(
+                  'لا توجد إعلانات لعرضها.',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: context.textSecondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+            return Column(
+              children: ads
+                  .map(
+                    (ad) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _UserPublicAdTile(ad: ad),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _UserPublicAdTile extends StatelessWidget {
+  final AdModel ad;
+
+  const _UserPublicAdTile({required this.ad});
+
+  String? _imageUrl() {
+    final path = ad.firstImageUrl;
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    final base = AppConstants.storageBaseUrl.endsWith('/')
+        ? AppConstants.storageBaseUrl.substring(
+            0,
+            AppConstants.storageBaseUrl.length - 1,
+          )
+        : AppConstants.storageBaseUrl;
+    final sanitized = path.startsWith('/') ? path.substring(1) : path;
+    return '$base/$sanitized';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _imageUrl();
+    return Material(
+      color: context.cardBg,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.adDetails,
+          arguments: {'adId': ad.id},
+        ),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: context.inputBorderColor),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 76,
+                  height: 76,
+                  child: url != null
+                      ? CachedNetworkImage(
+                          imageUrl: url,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => ColoredBox(
+                            color: context.surfaceBg,
+                            child: Icon(
+                              Icons.directions_car_outlined,
+                              color: context.textHint,
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => ColoredBox(
+                            color: context.surfaceBg,
+                            child: Icon(
+                              Icons.directions_car_outlined,
+                              color: context.textHint,
+                            ),
+                          ),
+                        )
+                      : ColoredBox(
+                          color: context.surfaceBg,
+                          child: Icon(
+                            Icons.directions_car_outlined,
+                            color: context.textHint,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ad.title,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      ad.priceFormatted,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (ad.locationLabel != null &&
+                        ad.locationLabel!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        ad.locationLabel!.trim(),
+                        style: AppTextStyles.caption.copyWith(
+                          color: context.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_left,
+                color: context.textSecondary,
+                size: 22,
+              ),
+            ],
+          ),
         ),
       ),
     );

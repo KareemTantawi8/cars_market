@@ -271,4 +271,66 @@ class UserProfileRepository {
       throw Exception(e.message ?? 'خطأ في الشبكة');
     }
   }
+
+  /// PUT /api/v1/profile/address — Body: `{ governorate_id, address }`
+  Future<UserProfileModel> updateProfileAddress({
+    required int governorateId,
+    required String address,
+  }) async {
+    _log('📍 PUT ${ApiEndpoints.profileAddress} governorateId=$governorateId');
+    try {
+      final response = await _apiClient.put(
+        ApiEndpoints.profileAddress,
+        data: {
+          'governorate_id': governorateId,
+          'address': address.trim(),
+        },
+      );
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('فشل التحديث: ${response.statusCode}');
+      }
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        throw Exception('استجابة غير صالحة');
+      }
+      final inner = data['data'];
+      if (inner is Map<String, dynamic>) {
+        final u = inner['user'];
+        if (u is Map<String, dynamic>) {
+          return UserProfileModel.fromJson(u);
+        }
+      }
+      return await getCurrentUserProfile();
+    } on DioException catch (e) {
+      _log('❌ updateProfileAddress: ${e.message}');
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        if (e.response!.statusCode == 422 && errorData is Map<String, dynamic>) {
+          final msg = errorData['message']?.toString() ?? 'تحقق من البيانات';
+          final errors = errorData['errors'];
+          if (errors is Map<String, dynamic>) {
+            final parts = <String>[];
+            for (final entry in errors.entries) {
+              final v = entry.value;
+              if (v is List && v.isNotEmpty) {
+                parts.add(v.first.toString());
+              }
+            }
+            if (parts.isNotEmpty) {
+              throw Exception(parts.join('\n'));
+            }
+          }
+          throw Exception(msg);
+        }
+        if (errorData is Map<String, dynamic>) {
+          throw Exception(
+            errorData['message']?.toString() ??
+                errorData['error']?.toString() ??
+                'فشل تحديث العنوان',
+          );
+        }
+      }
+      throw Exception(e.message ?? 'خطأ في الشبكة');
+    }
+  }
 }

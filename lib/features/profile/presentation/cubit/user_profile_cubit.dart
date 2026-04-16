@@ -92,6 +92,29 @@ class UserProfileCubit extends Cubit<UserProfileState> {
     }
   }
 
+  /// PUT /profile/address — updates governorate + address, then emits new profile.
+  Future<void> updateProfileAddress({
+    required int governorateId,
+    required String address,
+  }) async {
+    final current = state is UserProfileLoaded
+        ? (state as UserProfileLoaded).profile
+        : state is UserProfileImagesUploaded
+            ? (state as UserProfileImagesUploaded).profile
+            : null;
+    if (current == null) return;
+    try {
+      final profile = await _userProfileRepository.updateProfileAddress(
+        governorateId: governorateId,
+        address: address,
+      );
+      emit(UserProfileLoaded(profile));
+    } catch (e) {
+      emit(UserProfileLoaded(current));
+      rethrow;
+    }
+  }
+
   /// Reset to initial state
   void reset() {
     emit(UserProfileInitial());

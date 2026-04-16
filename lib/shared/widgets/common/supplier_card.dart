@@ -16,6 +16,9 @@ class SupplierCard extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onTap;
 
+  /// When true, shows verified badge (vendor `is_verified` from API).
+  final bool isVerified;
+
   const SupplierCard({
     super.key,
     required this.name,
@@ -27,6 +30,7 @@ class SupplierCard extends StatelessWidget {
     required this.distance,
     this.imageUrl,
     this.onTap,
+    this.isVerified = false,
   });
 
   @override
@@ -81,6 +85,14 @@ class SupplierCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.verified,
+                            color: AppColors.primaryColor,
+                            size: 18,
+                          ),
+                        ],
                         const SizedBox(width: 8),
                         OnlineIndicator(isOnline: isOnline),
                         const SizedBox(width: 4),

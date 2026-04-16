@@ -149,14 +149,34 @@ class AdUserModel {
       isVerified = m['is_verified'] == true ||
           m['verified'] == true ||
           m['is_certified'] == true;
-      for (final k in ['avatar', 'image_url', 'image', 'logo', 'photo']) {
+      for (final k in [
+        'avatar',
+        'image_url',
+        'image',
+        'logo',
+        'photo',
+        'profile_image',
+        'profile_image_url',
+      ]) {
         final v = m[k]?.toString().trim();
         if (v != null && v.isNotEmpty) { avatarUrl = v; break; }
       }
     }
+    if (!isVerified) {
+      isVerified = json['is_verified'] == true ||
+          json['verified'] == true ||
+          json['is_certified'] == true;
+    }
     // Fallback: avatar may be on the user object itself
     if (avatarUrl == null) {
-      for (final k in ['avatar', 'image_url', 'image', 'photo']) {
+      for (final k in [
+        'avatar',
+        'image_url',
+        'image',
+        'photo',
+        'profile_image',
+        'profile_image_url',
+      ]) {
         final v = json[k]?.toString().trim();
         if (v != null && v.isNotEmpty) { avatarUrl = v; break; }
       }

@@ -91,9 +91,14 @@ class VendorProfileRepository {
       }
       final data = response.data;
       if (data is! Map<String, dynamic>) throw Exception('Invalid response format');
-      final payload = data['data'] is Map<String, dynamic>
+      Map<String, dynamic> payload = data['data'] is Map<String, dynamic>
           ? data['data'] as Map<String, dynamic>
           : data;
+      // Some backends nest the user under `user` inside `data`.
+      final userNested = payload['user'];
+      if (userNested is Map<String, dynamic>) {
+        payload = userNested;
+      }
       final result = VendorProfileModel.fromUserProfileJson(payload);
       _log('✅ Parsed vendor profile from user profile: ${result.name}');
       return result;

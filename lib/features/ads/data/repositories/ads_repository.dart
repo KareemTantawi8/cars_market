@@ -189,6 +189,39 @@ class AdsRepository {
     _ensureSuccess(response);
   }
 
+  /// GET /users/:userId/ads — public ads for that user account.
+  Future<List<AdModel>> getAdsByUserId(
+    int userId, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    if (userId <= 0) return [];
+    final response = await _api.get(
+      ApiEndpoints.userPublicAds(userId),
+      queryParameters: {'page': page, 'per_page': perPage},
+    );
+    _ensureSuccess(response);
+    final data = response.data;
+    if (data is! Map<String, dynamic>) {
+      throw Exception('Invalid response: expected map');
+    }
+    final raw = data['data'];
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .map((map) {
+      if ((map['user_id'] == null || map['user_id'] == 0) &&
+          map['user'] is Map) {
+        final uid = (map['user'] as Map)['id'];
+        if (uid != null) {
+          map['user_id'] = uid is int ? uid : (uid is num ? uid.toInt() : int.tryParse(uid.toString()) ?? 0);
+        }
+      }
+      return AdModel.fromJson(map);
+    }).toList();
+  }
+
   /// GET /my-ads - List current user's ads (paginated)
   Future<PaginatedAdsResponse> getMyAds({
     int page = 1,

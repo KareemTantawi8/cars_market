@@ -18,6 +18,8 @@ import '../../../../shared/widgets/common/custom_toast.dart';
 import '../cubit/user_profile_cubit.dart';
 import '../../data/models/user_profile_model.dart';
 import '../../data/models/vendor_profile_data.dart';
+import '../../../home/data/repositories/category_repository.dart';
+import '../../../home/data/models/category_models.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final bool isEmbeddedInTab;
@@ -120,9 +122,12 @@ class _ProfileContent extends StatelessWidget {
 
                     // Info card
                     _InfoCard(profile: profile),
+                    const SizedBox(height: 16),
+                    _AddressSection(profile: profile),
 
-                    // Vendor section
-                    if (profile.vendor != null) ...[
+                    // Vendor-only block (rating, brands, shop metrics — not for customers)
+                    if (profile.userType == AppConstants.userTypeVendor &&
+                        profile.vendor != null) ...[
                       const SizedBox(height: 20),
                       _VendorSection(vendor: profile.vendor!),
                     ],
@@ -247,7 +252,8 @@ class _ProfileHeader extends StatelessWidget {
                       ? AppColors.primaryColor
                       : AppColors.accentColor,
                 ),
-                if (profile.isVerified) ...[
+                if (profile.userType == AppConstants.userTypeVendor &&
+                    profile.isVerified) ...[
                   const SizedBox(width: 8),
                   _HeaderBadge(
                     label: 'موثّق',
@@ -1131,6 +1137,314 @@ class _LogoutButton extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Address (PUT /profile/address)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AddressSection extends StatelessWidget {
+  final UserProfileModel profile;
+
+  const _AddressSection({required this.profile});
+
+  @override
+  Widget build(BuildContext context) {
+    final gov = profile.governorateName?.trim();
+    final addr = profile.address?.trim();
+    final summary = [
+      if (gov != null && gov.isNotEmpty) gov,
+      if (addr != null && addr.isNotEmpty) addr,
+    ].join(' — ');
+    final display =
+        summary.isNotEmpty ? summary : 'اضغط لتحديد المحافظة والعنوان';
+
+    return Material(
+      color: context.cardBg,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () {
+          final cubit = context.read<UserProfileCubit>();
+          _showAddressEditDialog(context, profile, cubit);
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: context.inputBorderColor),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.primaryColor,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'العنوان',
+                      style: AppTextStyles.caption
+                          .copyWith(color: context.textSecondary),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      display,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.edit_outlined,
+                  size: 18, color: context.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> _showAddressEditDialog(
+  BuildContext context,
+  UserProfileModel profile,
+  UserProfileCubit cubit,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => _AddressEditDialog(
+      profile: profile,
+      cubit: cubit,
+      parentContext: context,
+    ),
+  );
+}
+
+class _AddressEditDialog extends StatefulWidget {
+  final UserProfileModel profile;
+  final UserProfileCubit cubit;
+  final BuildContext parentContext;
+
+  const _AddressEditDialog({
+    required this.profile,
+    required this.cubit,
+    required this.parentContext,
+  });
+
+  @override
+  State<_AddressEditDialog> createState() => _AddressEditDialogState();
+}
+
+class _AddressEditDialogState extends State<_AddressEditDialog> {
+  late final TextEditingController _addressController;
+  List<GovernorateModel>? _governorates;
+  int? _selectedGovernorateId;
+  bool _loading = true;
+  String? _loadError;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _addressController =
+        TextEditingController(text: widget.profile.address ?? '');
+    _selectedGovernorateId = widget.profile.governorateId;
+    _fetchGovernorates();
+  }
+
+  Future<void> _fetchGovernorates() async {
+    try {
+      final list = await CategoryRepository().getGovernorates();
+      if (!mounted) return;
+      setState(() {
+        _governorates = list;
+        _loading = false;
+        if (_selectedGovernorateId != null &&
+            !list.any((g) => g.id == _selectedGovernorateId)) {
+          _selectedGovernorateId = null;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loadError = e.toString().replaceAll('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final gid = _selectedGovernorateId;
+    final text = _addressController.text.trim();
+    if (gid == null || gid <= 0) {
+      CustomToast.showError(widget.parentContext, 'اختر المحافظة');
+      return;
+    }
+    if (text.isEmpty) {
+      CustomToast.showError(widget.parentContext, 'أدخل العنوان التفصيلي');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await widget.cubit.updateProfileAddress(
+        governorateId: gid,
+        address: text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      if (widget.parentContext.mounted) {
+        CustomToast.showSuccess(
+          widget.parentContext,
+          'تم تحديث العنوان بنجاح',
+        );
+      }
+    } catch (e) {
+      if (widget.parentContext.mounted) {
+        CustomToast.showError(
+          widget.parentContext,
+          e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: context.cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text('تعديل العنوان', style: AppTextStyles.headingSmall),
+      content: SingleChildScrollView(
+        child: _loading
+            ? const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: LoadingIndicator()),
+              )
+            : _loadError != null
+                ? Text(
+                    _loadError!,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.error,
+                    ),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'المحافظة',
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.textSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: _selectedGovernorateId,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: context.inputBg,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: context.inputBorderColor),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: context.inputBorderColor),
+                          ),
+                        ),
+                        items: _governorates!
+                            .map(
+                              (g) => DropdownMenuItem(
+                                value: g.id,
+                                child: Text(g.displayName),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _saving
+                            ? null
+                            : (v) => setState(() => _selectedGovernorateId = v),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'العنوان التفصيلي',
+                        style: AppTextStyles.caption
+                            .copyWith(color: context.textSecondary),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _addressController,
+                        maxLines: 3,
+                        enabled: !_saving,
+                        decoration: InputDecoration(
+                          hintText: 'الشارع، الحي، أقرب معلم…',
+                          filled: true,
+                          fillColor: context.inputBg,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                BorderSide(color: context.inputBorderColor),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: Text(
+            'إلغاء',
+            style: AppTextStyles.bodySmall
+                .copyWith(color: context.textSecondary),
+          ),
+        ),
+        TextButton(
+          onPressed: (_loading || _loadError != null || _saving)
+              ? null
+              : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  'حفظ',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
-import '../../../../core/services/storage_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
@@ -590,28 +589,6 @@ class _AdCardState extends State<_AdCard> {
     );
   }
 
-  void _openVendorProfile(BuildContext context) {
-    final user = ad.user;
-    if (user == null) return;
-    final vid = user.vendorRecordId;
-    if (vid != null && vid > 0) {
-      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
-        'vendorId': vid.toString(),
-        'vendorName': user.displayName,
-        'vendorProfileByUserId': false,
-      });
-    } else if (user.id > 0) {
-      Navigator.pushNamed(context, AppRoutes.vendorProfile, arguments: {
-        'vendorId': user.id.toString(),
-        'vendorName': user.displayName,
-        'vendorProfileByUserId': true,
-      });
-    }
-  }
-
-  bool get _isCustomer =>
-      StorageService.getUserType() != AppConstants.userTypeVendor;
-
   @override
   Widget build(BuildContext context) {
     final urls = _imageUrls;
@@ -800,14 +777,6 @@ class _AdCardState extends State<_AdCard> {
                 ),
               ),
             ),
-            // ── Vendor row ────────────────────────────────────────────────
-            if (_isCustomer &&
-                ad.user != null &&
-                ad.user!.displayName.isNotEmpty)
-              _VendorRow(
-                user: ad.user!,
-                onTap: () => _openVendorProfile(context),
-              ),
           ],
         ),
       ),
@@ -823,93 +792,4 @@ class _AdCardState extends State<_AdCard> {
       ),
     );
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Vendor Row
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _VendorRow extends StatelessWidget {
-  final AdUserModel user;
-  final VoidCallback onTap;
-
-  const _VendorRow({required this.user, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: context.surfaceBg,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            children: [
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 13, color: AppColors.primaryColor),
-              const Spacer(),
-              Flexible(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (user.isVerified) ...[
-                      const Icon(Icons.verified,
-                          size: 15, color: AppColors.primaryColor),
-                      const SizedBox(width: 4),
-                    ],
-                    Flexible(
-                      child: Text(
-                        user.displayName,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: context.textPrimary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              _VendorAvatar(url: user.avatarUrl, size: 30),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _VendorAvatar extends StatelessWidget {
-  final String? url;
-  final double size;
-
-  const _VendorAvatar({required this.url, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: context.inputBg),
-      child: ClipOval(
-        child: url != null && url!.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: url!,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => _icon(context),
-                errorWidget: (_, __, ___) => _icon(context),
-              )
-            : _icon(context),
-      ),
-    );
-  }
-
-  Widget _icon(BuildContext context) => Icon(
-        Icons.store_outlined,
-        size: size * 0.55,
-        color: context.textSecondary,
-      );
 }

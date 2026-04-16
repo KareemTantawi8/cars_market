@@ -235,22 +235,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.settings),
-          onPressed: () {
-            // TODO: Navigate to settings
-          },
-        ),
+        automaticallyImplyLeading: false,
         title: Text('المحادثات', style: AppTextStyles.headingMedium),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search
-            },
-          ),
-        ],
       ),
       body: BlocConsumer<ChatCubit, ChatState>(
         listener: (context, state) {
@@ -323,7 +310,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         arguments: {
                           'chatId': chatId,
                           'chatName': chatName,
-                          'peerPhone': _inboxPeerPhone(chat),
+                          'peerPhone':
+                              StorageService.getUserType() ==
+                                  AppConstants.userTypeCustomer
+                              ? _inboxPeerPhone(chat)
+                              : null,
                           'peerIsVerified': isVerified,
                           'peerAvatarUrl': avatarUrl,
                           'peerVendorId': _inboxVendorId(chat),
