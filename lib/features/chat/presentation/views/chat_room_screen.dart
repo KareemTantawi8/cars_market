@@ -79,7 +79,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     if (StorageService.getUserType() == AppConstants.userTypeCustomer &&
         widget.peerPhone != null &&
         widget.peerPhone!.trim().isNotEmpty) {
-      _peerPhone = widget.peerPhone!.trim();
+      _peerPhone = _sanitizeDialNumber(widget.peerPhone!.trim());
     }
     _isVerified = widget.peerIsVerified;
     if (widget.peerAvatarUrl != null &&
@@ -330,6 +330,18 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         if (n != null) return n;
       }
     }
+    // Fallback for payloads where unified participant is minimal,
+    // and complete phone data is nested in legacy keys.
+    for (final key in ['vendor', 'seller', 'shop', 'customer', 'buyer', 'client']) {
+      n = _phoneFromParticipant(chat[key]);
+      if (n != null) return n;
+    }
+    // Some APIs keep phone on ad owner nested inside `ad.user`.
+    final ad = chat['ad'];
+    if (ad is Map) {
+      n = _phoneFromParticipant(Map<String, dynamic>.from(ad)['user']);
+      if (n != null) return n;
+    }
     return null;
   }
 
@@ -561,7 +573,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Future<void> _callPeer() async {
     // Only customers may place calls (e.g. to vendor shop); vendors chat in-app only.
     if (StorageService.getUserType() != AppConstants.userTypeCustomer) return;
-    var number = _peerPhone;
+    var number = _sanitizeDialNumber(_peerPhone);
     if ((number == null || number.isEmpty) && _chatDetailsSnapshot != null) {
       number = _phoneFromChatEnvelope(_chatDetailsSnapshot!);
     }

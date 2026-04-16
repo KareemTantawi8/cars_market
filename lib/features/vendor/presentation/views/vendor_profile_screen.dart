@@ -109,10 +109,13 @@ class VendorProfileScreen extends StatelessWidget {
   /// Vendor shop: brands, rating, address, verified, etc.
   Widget _buildVendorProfileBody(
       BuildContext context, VendorProfileModel profile) {
+    final adsUserId = _resolveAdsOwnerUserId(profile);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildVendorInfoCard(context, profile),
+        const SizedBox(height: 24),
+        _buildVendorPreciseDetailsSection(context, profile),
         const SizedBox(height: 24),
         if (profile.supportedBrands.isNotEmpty)
           _buildSupportedBrandsSection(context, profile.supportedBrands),
@@ -120,8 +123,8 @@ class VendorProfileScreen extends StatelessWidget {
         if (profile.availableServices.isNotEmpty)
           _buildAvailableServicesSection(context, profile.availableServices),
         if (profile.availableServices.isNotEmpty) const SizedBox(height: 24),
-        if (profile.shopPhone != null && profile.shopPhone!.isNotEmpty) ...[
-          _buildShopPhoneRow(context, profile.shopPhone!),
+        if (_displayPhone(profile) != null) ...[
+          _buildShopPhoneRow(context, _displayPhone(profile)!),
           const SizedBox(height: 16),
         ],
         _buildActionButtons(context, profile),
@@ -130,7 +133,7 @@ class VendorProfileScreen extends StatelessWidget {
           _buildTextAddressSection(context, profile),
         if (profile.address != null && profile.address!.isNotEmpty)
           const SizedBox(height: 24),
-        _UserPublicAdsSection(userId: profile.userAccountId ?? profile.id),
+        _UserPublicAdsSection(userId: adsUserId),
         const SizedBox(height: 32),
       ],
     );
@@ -139,12 +142,15 @@ class VendorProfileScreen extends StatelessWidget {
   /// Customer account: name, phone, ads. No vendor metrics or «تقييم التاجر».
   Widget _buildCustomerProfileBody(
       BuildContext context, VendorProfileModel profile) {
+    final adsUserId = _resolveAdsOwnerUserId(profile);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCustomerInfoCard(context, profile),
         const SizedBox(height: 24),
-        _UserPublicAdsSection(userId: profile.userAccountId ?? profile.id),
+        _buildCustomerPreciseDetailsSection(context, profile),
+        const SizedBox(height: 24),
+        _UserPublicAdsSection(userId: adsUserId),
         const SizedBox(height: 24),
         _buildCustomerActionButtons(context, profile),
         const SizedBox(height: 32),
@@ -152,19 +158,81 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildVendorPreciseDetailsSection(
+    BuildContext context,
+    VendorProfileModel profile,
+  ) {
+    final brands = profile.supportedBrands
+        .where((brand) => brand.trim().isNotEmpty)
+        .join('، ');
+    final address = _displayAddress(profile);
+    final responseSpeed = _displayResponseSpeed(profile);
+
+    return _buildDetailsCard(
+      context,
+      title: 'تفاصيل التاجر',
+      rows: [
+        _ProfileDetailItem(label: 'الاسم', value: profile.name),
+        _ProfileDetailItem(
+          label: 'الرقم',
+          value: _displayPhone(profile) ?? 'غير متوفر',
+          isLtrValue: true,
+        ),
+        _ProfileDetailItem(
+          label: 'التقييم',
+          value: '${profile.rating.toStringAsFixed(1)} (${profile.ratingCount} تقييم)',
+        ),
+        _ProfileDetailItem(
+          label: 'الماركات',
+          value: brands.isNotEmpty ? brands : 'غير متوفر',
+        ),
+        _ProfileDetailItem(
+          label: 'العنوان',
+          value: address.isNotEmpty ? address : 'غير متوفر',
+        ),
+        _ProfileDetailItem(
+          label: 'سرعة الرد',
+          value: responseSpeed,
+        ),
+        _ProfileDetailItem(
+          label: 'الحساب',
+          value: profile.isVerified ? 'موثّق' : 'غير موثّق',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCustomerPreciseDetailsSection(
+    BuildContext context,
+    VendorProfileModel profile,
+  ) {
+    return _buildDetailsCard(
+      context,
+      title: 'تفاصيل العميل',
+      rows: [
+        _ProfileDetailItem(label: 'الاسم', value: profile.name),
+        _ProfileDetailItem(
+          label: 'الرقم',
+          value: _displayPhone(profile) ?? 'غير متوفر',
+          isLtrValue: true,
+        ),
+      ],
+    );
+  }
+
   Widget _buildCustomerInfoCard(
       BuildContext context, VendorProfileModel profile) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
         color: context.cardBg,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -195,6 +263,7 @@ class VendorProfileScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: AppTextStyles.headingMedium.copyWith(
                     fontWeight: FontWeight.w700,
+                    fontSize: 22,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -223,6 +292,7 @@ class VendorProfileScreen extends StatelessWidget {
                     textDirection: TextDirection.ltr,
                     style: AppTextStyles.bodyMedium.copyWith(
                       fontWeight: FontWeight.w600,
+                      fontSize: 17,
                     ),
                   ),
                 ),
@@ -322,21 +392,87 @@ class VendorProfileScreen extends StatelessWidget {
 
   Widget _buildVendorInfoCard(BuildContext context, VendorProfileModel profile) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
       decoration: BoxDecoration(
         color: context.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.primaryColor.withOpacity(0.22),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: AppColors.primaryColor.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primaryColor.withOpacity(0.14),
+                  AppColors.primaryColor.withOpacity(0.06),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.storefront_rounded,
+                  size: 18,
+                  color: AppColors.primaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'حساب تاجر',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const Spacer(),
+                if (profile.isVerified)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          size: 14,
+                          color: AppColors.success,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'موثّق',
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.success,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           CircleAvatar(
             radius: 42,
             backgroundColor: context.surfaceBg,
@@ -362,6 +498,7 @@ class VendorProfileScreen extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: AppTextStyles.headingMedium.copyWith(
                     fontWeight: FontWeight.w700,
+                    fontSize: 22,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -385,6 +522,7 @@ class VendorProfileScreen extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(
                 color: context.textSecondary,
                 height: 1.35,
+                fontSize: 16,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -438,38 +576,48 @@ class VendorProfileScreen extends StatelessWidget {
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: context.surfaceBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: color, size: 18),
+            child: Icon(icon, color: color, size: 20),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             value,
             style: AppTextStyles.bodyMedium.copyWith(
               color: color,
               fontWeight: FontWeight.bold,
+              fontSize: 16,
             ),
             textAlign: TextAlign.center,
           ),
           if (subtitle.isNotEmpty) ...[
-            const SizedBox(height: 2),
+            const SizedBox(height: 4),
             Text(
               subtitle,
               style: AppTextStyles.caption.copyWith(
                 color: context.textSecondary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -487,7 +635,10 @@ class VendorProfileScreen extends StatelessWidget {
       children: [
         Text(
           'الماركات المدعومة',
-          style: AppTextStyles.headingSmall,
+          style: AppTextStyles.headingSmall.copyWith(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 16),
         Row(
@@ -507,19 +658,32 @@ class VendorProfileScreen extends StatelessWidget {
 
   Widget _buildBrandCard(BuildContext context, String brandName) {
     return Container(
-      height: 80,
+      height: 92,
       decoration: BoxDecoration(
         color: context.surfaceBg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.primaryColor.withOpacity(0.2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryColor.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.directions_car, color: AppColors.primaryColor, size: 28),
+          Icon(Icons.directions_car, color: AppColors.primaryColor, size: 30),
           const SizedBox(height: 8),
           Text(
             brandName,
-            style: AppTextStyles.caption,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -535,7 +699,10 @@ class VendorProfileScreen extends StatelessWidget {
       children: [
         Text(
           'الخدمات المتوفرة',
-          style: AppTextStyles.headingSmall,
+          style: AppTextStyles.headingSmall.copyWith(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: 16),
         Wrap(
@@ -549,15 +716,18 @@ class VendorProfileScreen extends StatelessWidget {
 
   Widget _buildServiceChip(BuildContext context, String serviceName) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 13),
       decoration: BoxDecoration(
         color: context.surfaceBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: context.inputBorderColor),
       ),
       child: Text(
         serviceName,
-        style: AppTextStyles.bodySmall,
+        style: AppTextStyles.bodySmall.copyWith(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -626,6 +796,137 @@ class VendorProfileScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildDetailsCard(
+    BuildContext context, {
+    required String title,
+    required List<_ProfileDetailItem> rows,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: context.inputBorderColor.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.bodyMedium.copyWith(
+              fontWeight: FontWeight.w700,
+              color: context.textPrimary,
+              fontSize: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...rows.asMap().entries.map((entry) {
+            final index = entry.key;
+            final row = entry.value;
+            return Column(
+              children: [
+                _buildDetailRow(
+                  context,
+                  label: row.label,
+                  value: row.value,
+                  isLtrValue: row.isLtrValue,
+                ),
+                if (index < rows.length - 1)
+                  Divider(
+                    color: context.inputBorderColor.withOpacity(0.45),
+                    height: 18,
+                  ),
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required String label,
+    required String value,
+    bool isLtrValue = false,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: context.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 5,
+          child: Text(
+            value,
+            textAlign: TextAlign.start,
+            textDirection: isLtrValue ? TextDirection.ltr : TextDirection.rtl,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: context.textPrimary,
+              fontWeight: FontWeight.w700,
+              fontSize: 17,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  int _resolveAdsOwnerUserId(VendorProfileModel profile) {
+    final accountId = profile.userAccountId;
+    if (accountId != null && accountId > 0) return accountId;
+
+    final requestedId = int.tryParse(vendorId);
+    if (bySellerUserId && requestedId != null && requestedId > 0) {
+      return requestedId;
+    }
+    return profile.id;
+  }
+
+  String? _displayPhone(VendorProfileModel profile) {
+    final candidate = profile.shopPhone?.trim().isNotEmpty == true
+        ? profile.shopPhone
+        : profile.phone;
+    final phone = candidate?.trim();
+    if (phone == null || phone.isEmpty) return null;
+    return phone;
+  }
+
+  String _displayAddress(VendorProfileModel profile) {
+    final parts = <String>[];
+    final governorate = profile.governorate?.trim();
+    final address = profile.address?.trim();
+    if (governorate != null && governorate.isNotEmpty) parts.add(governorate);
+    if (address != null && address.isNotEmpty) parts.add(address);
+    return parts.join(' - ');
+  }
+
+  String _displayResponseSpeed(VendorProfileModel profile) {
+    final human = profile.responseTimeHuman?.trim();
+    if (human != null && human.isNotEmpty) return human;
+    final minutes = profile.responseTimeMinutes;
+    if (minutes != null && minutes > 0) return '$minutes دقيقة';
+    return 'غير متوفر';
+  }
+
   Widget _buildActionButtons(BuildContext context, VendorProfileModel profile) {
     final userType = StorageService.getUserType();
     final isCustomer = userType != AppConstants.userTypeVendor;
@@ -644,6 +945,7 @@ class VendorProfileScreen extends StatelessWidget {
             style: AppTextStyles.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
               color: context.textPrimary,
+              fontSize: 18,
             ),
           ),
           const SizedBox(height: 12),
@@ -709,7 +1011,10 @@ class VendorProfileScreen extends StatelessWidget {
         icon: Icon(icon, size: 19),
         label: Text(
           title,
-          style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+          style: AppTextStyles.bodyMedium.copyWith(
+            fontWeight: FontWeight.w700,
+            fontSize: 16,
+          ),
         ),
         style: ElevatedButton.styleFrom(
           minimumSize: const Size.fromHeight(50),
@@ -1227,4 +1532,16 @@ class _UserPublicAdTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ProfileDetailItem {
+  final String label;
+  final String value;
+  final bool isLtrValue;
+
+  const _ProfileDetailItem({
+    required this.label,
+    required this.value,
+    this.isLtrValue = false,
+  });
 }

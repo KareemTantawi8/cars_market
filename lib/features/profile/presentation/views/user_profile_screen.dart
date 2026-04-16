@@ -221,6 +221,7 @@ class _ProfileHeader extends StatelessWidget {
                     style: AppTextStyles.headingSmall.copyWith(
                       color: context.textPrimary,
                       fontWeight: FontWeight.bold,
+                      fontSize: 21,
                     ),
                   ),
                   const SizedBox(width: 48),
@@ -235,6 +236,7 @@ class _ProfileHeader extends StatelessWidget {
               style: AppTextStyles.headingMedium.copyWith(
                 color: context.textPrimary,
                 fontWeight: FontWeight.bold,
+                fontSize: 24,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -280,7 +282,7 @@ class _HeaderBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 7),
       decoration: BoxDecoration(
         color: color.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
@@ -290,7 +292,7 @@ class _HeaderBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: color),
+            Icon(icon, size: 15, color: color),
             const SizedBox(width: 4),
           ],
           Text(
@@ -298,6 +300,7 @@ class _HeaderBadge extends StatelessWidget {
             style: AppTextStyles.bodySmall.copyWith(
               color: color,
               fontWeight: FontWeight.bold,
+              fontSize: 14.5,
             ),
           ),
         ],
@@ -485,7 +488,7 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
         decoration: BoxDecoration(
           color: context.cardBg,
           borderRadius: BorderRadius.circular(14),
@@ -493,13 +496,14 @@ class _StatChip extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Icon(icon, size: 18, color: AppColors.primaryColor),
+            Icon(icon, size: 19, color: AppColors.primaryColor),
             const SizedBox(height: 6),
             Text(
               value,
               style: AppTextStyles.bodySmall.copyWith(
                 fontWeight: FontWeight.bold,
                 color: valueColor ?? context.textPrimary,
+                fontSize: 15,
               ),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
@@ -508,7 +512,10 @@ class _StatChip extends StatelessWidget {
             Text(
               label,
               style: AppTextStyles.caption.copyWith(
-                  color: context.textSecondary),
+                color: context.textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -598,13 +605,19 @@ class _InfoTile extends StatelessWidget {
                   children: [
                     Text(label,
                         style: AppTextStyles.caption
-                            .copyWith(color: context.textSecondary)),
+                            .copyWith(
+                              color: context.textSecondary,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            )),
                     const SizedBox(height: 2),
                     Text(
                       value,
                       textDirection: TextDirection.ltr,
                       style: AppTextStyles.bodyMedium.copyWith(
-                          fontWeight: FontWeight.w600),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16.5,
+                      ),
                     ),
                   ],
                 ),
@@ -649,7 +662,13 @@ class _VendorSection extends StatelessWidget {
                     color: AppColors.primaryColor, size: 18),
               ),
               const SizedBox(width: 12),
-              Text('بيانات التاجر', style: AppTextStyles.headingSmall),
+              Text(
+                'بيانات التاجر',
+                style: AppTextStyles.headingSmall.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const Spacer(),
               if (vendor.isVerified)
                 Container(
@@ -867,12 +886,17 @@ class _LoyaltyCard extends StatelessWidget {
               children: [
                 Text('نقاط الولاء',
                     style: AppTextStyles.bodySmall.copyWith(
-                        color: Colors.white.withOpacity(0.75))),
+                      color: Colors.white.withOpacity(0.75),
+                      fontSize: 14,
+                    )),
                 const SizedBox(height: 4),
                 Text(
                   '${_formatPoints(profile.loyaltyPoints)} نقطة',
                   style: AppTextStyles.headingSmall.copyWith(
-                      color: Colors.white, fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                  ),
                 ),
               ],
             ),
@@ -887,8 +911,10 @@ class _LoyaltyCard extends StatelessWidget {
             child: Text(
               'استبدال',
               style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.primaryDark,
-                  fontWeight: FontWeight.bold),
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
             ),
           ),
         ],
@@ -924,7 +950,13 @@ class _SectionTitle extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Text(title, style: AppTextStyles.headingSmall),
+        Text(
+          title,
+          style: AppTextStyles.headingSmall.copyWith(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -1057,12 +1089,18 @@ class _SettingTile extends StatelessWidget {
                 children: [
                   Text(title,
                       style: AppTextStyles.bodyMedium
-                          .copyWith(fontWeight: FontWeight.w600)),
+                          .copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 17.5,
+                          )),
                   if (subtitle.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(subtitle,
                         style: AppTextStyles.caption
-                            .copyWith(color: context.textSecondary)),
+                            .copyWith(
+                              color: context.textSecondary,
+                              fontSize: 14,
+                            )),
                   ],
                 ],
               ),
@@ -1104,6 +1142,7 @@ class _LogoutButton extends StatelessWidget {
               style: AppTextStyles.bodyMedium.copyWith(
                 color: AppColors.error,
                 fontWeight: FontWeight.bold,
+                fontSize: 17,
               ),
             ),
           ],
@@ -1200,13 +1239,18 @@ class _AddressSection extends StatelessWidget {
                     Text(
                       'العنوان',
                       style: AppTextStyles.caption
-                          .copyWith(color: context.textSecondary),
+                          .copyWith(
+                            color: context.textSecondary,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       display,
                       style: AppTextStyles.bodyMedium.copyWith(
                         fontWeight: FontWeight.w600,
+                        fontSize: 16.5,
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
