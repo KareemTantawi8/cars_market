@@ -207,6 +207,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       'phone',
       'mobile',
       'phone_number',
+      'mobile_number',
       'tel',
       'telephone',
       'contact_phone',
@@ -215,6 +216,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
       'shop_mobile',
       'company_phone',
       'business_phone',
+      'seller_phone',
+      'vendor_phone',
+      'whatsapp',
+      'whatsapp_number',
     ]) {
       final v = peer[key]?.toString().trim();
       if (v != null && v.isNotEmpty) return v;

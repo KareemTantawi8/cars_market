@@ -316,6 +316,26 @@ class CategoryCubit extends Cubit<CategoryState> {
     }
   }
 
+  /// Clear model/year while keeping the selected brand (e.g. browse ads — all models for this brand).
+  void clearModelAndYearKeepingBrand() {
+    final currentState = state;
+    if (currentState is CategoryLoaded) {
+      emit(currentState.copyWith(
+        years: [],
+        clearSelectedModel: true,
+        clearSelectedYear: true,
+      ));
+    }
+  }
+
+  /// Clear year while keeping brand + model (all years for this model).
+  void clearYearKeepingBrandAndModel() {
+    final currentState = state;
+    if (currentState is CategoryLoaded) {
+      emit(currentState.copyWith(clearSelectedYear: true));
+    }
+  }
+
   /// Select a model
   void selectModel(CarModelModel model) {
     final currentState = state;

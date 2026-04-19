@@ -96,26 +96,41 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
         catState is CategoryLoaded ? catState.models : [];
 
     if (models.isEmpty) {
-      // Load on-demand if not yet loaded
       await context.read<CategoryCubit>().loadModels(_brand!.id);
       if (!mounted) return;
       final updated = context.read<CategoryCubit>().state;
       models = updated is CategoryLoaded ? updated.models : [];
     }
 
+    // Track whether "عرض الكل" was tapped
+    bool viewAllSelected = false;
+
     final picked = await _showPickerSheet<CarModelModel>(
       title: 'اختر الموديل',
       items: models,
       selected: _model,
       labelOf: (m) => m.displayName,
+      onViewAll: () => viewAllSelected = true,
+      viewAllSubtitle: 'جميع إعلانات هذه الماركة',
     );
-    if (picked == null || !mounted) return;
-    setState(() {
-      _model = picked;
-      _year = null;
-    });
-    context.read<CategoryCubit>().selectModel(picked);
-    _applyFilters();
+    if (!mounted) return;
+
+    if (viewAllSelected) {
+      // Show all ads for this brand — no model filter
+      setState(() {
+        _model = null;
+        _year = null;
+      });
+      context.read<CategoryCubit>().clearModelAndYearKeepingBrand();
+      _applyFilters();
+    } else if (picked != null) {
+      setState(() {
+        _model = picked;
+        _year = null;
+      });
+      context.read<CategoryCubit>().selectModel(picked);
+      _applyFilters();
+    }
   }
 
   Future<void> _showYearPicker() async {
@@ -130,15 +145,28 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
       years = updated is CategoryLoaded ? updated.years : [];
     }
 
+    // Track whether "عرض الكل" was tapped
+    bool viewAllSelected = false;
+
     final picked = await _showPickerSheet<YearModel>(
       title: 'اختر السنة',
       items: years,
       selected: _year,
       labelOf: (y) => y.displayName,
+      onViewAll: () => viewAllSelected = true,
+      viewAllSubtitle: 'جميع إعلانات هذا الموديل بكل السنوات',
     );
-    if (picked == null || !mounted) return;
-    setState(() => _year = picked);
-    _applyFilters();
+    if (!mounted) return;
+
+    if (viewAllSelected) {
+      // Show all ads for this model — no year filter
+      setState(() => _year = null);
+      context.read<CategoryCubit>().clearYearKeepingBrandAndModel();
+      _applyFilters();
+    } else if (picked != null) {
+      setState(() => _year = picked);
+      _applyFilters();
+    }
   }
 
   Future<void> _showConditionPicker() async {
@@ -172,6 +200,8 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     required List<T> items,
     required T? selected,
     required String Function(T) labelOf,
+    VoidCallback? onViewAll,
+    String? viewAllSubtitle,
   }) {
     return showModalBottomSheet<T>(
       context: context,
@@ -192,6 +222,8 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             selected: selected,
             labelOf: labelOf,
             scrollController: sc,
+            onViewAll: onViewAll,
+            viewAllSubtitle: viewAllSubtitle,
           ),
         ),
       ),
@@ -236,6 +268,8 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             model: _model,
             year: _year,
             condition: _condition,
+            brandSelectedNoModel: _brand != null && _model == null,
+            modelSelectedNoYear: _model != null && _year == null,
             onBrandTap: _showBrandPicker,
             onModelTap: _brand != null ? _showModelPicker : null,
             onYearTap: _model != null ? _showYearPicker : null,
@@ -258,6 +292,10 @@ class _FilterRow extends StatelessWidget {
   final CarModelModel? model;
   final YearModel? year;
   final String? condition;
+  /// True when a brand is chosen but no specific model (all models for brand).
+  final bool brandSelectedNoModel;
+  /// True when a model is chosen but no year (all years for model).
+  final bool modelSelectedNoYear;
   final VoidCallback onBrandTap;
   final VoidCallback? onModelTap;
   final VoidCallback? onYearTap;
@@ -268,6 +306,8 @@ class _FilterRow extends StatelessWidget {
     required this.model,
     required this.year,
     required this.condition,
+    this.brandSelectedNoModel = false,
+    this.modelSelectedNoYear = false,
     required this.onBrandTap,
     required this.onModelTap,
     required this.onYearTap,
@@ -290,15 +330,17 @@ class _FilterRow extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _Chip(
-            label: model?.displayName ?? 'الموديل',
-            active: model != null,
+            label: model?.displayName ??
+                (brandSelectedNoModel ? 'كل الموديلات' : 'الموديل'),
+            active: model != null || brandSelectedNoModel,
             enabled: onModelTap != null,
             onTap: onModelTap ?? () {},
           ),
           const SizedBox(width: 8),
           _Chip(
-            label: year?.displayName ?? 'السنة',
-            active: year != null,
+            label: year?.displayName ??
+                (modelSelectedNoYear ? 'كل السنوات' : 'السنة'),
+            active: year != null || modelSelectedNoYear,
             enabled: onYearTap != null,
             onTap: onYearTap ?? () {},
           ),
@@ -388,19 +430,32 @@ class _PickerSheet<T> extends StatelessWidget {
   final String Function(T) labelOf;
   final ScrollController? scrollController;
 
+  /// When provided, a "عرض الكل" tile appears at the top of the list.
+  /// Tapping it calls this callback then closes the sheet (pops null).
+  final VoidCallback? onViewAll;
+
+  /// Explains what "عرض الكل" does (e.g. all ads for this brand).
+  final String? viewAllSubtitle;
+
   const _PickerSheet({
     required this.title,
     required this.items,
     required this.selected,
     required this.labelOf,
     this.scrollController,
+    this.onViewAll,
+    this.viewAllSubtitle,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasViewAll = onViewAll != null;
+    // Total list count: optional "عرض الكل" row + actual items
+    final itemCount = items.length + (hasViewAll ? 1 : 0);
+
     return Column(
       children: [
-        // Handle
+        // Handle bar
         const SizedBox(height: 12),
         Center(
           child: Container(
@@ -423,7 +478,7 @@ class _PickerSheet<T> extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Divider(height: 1),
-        if (items.isEmpty)
+        if (items.isEmpty && !hasViewAll)
           Expanded(
             child: Center(
               child: Text(
@@ -436,16 +491,63 @@ class _PickerSheet<T> extends StatelessWidget {
           Expanded(
             child: ListView.builder(
               controller: scrollController,
-              itemCount: items.length,
+              itemCount: itemCount,
               itemBuilder: (context, index) {
-                final item = items[index];
+                // ── "عرض الكل" row (index 0 when hasViewAll) ─────────────
+                if (hasViewAll && index == 0) {
+                  return Column(
+                    children: [
+                      ListTile(
+                        leading: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.all_inclusive_rounded,
+                            color: AppColors.primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                        title: Text(
+                          'عرض الكل',
+                          style: AppTextStyles.bodyMedium.copyWith(
+                            color: AppColors.primaryColor,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        subtitle: Text(
+                          viewAllSubtitle ??
+                              'عرض جميع الإعلانات بدون تحديد لهذا الفلتر',
+                          style: AppTextStyles.caption.copyWith(
+                            color: context.textSecondary,
+                          ),
+                        ),
+                        onTap: () {
+                          onViewAll!();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                      const Divider(height: 1),
+                    ],
+                  );
+                }
+
+                // ── Regular item ─────────────────────────────────────────
+                final itemIndex = hasViewAll ? index - 1 : index;
+                final item = items[itemIndex];
                 final isSelected = item == selected;
                 return ListTile(
                   title: Text(
                     labelOf(item),
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: isSelected ? AppColors.primaryColor : context.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected
+                          ? AppColors.primaryColor
+                          : context.textPrimary,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   trailing: isSelected

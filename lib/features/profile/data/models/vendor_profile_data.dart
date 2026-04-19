@@ -45,7 +45,7 @@ class VendorProfileData {
 
   factory VendorProfileData.fromJson(Map<String, dynamic> json) {
     List<BrandInfo> brandsList = [];
-    final rawBrands = json['brands'];
+    final rawBrands = json['brands'] ?? json['categories'];
     if (rawBrands is List) {
       for (final b in rawBrands) {
         try {
@@ -68,7 +68,10 @@ class VendorProfileData {
 
     return VendorProfileData(
       id: (json['id'] as num?)?.toInt() ?? 0,
-      companyName: json['company_name'] as String? ?? '',
+      companyName: json['company_name'] as String? ??
+          json['shop_name'] as String? ??
+          json['business_name'] as String? ??
+          '',
       description: json['description'] as String?,
       address: json['address'] as String?,
       city: json['city'] as String?,

@@ -15,9 +15,14 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../shared/widgets/common/rating_stars.dart';
 import '../cubit/user_profile_cubit.dart';
 import '../../data/models/user_profile_model.dart';
 import '../../data/models/vendor_profile_data.dart';
+import '../../../ads/data/repositories/ads_repository.dart';
+import '../../../ads/data/models/ad_model.dart';
+import '../../../ads/presentation/cubit/my_ads_cubit.dart';
+import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../home/data/repositories/category_repository.dart';
 import '../../../home/data/models/category_models.dart';
 
@@ -120,17 +125,32 @@ class _ProfileContent extends StatelessWidget {
                     _StatsRow(profile: profile),
                     const SizedBox(height: 24),
 
-                    // Info card
-                    _InfoCard(profile: profile),
+                    // Phone + email (phone for vendors is detailed in [_VendorDetailsCard])
+                    _InfoCard(
+                      profile: profile,
+                      hidePhone:
+                          profile.userType == AppConstants.userTypeVendor &&
+                              profile.vendor != null,
+                      includeNameRow:
+                          profile.userType != AppConstants.userTypeVendor,
+                    ),
                     const SizedBox(height: 16),
                     _AddressSection(profile: profile),
 
-                    // Vendor-only block (rating, brands, shop metrics — not for customers)
+                    // Vendor — full detail: name, phone, rating, brands, address, response, verified…
                     if (profile.userType == AppConstants.userTypeVendor &&
                         profile.vendor != null) ...[
                       const SizedBox(height: 20),
-                      _VendorSection(vendor: profile.vendor!),
+                      _VendorDetailsCard(profile: profile),
                     ],
+
+                    // إعلانات المستخدم (تاجر أو عميل) — يُعاد الجلب عند تحديث الملف عبر السحب
+                    const SizedBox(height: 20),
+                    _ProfileLinkedAdsSection(
+                      key: ValueKey(
+                        '${profile.id}_${profile.updatedAt?.millisecondsSinceEpoch ?? 0}',
+                      ),
+                    ),
 
                     // Loyalty card
                     if (profile.loyaltyPoints > 0) ...[
@@ -530,10 +550,26 @@ class _StatChip extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 class _InfoCard extends StatelessWidget {
   final UserProfileModel profile;
-  const _InfoCard({required this.profile});
+  /// When true, phone is shown in the vendor detail card instead.
+  final bool hidePhone;
+  /// Shows explicit name row (used for customer accounts).
+  final bool includeNameRow;
+
+  const _InfoCard({
+    required this.profile,
+    this.hidePhone = false,
+    this.includeNameRow = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasPhone = profile.phone.trim().isNotEmpty;
+    final showPhone = hasPhone && !hidePhone;
+    final hasEmail = profile.email != null && profile.email!.isNotEmpty;
+    if (!includeNameRow && !showPhone && !hasEmail) {
+      return const SizedBox.shrink();
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: context.cardBg,
@@ -542,19 +578,28 @@ class _InfoCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _InfoTile(
-            icon: Icons.phone_outlined,
-            label: 'رقم الهاتف',
-            value: profile.formattedPhone,
-            isFirst: true,
-            isLast: profile.email == null || profile.email!.isEmpty,
-          ),
-          if (profile.email != null && profile.email!.isNotEmpty)
+          if (includeNameRow)
+            _InfoTile(
+              icon: Icons.person_outline_rounded,
+              label: 'الاسم',
+              value: profile.name.isNotEmpty ? profile.name : '—',
+              isFirst: true,
+              isLast: false,
+            ),
+          if (showPhone)
+            _InfoTile(
+              icon: Icons.phone_outlined,
+              label: 'رقم الهاتف',
+              value: profile.formattedPhone,
+              isFirst: !includeNameRow,
+              isLast: !hasEmail,
+            ),
+          if (hasEmail)
             _InfoTile(
               icon: Icons.email_outlined,
               label: 'البريد الإلكتروني',
               value: profile.email!,
-              isFirst: false,
+              isFirst: !includeNameRow && !showPhone,
               isLast: true,
             ),
         ],
@@ -631,14 +676,52 @@ class _InfoTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Vendor section
+// Vendor — detailed fields (aligned with product spec)
 // ─────────────────────────────────────────────────────────────────────────────
-class _VendorSection extends StatelessWidget {
-  final VendorProfileData vendor;
-  const _VendorSection({required this.vendor});
+class _VendorDetailsCard extends StatelessWidget {
+  final UserProfileModel profile;
+
+  const _VendorDetailsCard({required this.profile});
+
+  VendorProfileData get _v => profile.vendor!;
+
+  String _shopPhoneLine() {
+    final raw = _v.phone?.trim();
+    if (raw == null || raw.isEmpty) return '';
+    final user = profile.phone.trim();
+    if (user.isNotEmpty && raw.replaceAll(RegExp(r'\D'), '') ==
+        user.replaceAll(RegExp(r'\D'), '')) {
+      return '';
+    }
+    return raw;
+  }
+
+  String _addressLine() {
+    final parts = <String>[];
+    if (_v.governorate != null) parts.add(_v.governorate!.name);
+    if (_v.address != null && _v.address!.trim().isNotEmpty) {
+      parts.add(_v.address!.trim());
+    }
+    if (_v.city != null && _v.city!.trim().isNotEmpty) {
+      parts.add(_v.city!.trim());
+    }
+    return parts.join(' — ');
+  }
+
+  String _responseLine() {
+    final h = _v.responseTimeHuman?.trim();
+    if (h != null && h.isNotEmpty) return h;
+    final hrs = _v.responseTimeHours;
+    if (hrs != null && hrs > 0) return '$hrs ساعة';
+    return '—';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final v = _v;
+    final shopExtra = _shopPhoneLine();
+    final addressText = _addressLine();
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -662,15 +745,16 @@ class _VendorSection extends StatelessWidget {
                     color: AppColors.primaryColor, size: 18),
               ),
               const SizedBox(width: 12),
-              Text(
-                'بيانات التاجر',
-                style: AppTextStyles.headingSmall.copyWith(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  'تفاصيل التاجر',
+                  style: AppTextStyles.headingSmall.copyWith(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const Spacer(),
-              if (vendor.isVerified)
+              if (v.isVerified)
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -683,110 +767,153 @@ class _VendorSection extends StatelessWidget {
                     children: [
                       Icon(Icons.verified, size: 14, color: AppColors.success),
                       const SizedBox(width: 4),
-                      Text('معتمد',
-                          style: AppTextStyles.caption.copyWith(
-                              color: AppColors.success,
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        'موثّق',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.success,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
             ],
           ),
-          if (vendor.description != null &&
-              vendor.description!.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          _VendorField(
+            icon: Icons.person_outline_rounded,
+            label: 'الاسم',
+            value: profile.name.isNotEmpty ? profile.name : '—',
+          ),
+          if (v.companyName.trim().isNotEmpty) ...[
             const SizedBox(height: 14),
-            Text(
-              vendor.description!,
-              style: AppTextStyles.bodySmall
-                  .copyWith(color: context.textSecondary),
+            _VendorField(
+              icon: Icons.store_mall_directory_outlined,
+              label: 'اسم المحل / الشركة',
+              value: v.companyName.trim(),
             ),
           ],
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _VendorMetric(
-                  icon: Icons.star_rounded,
-                  label: 'التقييم',
-                  value:
-                      '${vendor.averageRating} (${vendor.ratingsCount})'),
-              if (vendor.responseTimeHuman != null &&
-                  vendor.responseTimeHuman!.isNotEmpty) ...[
-                const SizedBox(width: 12),
-                _VendorMetric(
-                    icon: Icons.access_time_outlined,
-                    label: 'وقت الرد',
-                    value: vendor.responseTimeHuman!),
-              ],
-            ],
-          ),
-          if (vendor.governorate != null ||
-              (vendor.address != null && vendor.address!.isNotEmpty) ||
-              (vendor.city != null && vendor.city!.isNotEmpty)) ...[
+          if (profile.phone.trim().isNotEmpty) ...[
             const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            _VendorField(
+              icon: Icons.phone_outlined,
+              label: 'رقم الهاتف',
+              value: profile.formattedPhone,
+              valueLtr: true,
+            ),
+          ],
+          if (shopExtra.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _VendorField(
+              icon: Icons.call_rounded,
+              label: 'هاتف المتجر',
+              value: shopExtra,
+              valueLtr: true,
+            ),
+          ],
+          const SizedBox(height: 14),
+          _VendorField(
+            icon: Icons.star_rounded,
+            label: 'التقييم',
+            child: Row(
               children: [
-                Icon(Icons.location_on_outlined,
-                    size: 16, color: context.textSecondary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (vendor.governorate != null)
-                        Text(
-                          vendor.governorate!.name,
-                          style: AppTextStyles.bodySmall
-                              .copyWith(fontWeight: FontWeight.w600),
-                        ),
-                      if ((vendor.address != null && vendor.address!.isNotEmpty) ||
-                          (vendor.city != null && vendor.city!.isNotEmpty)) ...[
-                        if (vendor.governorate != null)
-                          const SizedBox(height: 2),
-                        Text(
-                          [
-                            if (vendor.address != null && vendor.address!.isNotEmpty)
-                              vendor.address!,
-                            if (vendor.city != null && vendor.city!.isNotEmpty)
-                              vendor.city!,
-                          ].join('، '),
-                          style: AppTextStyles.caption
-                              .copyWith(color: context.textSecondary),
-                        ),
-                      ],
-                    ],
+                RatingStars(
+                  rating: v.averageRating,
+                  reviewCount: v.ratingsCount,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  v.averageRating.toStringAsFixed(1),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.ratingStar,
                   ),
                 ),
               ],
             ),
-          ],
-          if (vendor.brands.isNotEmpty) ...[
-            const SizedBox(height: 14),
+          ),
+          if (v.brands.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Text(
+              'الماركات',
+              style: AppTextStyles.caption.copyWith(
+                color: context.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: vendor.brands
-                  .map((b) => Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
+              children: v.brands
+                  .map(
+                    (b) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        b.name,
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.primaryColor,
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: Text(b.name,
-                            style: AppTextStyles.caption.copyWith(
-                                color: AppColors.primaryColor,
-                                fontWeight: FontWeight.w600)),
-                      ))
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ],
-          if (vendor.googleMapsUrl != null &&
-              vendor.googleMapsUrl!.isNotEmpty) ...[
+          if (addressText.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _VendorField(
+              icon: Icons.location_on_outlined,
+              label: 'العنوان',
+              value: addressText,
+            ),
+          ],
+          const SizedBox(height: 14),
+          _VendorField(
+            icon: Icons.speed_rounded,
+            label: 'سرعة الرد',
+            value: _responseLine(),
+            valueColor: AppColors.primaryColor,
+          ),
+          const SizedBox(height: 14),
+          _VendorField(
+            icon: Icons.verified_outlined,
+            label: 'حالة الحساب',
+            value: v.isVerified ? 'موثّق من المنصة' : 'غير موثّق',
+            valueColor: v.isVerified ? AppColors.success : context.textSecondary,
+          ),
+          if (v.description != null && v.description!.trim().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'نبذة',
+              style: AppTextStyles.caption.copyWith(
+                color: context.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              v.description!.trim(),
+              style: AppTextStyles.bodySmall.copyWith(
+                color: context.textSecondary,
+                height: 1.45,
+              ),
+            ),
+          ],
+          if (v.googleMapsUrl != null && v.googleMapsUrl!.trim().isNotEmpty) ...[
             const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: () async {
-                final uri = Uri.parse(vendor.googleMapsUrl!);
+                final uri = Uri.parse(v.googleMapsUrl!);
                 if (await canLaunchUrl(uri)) {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
                 }
@@ -801,40 +928,297 @@ class _VendorSection extends StatelessWidget {
   }
 }
 
-class _VendorMetric extends StatelessWidget {
+class _VendorField extends StatelessWidget {
   final IconData icon;
   final String label;
-  final String value;
-  const _VendorMetric(
-      {required this.icon, required this.label, required this.value});
+  final String? value;
+  final Widget? child;
+  final bool valueLtr;
+  final Color? valueColor;
+
+  const _VendorField({
+    required this.icon,
+    required this.label,
+    this.value,
+    this.child,
+    this.valueLtr = false,
+    this.valueColor,
+  }) : assert(value != null || child != null);
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: context.inputBg,
-          borderRadius: BorderRadius.circular(12),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primaryColor, size: 18),
         ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: AppColors.primaryColor),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: AppTextStyles.caption
-                          .copyWith(color: context.textSecondary)),
-                  Text(value,
-                      style: AppTextStyles.bodySmall
-                          .copyWith(fontWeight: FontWeight.w600)),
-                ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTextStyles.caption.copyWith(
+                  color: context.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
+              const SizedBox(height: 4),
+              if (child != null)
+                child!
+              else
+                Text(
+                  value!,
+                  textDirection:
+                      valueLtr ? TextDirection.ltr : TextDirection.rtl,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                    color: valueColor ?? context.textPrimary,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// إعلاناتي — من GET /my-ads
+// ─────────────────────────────────────────────────────────────────────────────
+class _ProfileLinkedAdsSection extends StatefulWidget {
+  const _ProfileLinkedAdsSection({super.key});
+
+  @override
+  State<_ProfileLinkedAdsSection> createState() =>
+      _ProfileLinkedAdsSectionState();
+}
+
+class _ProfileLinkedAdsSectionState extends State<_ProfileLinkedAdsSection> {
+  List<AdModel> _ads = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final r = await AdsRepository().getMyAds(page: 1, perPage: 30);
+      if (!mounted) return;
+      setState(() {
+        _ads = r.data;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  String? _imageUrl(AdModel ad) {
+    for (final path in ad.images) {
+      if (path.isEmpty) continue;
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+      }
+      final base = AppConstants.storageBaseUrl.endsWith('/')
+          ? AppConstants.storageBaseUrl.substring(
+              0,
+              AppConstants.storageBaseUrl.length - 1,
+            )
+          : AppConstants.storageBaseUrl;
+      var p = path.startsWith('/') ? path.substring(1) : path;
+      if (p.startsWith('storage/')) p = p.substring('storage/'.length);
+      return '$base/$p';
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionTitle(title: 'الإعلانات المرتبطة بك'),
+        const SizedBox(height: 12),
+        if (_loading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: LoadingIndicator(),
             ),
-          ],
+          )
+        else if (_error != null)
+          Text(
+            _error!,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+          )
+        else if (_ads.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: context.cardBg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: context.inputBorderColor),
+            ),
+            child: Text(
+              'لا توجد إعلانات منشورة بعد.',
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: context.textSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          Column(
+            children: [
+              ...List.generate(
+                _ads.length.clamp(0, 5),
+                (i) {
+                  final shown = _ads.length > 5 ? 5 : _ads.length;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: i < shown - 1 ? 10 : 0),
+                    child: _LinkedAdRowTile(
+                      ad: _ads[i],
+                      imageUrl: _imageUrl(_ads[i]),
+                    ),
+                  );
+                },
+              ),
+              if (_ads.length > 5) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => BlocProvider(
+                            create: (_) => MyAdsCubit()..loadMyAds(),
+                            child: const MyAdsScreen(),
+                          ),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'عرض كل الإعلانات (${_ads.length})',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.primaryColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+class _LinkedAdRowTile extends StatelessWidget {
+  final AdModel ad;
+  final String? imageUrl;
+
+  const _LinkedAdRowTile({required this.ad, this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.cardBg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: () => Navigator.of(context).pushNamed(
+          AppRoutes.adDetails,
+          arguments: {'adId': ad.id},
+        ),
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.inputBorderColor),
+          ),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 64,
+                  height: 64,
+                  child: imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (_, __) => Container(
+                            color: context.surfaceBg,
+                            child: Icon(Icons.directions_car_outlined,
+                                color: context.textHint),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: context.surfaceBg,
+                            child: Icon(Icons.directions_car_outlined,
+                                color: context.textHint),
+                          ),
+                        )
+                      : Container(
+                          color: context.surfaceBg,
+                          child: Icon(Icons.directions_car_outlined,
+                              color: context.textHint),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ad.title,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${ad.priceFormatted} · ${ad.conditionLabel}',
+                      style: AppTextStyles.caption.copyWith(
+                        color: context.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios,
+                  size: 14, color: context.textSecondary),
+            ],
+          ),
         ),
       ),
     );

@@ -254,9 +254,23 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     return widget.chatName;
   }
 
+  /// Maps Arabic/Persian digits to ASCII so [RegExp] digit stripping keeps them.
+  String _normalizeDigitsForDial(String input) {
+    const arabicIndic = '٠١٢٣٤٥٦٧٨٩';
+    const easternArabic = '۰۱۲۳۴۵۶۷۸۹';
+    final buf = StringBuffer();
+    for (final c in input.runes) {
+      final ch = String.fromCharCode(c);
+      var i = arabicIndic.indexOf(ch);
+      if (i < 0) i = easternArabic.indexOf(ch);
+      buf.write(i >= 0 ? String.fromCharCode(0x30 + i) : ch);
+    }
+    return buf.toString();
+  }
+
   String? _sanitizeDialNumber(String? raw) {
     if (raw == null) return null;
-    final t = raw.trim();
+    final t = _normalizeDigitsForDial(raw.trim());
     if (t.isEmpty) return null;
     if (t.startsWith('+')) {
       final rest = t.substring(1).replaceAll(RegExp(r'\D'), '');
@@ -273,6 +287,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'phone',
       'mobile',
       'phone_number',
+      'mobile_number',
       'tel',
       'telephone',
       'contact_phone',
@@ -281,6 +296,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'shop_mobile',
       'company_phone',
       'business_phone',
+      'seller_phone',
+      'vendor_phone',
+      'whatsapp',
+      'whatsapp_number',
     ]) {
       final v = _sanitizeDialNumber(p[key]?.toString());
       if (v != null) return v;
@@ -373,6 +392,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
     }
     final phone = _phoneFromChatEnvelope(chat);
     final avatarUrl = _avatarFromParticipant(peer);
+    final widgetPhone = _sanitizeDialNumber(widget.peerPhone?.trim());
 
     // Extract vendor record ID and user account ID for profile navigation.
     int? vendorId;
@@ -410,9 +430,10 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       _displayName = displayName;
       _isOnline = online;
       _isVerified = verified;
+      // Prefer API phone; keep route/inbox prefill; never drop a known-good number.
       _peerPhone = userType == AppConstants.userTypeVendor
           ? null
-          : (phone ?? _peerPhone);
+          : (phone ?? _peerPhone ?? widgetPhone);
       if (avatarUrl != null) _peerAvatarUrl = avatarUrl;
       if (vendorId != null && vendorId > 0) _peerVendorId = vendorId;
       if (userId != null && userId > 0) _peerUserId = userId;
@@ -642,10 +663,26 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             }
           });
         } else if (state is ChatDetailsLoaded) {
-          final map = state.chat['data'] is Map<String, dynamic>
-              ? state.chat['data'] as Map<String, dynamic>
-              : state.chat;
-          _applyChatDetails(Map<String, dynamic>.from(map));
+          var map = Map<String, dynamic>.from(state.chat);
+          // Prefer the map that actually carries the other party — never replace
+          // the root chat with `chat['data']` when both exist (that drops
+          // `participant` / vendor keys and breaks phone resolution).
+          final nested = map['data'];
+          final hasPeerTop = map['participant'] != null ||
+              map['vendor'] != null ||
+              map['seller'] != null ||
+              map['customer'] != null ||
+              map['buyer'] != null;
+          if (!hasPeerTop &&
+              nested is Map<String, dynamic> &&
+              (nested['participant'] != null ||
+                  nested['vendor'] != null ||
+                  nested['seller'] != null ||
+                  nested['customer'] != null ||
+                  nested['buyer'] != null)) {
+            map = Map<String, dynamic>.from(nested);
+          }
+          _applyChatDetails(map);
         } else if (state is MessagesLoaded) {
           setState(() {
             // API returns messages newest first, ListView with reverse:true will show newest at bottom
