@@ -642,7 +642,7 @@ class _AdsList extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Ad Card
+// Ad Card — redesigned
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AdCard extends StatefulWidget {
@@ -695,203 +695,492 @@ class _AdCardState extends State<_AdCard> {
   Widget build(BuildContext context) {
     final urls = _imageUrls;
     final pageCount = math.max(1, urls.length);
+    final isNew = ad.condition == 'new';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return GestureDetector(
+      onTap: () => _openDetails(context),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: context.inputBorderColor.withValues(alpha: 0.5),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // ── Image carousel ────────────────────────────────────────────
-            SizedBox(
-              height: 200,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(
-                    color: context.surfaceBg,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: pageCount,
-                      physics: const PageScrollPhysics(),
-                      onPageChanged: (i) =>
-                          setState(() => _pageIndex = i),
-                      itemBuilder: (context, index) {
-                        final url =
-                            urls.isEmpty ? null : urls[index];
-                        return GestureDetector(
-                          behavior: HitTestBehavior.deferToChild,
-                          onTap: () => _openDetails(context),
-                          child: url != null
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 18,
+              offset: const Offset(0, 5),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ── Hero image with overlays ───────────────────────────────
+              SizedBox(
+                height: 220,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Image carousel
+                    ColoredBox(
+                      color: context.surfaceBg,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: pageCount,
+                        physics: const PageScrollPhysics(),
+                        onPageChanged: (i) => setState(() => _pageIndex = i),
+                        itemBuilder: (_, index) {
+                          final url = urls.isEmpty ? null : urls[index];
+                          return url != null
                               ? CachedNetworkImage(
                                   imageUrl: url,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                   height: double.infinity,
-                                  placeholder: (_, __) =>
-                                      _placeholder(context),
+                                  placeholder: (_, __) => _imgPlaceholder(context),
                                   errorWidget: (_, __, ___) =>
-                                      _placeholder(context),
+                                      _imgPlaceholder(context),
                                 )
-                              : _placeholder(context),
-                        );
-                      },
+                              : _imgPlaceholder(context);
+                        },
+                      ),
                     ),
-                  ),
-                  if (urls.length > 1)
+
+                    // Bottom gradient for readability
                     Positioned(
-                      bottom: 8,
+                      bottom: 0,
                       left: 0,
                       right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(urls.length, (i) {
-                          final active = i == _pageIndex;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: active ? 18 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? AppColors.primaryColor
-                                  : Colors.white54,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          );
-                        }),
+                      height: 90,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.62),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                ],
-              ),
-            ),
-            // ── Info ──────────────────────────────────────────────────────
-            Material(
-              color: context.cardBg,
-              child: InkWell(
-                onTap: () => _openDetails(context),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        ad.title,
-                        style: AppTextStyles.bodyLarge.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: context.textPrimary,
-                          fontSize: 15,
-                          height: 1.3,
+
+                    // ── Condition badge (top-right on image) ───────────
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 5,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Condition badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: ad.condition == 'new'
-                                  ? Colors.green.withValues(alpha: 0.12)
-                                  : AppColors.primaryColor
-                                      .withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
+                        decoration: BoxDecoration(
+                          color: isNew
+                              ? const Color(0xFF16A34A)
+                              : const Color(0xFF1E3A5F),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
                             ),
-                            child: Text(
-                              ad.conditionLabel,
-                              style: AppTextStyles.caption.copyWith(
-                                color: ad.condition == 'new'
-                                    ? Colors.green.shade700
-                                    : AppColors.primaryColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          // Price
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryColor
-                                  .withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              ad.priceFormatted,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.primaryColor,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (ad.locationLabel != null &&
-                          ad.locationLabel!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Expanded(
-                              child: Text(
-                                ad.locationLabel!.trim(),
-                                style: AppTextStyles.caption.copyWith(
-                                  color: context.textSecondary,
-                                  height: 1.4,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                              ),
+                            Icon(
+                              isNew
+                                  ? Icons.fiber_new_rounded
+                                  : Icons.history_rounded,
+                              size: 13,
+                              color: Colors.white,
                             ),
                             const SizedBox(width: 4),
-                            Padding(
-                              padding: const EdgeInsets.only(top: 1),
-                              child: Icon(
-                                Icons.location_on_rounded,
-                                size: 14,
-                                color: AppColors.primaryColor,
+                            Text(
+                              ad.conditionLabel,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
-                      ],
-                    ],
-                  ),
+                      ),
+                    ),
+
+                    // ── Image counter (top-left) ───────────────────────
+                    if (urls.length > 1)
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.photo_library_outlined,
+                                  size: 12, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${_pageIndex + 1}/${urls.length}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // ── Price badge (bottom-left on image) ─────────────
+                    Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryColor,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryColor
+                                  .withValues(alpha: 0.45),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              ad.priceFormatted,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                            if (ad.isNegotiable) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'قابل',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // ── Dot indicators (bottom-center) ─────────────────
+                    if (urls.length > 1)
+                      Positioned(
+                        bottom: 14,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            math.min(urls.length, 6),
+                            (i) {
+                              final active = i == _pageIndex;
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin:
+                                    const EdgeInsets.symmetric(horizontal: 2.5),
+                                width: active ? 16 : 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-            ),
-          ],
+
+              // ── Info section ───────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      ad.title,
+                      style: AppTextStyles.bodyLarge.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: context.textPrimary,
+                        fontSize: 17,
+                        height: 1.35,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Brand · Model · Year tags
+                    _CarTags(ad: ad),
+                    const SizedBox(height: 10),
+
+                    // Location
+                    if (ad.locationLabel != null &&
+                        ad.locationLabel!.trim().isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.location_on_rounded,
+                              size: 15, color: AppColors.primaryColor),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              ad.locationLabel!.trim(),
+                              style: AppTextStyles.caption.copyWith(
+                                color: context.textSecondary,
+                                fontSize: 13.5,
+                                height: 1.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+
+                    // ── Divider ────────────────────────────────────────
+                    Divider(
+                      height: 1,
+                      color: context.inputBorderColor.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 10),
+
+                    // ── Seller strip ───────────────────────────────────
+                    _SellerStrip(ad: ad),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _placeholder(BuildContext context) {
+  Widget _imgPlaceholder(BuildContext context) {
     return Container(
       color: context.surfaceBg,
       child: Center(
         child: Icon(Icons.directions_car_outlined,
-            size: 40, color: context.textHint),
+            size: 48, color: context.textHint),
       ),
+    );
+  }
+}
+
+// ── Car tags (Brand · Model · Year) ──────────────────────────────────────────
+
+class _CarTags extends StatelessWidget {
+  final AdModel ad;
+
+  const _CarTags({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    final tags = <String>[];
+    final brand = ad.brand?.name?.trim();
+    final model = ad.carModel?.name?.trim();
+    final year = ad.year?.name?.trim();
+
+    if (brand != null && brand.isNotEmpty) tags.add(brand);
+    if (model != null && model.isNotEmpty) tags.add(model);
+    if (year != null && year.isNotEmpty) tags.add(year);
+
+    if (tags.isEmpty) return const SizedBox.shrink();
+
+    return Wrap(
+      spacing: 7,
+      runSpacing: 6,
+      children: tags.map((tag) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: AppColors.primaryColor.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Text(
+            tag,
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.primaryColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 12.5,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ── Seller strip ─────────────────────────────────────────────────────────────
+
+class _SellerStrip extends StatelessWidget {
+  final AdModel ad;
+
+  const _SellerStrip({required this.ad});
+
+  @override
+  Widget build(BuildContext context) {
+    final seller = ad.user;
+    final name = seller?.displayName ?? '';
+    final avatarUrl = seller?.avatarUrl;
+    final isVerified = seller?.isVerified ?? false;
+
+    return Row(
+      children: [
+        // Avatar
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: context.surfaceBg,
+            border: Border.all(
+              color: isVerified
+                  ? AppColors.success.withValues(alpha: 0.5)
+                  : context.inputBorderColor,
+              width: 1.5,
+            ),
+          ),
+          child: ClipOval(
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? CachedNetworkImage(
+                    imageUrl: avatarUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _avatarFallback(context),
+                    errorWidget: (_, __, ___) => _avatarFallback(context),
+                  )
+                : _avatarFallback(context),
+          ),
+        ),
+        const SizedBox(width: 9),
+
+        // Name + verified
+        Expanded(
+          child: Row(
+            children: [
+              Flexible(
+                child: Text(
+                  name.isNotEmpty ? name : 'بائع',
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: context.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isVerified) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.verified_rounded,
+                    size: 14, color: AppColors.primaryColor),
+              ],
+            ],
+          ),
+        ),
+
+        // Views count
+        if (ad.viewsCount != null && ad.viewsCount! > 0) ...[
+          const SizedBox(width: 8),
+          Row(
+            children: [
+              Icon(Icons.remove_red_eye_outlined,
+                  size: 14, color: context.textSecondary),
+              const SizedBox(width: 4),
+              Text(
+                '${ad.viewsCount}',
+                style: AppTextStyles.caption.copyWith(
+                  color: context.textSecondary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
+        ],
+
+        // Arrow
+        const SizedBox(width: 6),
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: AppColors.primaryColor.withValues(alpha: 0.09),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 13, color: AppColors.primaryColor),
+        ),
+      ],
+    );
+  }
+
+  Widget _avatarFallback(BuildContext context) {
+    return Container(
+      color: AppColors.primaryColor.withValues(alpha: 0.1),
+      child: Icon(Icons.storefront_outlined,
+          size: 18, color: AppColors.primaryColor),
     );
   }
 }
