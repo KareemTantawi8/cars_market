@@ -146,6 +146,11 @@ class _SplashScreenState extends State<SplashScreen>
       } else {
         Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (r) => false);
       }
+      // Navigate to the screen indicated by the notification tap (if any).
+      // Must run after the destination route is on the stack.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        PushNotificationService.instance.consumePendingInitialMessage();
+      });
     } else {
       context.navigateToAndRemoveUntil(const LoginScreen());
     }

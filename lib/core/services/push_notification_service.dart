@@ -264,6 +264,7 @@ class PushNotificationService {
   bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSub;
   DateTime? _lastApiNotificationSync;
+  RemoteMessage? _pendingInitialMessage;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -962,18 +963,25 @@ class PushNotificationService {
   // ---------------------------------------------------------------------------
 
   void _listenNotificationTaps() {
-    // Tap on notification while app is in background (but not terminated).
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
-    // Check if app was launched from a terminated state by tapping a notification.
+    // Capture the initial message now, but don't navigate yet — the splash
+    // animation (~3 s) finishes after the 800 ms window, so any early
+    // navigation gets wiped when splash pushes the real destination.
+    // Call consumePendingInitialMessage() from the destination screen instead.
     _messaging.getInitialMessage().then((message) {
-      if (message != null) {
-        // Small delay so navigation context is ready.
-        Future.delayed(
-          const Duration(milliseconds: 800),
-          () => _handleNotificationTap(message),
-        );
-      }
+      _pendingInitialMessage = message;
+    });
+  }
+
+  /// Call this from the first real screen (home / vendor dashboard) initState
+  /// so navigation happens after the route stack is stable.
+  void consumePendingInitialMessage() {
+    final message = _pendingInitialMessage;
+    if (message == null) return;
+    _pendingInitialMessage = null;
+    Future.delayed(const Duration(milliseconds: 400), () {
+      _handleNotificationTap(message);
     });
   }
 
