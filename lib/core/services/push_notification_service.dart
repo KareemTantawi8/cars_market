@@ -17,6 +17,7 @@ import '../routes/app_routes.dart';
 import '../utils/constants.dart';
 import 'notification_payload.dart';
 import 'storage_service.dart';
+import '../../firebase_options.dart';
 
 // -----------------------------------------------------------------------------
 // Killed / swiped-away app: only FCM can alert. Reverb and GET /notifications
@@ -138,7 +139,9 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Firebase only if not already initialized in this isolate.
   if (Firebase.apps.isEmpty) {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     } catch (e, st) {
       developer.log(
         'Firebase.initializeApp failed: $e\n$st',
@@ -250,7 +253,10 @@ class PushNotificationService {
   PushNotificationService._();
   static final PushNotificationService instance = PushNotificationService._();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  /// Null when the default [Firebase] app was never initialized.
+  FirebaseMessaging? get _fcm =>
+      Firebase.apps.isEmpty ? null : FirebaseMessaging.instance;
+
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
@@ -270,7 +276,16 @@ class PushNotificationService {
     if (_initialized) return;
     _initialized = true;
 
-    // onBackgroundMessage is registered from main() immediately after Firebase.initializeApp().
+    if (_fcm == null) {
+      if (kDebugMode) {
+        debugPrint('[FCM] No Firebase app — FCM disabled (fix iOS: flutterfire configure)');
+      }
+      await _setupLocalNotifications();
+      await _handleLocalNotificationColdStart();
+      return;
+    }
+
+    // onBackgroundMessage is registered from main() right after successful Firebase.init.
 
     // iOS: safe to request from isolate startup.
     // Android 13+: FCM's requestPermission needs an attached Activity; calling it
@@ -296,7 +311,9 @@ class PushNotificationService {
   // ---------------------------------------------------------------------------
 
   Future<void> _requestIosNotificationPermission() async {
-    final settings = await _messaging.requestPermission(
+    final fcm = _fcm;
+    if (fcm == null) return;
+    final settings = await fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -328,7 +345,9 @@ class PushNotificationService {
       debugPrint('[FCM] Android POST_NOTIFICATIONS (local_notifications): $fromPlugin');
     }
 
-    final settings = await _messaging.requestPermission(
+    final fcm = _fcm;
+    if (fcm == null) return;
+    final settings = await fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
@@ -392,11 +411,14 @@ class PushNotificationService {
         ?.createNotificationChannel(_androidChannel);
 
     // iOS foreground presentation options (handled by firebase_messaging too).
-    await _messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    final fcm = _fcm;
+    if (fcm != null) {
+      await fcm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    }
   }
 
   /// When the user opens the app from a **local** tray notification (e.g. one
@@ -436,7 +458,7 @@ class PushNotificationService {
   Future<String?> _waitForApnsToken() async {
     if (!Platform.isIOS) return 'not-ios';
     for (int i = 0; i < 10; i++) {
-      final apns = await _messaging.getAPNSToken();
+      final apns = await _fcm?.getAPNSToken();
       if (apns != null) {
         if (kDebugMode) debugPrint('[FCM] APNS token ready after ${i}s');
         return apns;
@@ -449,12 +471,13 @@ class PushNotificationService {
 
   /// Returns the current FCM token, or null if unavailable.
   Future<String?> getToken() async {
+    if (Firebase.apps.isEmpty) return null;
     try {
       if (Platform.isIOS) {
         final apns = await _waitForApnsToken();
         if (apns == null) return null;
       }
-      final token = await _messaging.getToken();
+      final token = await _fcm?.getToken();
       if (kDebugMode) debugPrint('[FCM] Token: $token');
       return token;
     } catch (e) {
@@ -467,7 +490,9 @@ class PushNotificationService {
   /// rotated by Firebase) and automatically re-registers with the backend.
   void _listenTokenRefresh() {
     _tokenRefreshSub?.cancel();
-    _tokenRefreshSub = _messaging.onTokenRefresh.listen((newToken) {
+    final fcm = _fcm;
+    if (fcm == null) return;
+    _tokenRefreshSub = fcm.onTokenRefresh.listen((newToken) {
       if (kDebugMode) debugPrint('[FCM] Token refreshed: $newToken');
       _sendTokenToBackend(newToken);
     });
@@ -907,6 +932,7 @@ class PushNotificationService {
   // ---------------------------------------------------------------------------
 
   void _listenForeground() {
+    if (Firebase.apps.isEmpty) return;
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       if (kDebugMode) {
         debugPrint('[FCM] Foreground message: ${message.messageId}');
@@ -963,13 +989,14 @@ class PushNotificationService {
   // ---------------------------------------------------------------------------
 
   void _listenNotificationTaps() {
+    if (Firebase.apps.isEmpty) return;
     FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
     // Capture the initial message now, but don't navigate yet — the splash
     // animation (~3 s) finishes after the 800 ms window, so any early
     // navigation gets wiped when splash pushes the real destination.
     // Call consumePendingInitialMessage() from the destination screen instead.
-    _messaging.getInitialMessage().then((message) {
+    _fcm?.getInitialMessage().then((message) {
       _pendingInitialMessage = message;
     });
   }
