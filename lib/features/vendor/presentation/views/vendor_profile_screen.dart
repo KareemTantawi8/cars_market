@@ -1713,6 +1713,7 @@ class _AdTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final url = _imageUrl();
+
     return Material(
       color: context.cardBg,
       borderRadius: BorderRadius.circular(16),

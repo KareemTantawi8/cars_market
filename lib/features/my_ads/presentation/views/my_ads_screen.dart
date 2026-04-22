@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -149,7 +147,10 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
             itemCount: filtered.length,
             itemBuilder: (context, index) => Padding(
               padding: const EdgeInsets.only(bottom: 16),
-              child: _MyAdCard(ad: filtered[index]),
+              child: _MyAdCard(
+                key: ValueKey(filtered[index].id),
+                ad: filtered[index],
+              ),
             ),
           );
         }
@@ -343,20 +344,17 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-class _MyAdCard extends StatefulWidget {
+class _MyAdCard extends StatelessWidget {
   final AdModel ad;
 
-  const _MyAdCard({required this.ad});
+  const _MyAdCard({super.key, required this.ad});
 
-  @override
-  State<_MyAdCard> createState() => _MyAdCardState();
-}
-
-class _MyAdCardState extends State<_MyAdCard> {
-  late final PageController _pageController;
-  int _pageIndex = 0;
-
-  AdModel get ad => widget.ad;
+  String? get _imageUrl {
+    final path = ad.firstImageUrl;
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    return '${AppConstants.storageBaseUrl}/$path';
+  }
 
   bool get _isFeatured => false;
 
@@ -371,250 +369,220 @@ class _MyAdCardState extends State<_MyAdCard> {
     }
   }
 
-  List<String> get _imageUrls {
-    final out = <String>[];
-    for (final path in ad.images) {
-      if (path.isEmpty) continue;
-      if (path.startsWith('http')) {
-        out.add(path);
-      } else {
-        out.add('${AppConstants.storageBaseUrl}/$path');
-      }
-    }
-    return out;
-  }
-
   @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  void _openAdDetails(BuildContext context) {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.adDetails,
-      arguments: {'adId': ad.id},
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(
+        context,
+        AppRoutes.adDetails,
+        arguments: {'adId': ad.id},
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: context.cardBg,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: _statusColor.withOpacity(0.12),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Status accent bar
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [_statusColor, _statusColor.withOpacity(0.4)],
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                  ),
+                ),
+              ),
+              // Main content row
+              SizedBox(
+                height: 148,
+                child: Row(
+                  textDirection: TextDirection.rtl,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildImage(context),
+                    Expanded(child: _buildInfo(context)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final urls = _imageUrls;
-    final pageCount = math.max(1, urls.length);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: _statusColor.withOpacity(0.12),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
+  Widget _buildImage(BuildContext context) {
+    final imageUrl = _imageUrl;
+    return SizedBox(
+      width: 140,
+      height: 148,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => _placeholder(context),
+                    errorWidget: (_, __, ___) => _placeholder(context),
+                  )
+                : _placeholder(context),
           ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+          // Price overlay at bottom of image
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.black.withOpacity(0.75), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                ),
+              ),
+              child: Text(
+                ad.priceFormatted,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+          if (_isFeatured)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.ratingStar,
+                  borderRadius: BorderRadius.circular(6),
+                  boxShadow: [
+                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, size: 10, color: Colors.black87),
+                    const SizedBox(width: 2),
+                    Text(
+                      'مميز',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 10,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfo(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 12, 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Status chip + menu button row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () => _showAdMenu(context),
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: context.surfaceBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.more_horiz_rounded, color: context.textSecondary, size: 20),
+                ),
+              ),
+              _StatusChip(status: ad.statusNormalized),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // Title
+          Text(
+            ad.title,
+            style: AppTextStyles.bodyLarge.copyWith(
+              fontWeight: FontWeight.bold,
+              color: context.textPrimary,
+              fontSize: 15,
+              height: 1.35,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
+          ),
+          const SizedBox(height: 4),
+          // Price badge
+          Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryColor.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                ad.priceFormatted,
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.primaryColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Views row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Icon(Icons.remove_red_eye_outlined, size: 13, color: context.textHint),
+              const SizedBox(width: 4),
+              Text(
+                ad.viewsFormatted,
+                style: AppTextStyles.caption.copyWith(
+                  color: context.textHint,
+                  fontSize: 11,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_statusColor, _statusColor.withOpacity(0.4)],
-                  begin: Alignment.centerRight,
-                  end: Alignment.centerLeft,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 200,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  ColoredBox(
-                    color: context.surfaceBg,
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: pageCount,
-                      physics: const PageScrollPhysics(),
-                      onPageChanged: (i) => setState(() => _pageIndex = i),
-                      itemBuilder: (context, index) {
-                        final url = urls.isEmpty ? null : urls[index];
-                        return GestureDetector(
-                          behavior: HitTestBehavior.deferToChild,
-                          onTap: () => _openAdDetails(context),
-                          child: url != null
-                              ? CachedNetworkImage(
-                                  imageUrl: url,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  placeholder: (_, __) => _placeholder(context),
-                                  errorWidget: (_, __, ___) => _placeholder(context),
-                                )
-                              : _placeholder(context),
-                        );
-                      },
-                    ),
-                  ),
-                  if (urls.length > 1)
-                    Positioned(
-                      bottom: 8,
-                      left: 0,
-                      right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(urls.length, (i) {
-                          final active = i == _pageIndex;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: active ? 18 : 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: active ? AppColors.primaryColor : Colors.white54,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                  if (_isFeatured)
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.ratingStar,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 4),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.star_rounded, size: 10, color: Colors.black87),
-                            const SizedBox(width: 2),
-                            Text(
-                              'مميز',
-                              style: AppTextStyles.caption.copyWith(
-                                color: Colors.black87,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Material(
-              color: context.cardBg,
-              child: InkWell(
-                onTap: () => _openAdDetails(context),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-                  child: _buildInfoBody(context),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoBody(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            GestureDetector(
-              onTap: () => _showAdMenu(context),
-              child: Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: context.surfaceBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.more_horiz_rounded, color: context.textSecondary, size: 20),
-              ),
-            ),
-            _StatusChip(status: ad.statusNormalized),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          ad.title,
-          style: AppTextStyles.bodyLarge.copyWith(
-            fontWeight: FontWeight.bold,
-            color: context.textPrimary,
-            fontSize: 16,
-            height: 1.35,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.right,
-        ),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerRight,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primaryColor.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              ad.priceFormatted,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: AppColors.primaryColor,
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            Icon(Icons.remove_red_eye_outlined, size: 14, color: context.textHint),
-            const SizedBox(width: 4),
-            Text(
-              ad.viewsFormatted,
-              style: AppTextStyles.caption.copyWith(
-                color: context.textHint,
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ],
     );
   }
 

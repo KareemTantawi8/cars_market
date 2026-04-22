@@ -450,12 +450,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                  // Loading overlay
-                  if (isLoading)
-                    Container(
-                      color: Colors.black.withOpacity(0.35),
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
                 ],
               ),
             );

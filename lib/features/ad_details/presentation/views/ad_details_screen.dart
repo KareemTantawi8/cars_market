@@ -107,17 +107,16 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Widget _buildContent(PublicAdDetailsModel ad) {
-    // Image PageView lives outside the vertical scroll so horizontal swipes are not
-    // eaten by the parent scroll view (vertical list + horizontal pager).
+    // Make the whole details content (including image section) scroll as one page.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildImageSection(ad),
         Expanded(
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _buildImageSection(ad),
                 _buildInfoCard(ad),
                 _buildSpecGrid(ad),
                 _buildDetailsSection(ad),
