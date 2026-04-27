@@ -15,7 +15,10 @@ import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 import '../../../home/data/models/category_models.dart';
 import '../../../home/presentation/cubit/category_cubit.dart';
 
-/// Browse Ads — single-screen with inline filter chips
+/// Browse Ads — old style flow:
+/// 1) choose brand screen
+/// 2) choose model screen
+/// 3) show filtered results
 class BrowseAdsScreen extends StatefulWidget {
   const BrowseAdsScreen({super.key});
 
@@ -24,6 +27,7 @@ class BrowseAdsScreen extends StatefulWidget {
 }
 
 class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
+  _BrowseStep _step = _BrowseStep.brand;
   BrandModel? _brand;
   CarModelModel? _model;
   YearModel? _year;
@@ -58,6 +62,7 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
 
   void _clearFilters() {
     setState(() {
+      _step = _BrowseStep.brand;
       _brand = null;
       _model = null;
       _year = null;
@@ -67,167 +72,31 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     context.read<AdsListCubit>().loadAds();
   }
 
-  // ── bottom sheet helpers ──────────────────────────────────────────────────
+  // ── old flow actions ───────────────────────────────────────────────────────
 
-  Future<void> _showBrandPicker() async {
-    final catState = context.read<CategoryCubit>().state;
-    List<BrandModel> brands = catState is CategoryLoaded ? catState.brands : [];
-
-    final picked = await _showPickerSheet<BrandModel>(
-      title: 'اختر الماركة',
-      items: brands,
-      selected: _brand,
-      labelOf: (b) => b.displayName,
-    );
-    if (picked == null || !mounted) return;
+  Future<void> _selectBrand(BrandModel brand) async {
     setState(() {
-      _brand = picked;
+      _brand = brand;
       _model = null;
       _year = null;
+      _step = _BrowseStep.model;
     });
-    context.read<CategoryCubit>().selectBrand(picked);
-    _applyFilters();
+    context.read<CategoryCubit>().selectBrand(brand);
+    await context.read<CategoryCubit>().loadModels(brand.id);
   }
 
-  Future<void> _showModelPicker() async {
-    if (_brand == null) return;
-    final catState = context.read<CategoryCubit>().state;
-    List<CarModelModel> models =
-        catState is CategoryLoaded ? catState.models : [];
-
-    if (models.isEmpty) {
-      await context.read<CategoryCubit>().loadModels(_brand!.id);
-      if (!mounted) return;
-      final updated = context.read<CategoryCubit>().state;
-      models = updated is CategoryLoaded ? updated.models : [];
-    }
-
-    // Track whether "عرض الكل" was tapped
-    bool viewAllSelected = false;
-
-    final picked = await _showPickerSheet<CarModelModel>(
-      title: 'اختر الموديل',
-      items: models,
-      selected: _model,
-      labelOf: (m) => m.displayName,
-      onViewAll: () => viewAllSelected = true,
-      viewAllSubtitle: 'جميع إعلانات هذه الماركة',
-    );
-    if (!mounted) return;
-
-    if (viewAllSelected) {
-      // Show all ads for this brand — no model filter
-      setState(() {
-        _model = null;
-        _year = null;
-      });
+  void _selectModel(CarModelModel? model) {
+    setState(() {
+      _model = model;
+      _year = null;
+      _step = _BrowseStep.results;
+    });
+    if (model == null) {
       context.read<CategoryCubit>().clearModelAndYearKeepingBrand();
-      _applyFilters();
-    } else if (picked != null) {
-      setState(() {
-        _model = picked;
-        _year = null;
-      });
-      context.read<CategoryCubit>().selectModel(picked);
-      _applyFilters();
+    } else {
+      context.read<CategoryCubit>().selectModel(model);
     }
-  }
-
-  Future<void> _showYearPicker() async {
-    if (_model == null) return;
-    final catState = context.read<CategoryCubit>().state;
-    List<YearModel> years = catState is CategoryLoaded ? catState.years : [];
-
-    if (years.isEmpty) {
-      await context.read<CategoryCubit>().loadYears(_model!.id);
-      if (!mounted) return;
-      final updated = context.read<CategoryCubit>().state;
-      years = updated is CategoryLoaded ? updated.years : [];
-    }
-
-    // Track whether "عرض الكل" was tapped
-    bool viewAllSelected = false;
-
-    final picked = await _showPickerSheet<YearModel>(
-      title: 'اختر السنة',
-      items: years,
-      selected: _year,
-      labelOf: (y) => y.displayName,
-      onViewAll: () => viewAllSelected = true,
-      viewAllSubtitle: 'جميع إعلانات هذا الموديل بكل السنوات',
-    );
-    if (!mounted) return;
-
-    if (viewAllSelected) {
-      // Show all ads for this model — no year filter
-      setState(() => _year = null);
-      context.read<CategoryCubit>().clearYearKeepingBrandAndModel();
-      _applyFilters();
-    } else if (picked != null) {
-      setState(() => _year = picked);
-      _applyFilters();
-    }
-  }
-
-  Future<void> _showConditionPicker() async {
-    const options = [
-      ('new', 'جديد'),
-      ('used', 'مستعمل'),
-    ];
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: _PickerSheet<String>(
-          title: 'حالة السيارة',
-          items: options.map((e) => e.$1).toList(),
-          selected: _condition,
-          labelOf: (v) => options.firstWhere((e) => e.$1 == v).$2,
-        ),
-      ),
-    );
-    if (picked == null || !mounted) return;
-    // Toggle: tap selected condition again to deselect
-    setState(() => _condition = picked == _condition ? null : picked);
     _applyFilters();
-  }
-
-  Future<T?> _showPickerSheet<T>({
-    required String title,
-    required List<T> items,
-    required T? selected,
-    required String Function(T) labelOf,
-    VoidCallback? onViewAll,
-    String? viewAllSubtitle,
-  }) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          maxChildSize: 0.9,
-          minChildSize: 0.4,
-          expand: false,
-          builder: (_, sc) => _PickerSheet<T>(
-            title: title,
-            items: items,
-            selected: selected,
-            labelOf: labelOf,
-            scrollController: sc,
-            onViewAll: onViewAll,
-            viewAllSubtitle: viewAllSubtitle,
-          ),
-        ),
-      ),
-    );
   }
 
   // ── build ─────────────────────────────────────────────────────────────────
@@ -237,8 +106,26 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        leading: _step != _BrowseStep.brand
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                onPressed: () {
+                  setState(() {
+                    if (_step == _BrowseStep.results) {
+                      _step = _BrowseStep.model;
+                    } else if (_step == _BrowseStep.model) {
+                      _step = _BrowseStep.brand;
+                    }
+                  });
+                },
+              )
+            : null,
         title: Text(
-          'تصفح الإعلانات',
+          _step == _BrowseStep.brand
+              ? 'اختر الماركة'
+              : _step == _BrowseStep.model
+                  ? 'اختر الموديل'
+                  : 'نتائج الإعلانات',
           style: AppTextStyles.headingMedium.copyWith(
             fontWeight: FontWeight.bold,
             color: context.textPrimary,
@@ -261,306 +148,207 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          _FilterRow(
-            brand: _brand,
-            model: _model,
-            year: _year,
-            condition: _condition,
-            brandSelectedNoModel: _brand != null && _model == null,
-            modelSelectedNoYear: _model != null && _year == null,
-            onBrandTap: _showBrandPicker,
-            onModelTap: _brand != null ? _showModelPicker : null,
-            onYearTap: _model != null ? _showYearPicker : null,
-            onConditionTap: _showConditionPicker,
-          ),
-          const Divider(height: 1),
-          Expanded(child: _AdsList()),
-        ],
-      ),
+      body: _buildStepBody(),
+    );
+  }
+
+  Widget _buildStepBody() {
+    if (_step == _BrowseStep.brand) return _buildBrandsStep();
+    if (_step == _BrowseStep.model) return _buildModelsStep();
+    return const _AdsList();
+  }
+
+  Widget _buildBrandsStep() {
+    return BlocBuilder<CategoryCubit, CategoryState>(
+      builder: (context, state) {
+        if (state is CategoryLoading || state is CategoryInitial) {
+          return const Center(child: LoadingIndicator());
+        }
+        if (state is CategoryError) {
+          return _SelectionError(
+            message: state.message,
+            onRetry: () => context.read<CategoryCubit>().loadBrands(),
+          );
+        }
+        if (state is! CategoryLoaded) return const SizedBox.shrink();
+
+        if (state.brands.isEmpty) {
+          return const _SelectionEmpty(message: 'لا توجد ماركات متاحة');
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+          itemCount: state.brands.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final brand = state.brands[index];
+            final active = _brand?.id == brand.id;
+            return _SelectionTile(
+              label: brand.displayName,
+              active: active,
+              onTap: () => _selectBrand(brand),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModelsStep() {
+    if (_brand == null) {
+      return const _SelectionEmpty(message: 'اختر الماركة أولاً');
+    }
+
+    return BlocBuilder<CategoryCubit, CategoryState>(
+      builder: (context, state) {
+        if (state is CategoryLoading) {
+          return const Center(child: LoadingIndicator());
+        }
+        if (state is CategoryError) {
+          return _SelectionError(
+            message: state.message,
+            onRetry: () => context.read<CategoryCubit>().loadModels(_brand!.id),
+          );
+        }
+        if (state is! CategoryLoaded) return const SizedBox.shrink();
+
+        final models = state.models;
+        if (models.isEmpty) {
+          return const _SelectionEmpty(message: 'لا توجد موديلات متاحة لهذه الماركة');
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+          itemCount: models.length + 1,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _SelectionTile(
+                label: 'عرض كل موديلات ${_brand!.displayName}',
+                subtitle: 'بدون تحديد موديل',
+                active: _model == null,
+                onTap: () => _selectModel(null),
+              );
+            }
+            final model = models[index - 1];
+            final active = _model?.id == model.id;
+            return _SelectionTile(
+              label: model.displayName,
+              active: active,
+              onTap: () => _selectModel(model),
+            );
+          },
+        );
+      },
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Filter Row
-// ─────────────────────────────────────────────────────────────────────────────
+enum _BrowseStep { brand, model, results }
 
-class _FilterRow extends StatelessWidget {
-  final BrandModel? brand;
-  final CarModelModel? model;
-  final YearModel? year;
-  final String? condition;
-  /// True when a brand is chosen but no specific model (all models for brand).
-  final bool brandSelectedNoModel;
-  /// True when a model is chosen but no year (all years for model).
-  final bool modelSelectedNoYear;
-  final VoidCallback onBrandTap;
-  final VoidCallback? onModelTap;
-  final VoidCallback? onYearTap;
-  final VoidCallback onConditionTap;
-
-  const _FilterRow({
-    required this.brand,
-    required this.model,
-    required this.year,
-    required this.condition,
-    this.brandSelectedNoModel = false,
-    this.modelSelectedNoYear = false,
-    required this.onBrandTap,
-    required this.onModelTap,
-    required this.onYearTap,
-    required this.onConditionTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    const conditionLabels = {'new': 'جديد', 'used': 'مستعمل'};
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          _Chip(
-            label: brand?.displayName ?? 'الماركة',
-            active: brand != null,
-            onTap: onBrandTap,
-          ),
-          const SizedBox(width: 8),
-          _Chip(
-            label: model?.displayName ??
-                (brandSelectedNoModel ? 'كل الموديلات' : 'الموديل'),
-            active: model != null || brandSelectedNoModel,
-            enabled: onModelTap != null,
-            onTap: onModelTap ?? () {},
-          ),
-          const SizedBox(width: 8),
-          _Chip(
-            label: year?.displayName ??
-                (modelSelectedNoYear ? 'كل السنوات' : 'السنة'),
-            active: year != null || modelSelectedNoYear,
-            enabled: onYearTap != null,
-            onTap: onYearTap ?? () {},
-          ),
-          const SizedBox(width: 8),
-          _Chip(
-            label: condition != null
-                ? conditionLabels[condition] ?? condition!
-                : 'الحالة',
-            active: condition != null,
-            onTap: onConditionTap,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
+class _SelectionTile extends StatelessWidget {
   final String label;
+  final String? subtitle;
   final bool active;
-  final bool enabled;
   final VoidCallback onTap;
 
-  const _Chip({
+  const _SelectionTile({
     required this.label,
     required this.onTap,
+    this.subtitle,
     this.active = false,
-    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bg = active
-        ? AppColors.primaryColor
-        : enabled
-            ? context.cardBg
-            : context.inputBg;
-    final fg = active
-        ? Colors.white
-        : enabled
-            ? context.textPrimary
-            : context.textHint;
-
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: active ? AppColors.primaryColor : context.inputBorderColor,
+    return Material(
+      color: active ? AppColors.primaryColor.withValues(alpha: 0.1) : context.cardBg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: active ? AppColors.primaryColor : context.inputBorderColor,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: fg,
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      label,
+                      textAlign: TextAlign.right,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: context.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        textAlign: TextAlign.right,
+                        style: AppTextStyles.caption.copyWith(color: context.textSecondary),
+                      ),
+                    ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 16,
-              color: fg,
-            ),
-          ],
+              const SizedBox(width: 10),
+              Icon(
+                active ? Icons.check_circle_rounded : Icons.arrow_forward_ios_rounded,
+                color: active ? AppColors.primaryColor : context.textSecondary,
+                size: 18,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Picker Sheet
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _PickerSheet<T> extends StatelessWidget {
-  final String title;
-  final List<T> items;
-  final T? selected;
-  final String Function(T) labelOf;
-  final ScrollController? scrollController;
-
-  /// When provided, a "عرض الكل" tile appears at the top of the list.
-  /// Tapping it calls this callback then closes the sheet (pops null).
-  final VoidCallback? onViewAll;
-
-  /// Explains what "عرض الكل" does (e.g. all ads for this brand).
-  final String? viewAllSubtitle;
-
-  const _PickerSheet({
-    required this.title,
-    required this.items,
-    required this.selected,
-    required this.labelOf,
-    this.scrollController,
-    this.onViewAll,
-    this.viewAllSubtitle,
-  });
+class _SelectionEmpty extends StatelessWidget {
+  final String message;
+  const _SelectionEmpty({required this.message});
 
   @override
   Widget build(BuildContext context) {
-    final hasViewAll = onViewAll != null;
-    // Total list count: optional "عرض الكل" row + actual items
-    final itemCount = items.length + (hasViewAll ? 1 : 0);
+    return Center(
+      child: Text(
+        message,
+        style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
+      ),
+    );
+  }
+}
 
-    return Column(
-      children: [
-        // Handle bar
-        const SizedBox(height: 12),
-        Center(
-          child: Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: context.inputBorderColor,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Title
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Text(
-            title,
-            style: AppTextStyles.headingSmall.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Divider(height: 1),
-        if (items.isEmpty && !hasViewAll)
-          Expanded(
-            child: Center(
-              child: Text(
-                'لا توجد خيارات',
-                style: AppTextStyles.bodyMedium.copyWith(color: context.textSecondary),
-              ),
-            ),
-          )
-        else
-          Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              itemCount: itemCount,
-              itemBuilder: (context, index) {
-                // ── "عرض الكل" row (index 0 when hasViewAll) ─────────────
-                if (hasViewAll && index == 0) {
-                  return Column(
-                    children: [
-                      ListTile(
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.all_inclusive_rounded,
-                            color: AppColors.primaryColor,
-                            size: 20,
-                          ),
-                        ),
-                        title: Text(
-                          'عرض الكل',
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.primaryColor,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        subtitle: Text(
-                          viewAllSubtitle ??
-                              'عرض جميع الإعلانات بدون تحديد لهذا الفلتر',
-                          style: AppTextStyles.caption.copyWith(
-                            color: context.textSecondary,
-                          ),
-                        ),
-                        onTap: () {
-                          onViewAll!();
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      const Divider(height: 1),
-                    ],
-                  );
-                }
+class _SelectionError extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _SelectionError({required this.message, required this.onRetry});
 
-                // ── Regular item ─────────────────────────────────────────
-                final itemIndex = hasViewAll ? index - 1 : index;
-                final item = items[itemIndex];
-                final isSelected = item == selected;
-                return ListTile(
-                  title: Text(
-                    labelOf(item),
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: isSelected
-                          ? AppColors.primaryColor
-                          : context.textPrimary,
-                      fontWeight:
-                          isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                  trailing: isSelected
-                      ? const Icon(Icons.check_circle_rounded,
-                          color: AppColors.primaryColor, size: 20)
-                      : null,
-                  onTap: () => Navigator.of(context).pop(item),
-                );
-              },
-            ),
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
           ),
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-      ],
+          const SizedBox(height: 10),
+          TextButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+        ],
+      ),
     );
   }
 }

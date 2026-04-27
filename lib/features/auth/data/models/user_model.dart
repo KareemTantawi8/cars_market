@@ -7,6 +7,7 @@ class UserModel {
   final String phone;
   final String type;
   final String? status;
+  final bool isOnline;
   final bool isProtected;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -20,6 +21,7 @@ class UserModel {
     required this.phone,
     required this.type,
     this.status,
+    this.isOnline = false,
     required this.isProtected,
     required this.createdAt,
     required this.updatedAt,
@@ -51,6 +53,7 @@ class UserModel {
       phone: json['phone']?.toString() ?? '',
       type: json['type'] as String? ?? 'customer',
       status: json['status'] as String?,
+      isOnline: json['is_online'] == true,
       isProtected: json['is_protected'] as bool? ?? false,
       createdAt: createdAt ?? now,
       updatedAt: updatedAt ?? now,
@@ -72,6 +75,7 @@ class UserModel {
       'phone': phone,
       'type': type,
       'status': status,
+      'is_online': isOnline,
       'is_protected': isProtected,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),

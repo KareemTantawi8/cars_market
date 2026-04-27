@@ -131,6 +131,19 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
             }
           });
         },
+        onUserStatusChanged: (data) {
+          if (!mounted) return;
+          final uidRaw = data['user_id'];
+          final uid = uidRaw is int
+              ? uidRaw
+              : (uidRaw is num ? uidRaw.toInt() : int.tryParse(uidRaw?.toString() ?? ''));
+          if (uid == null || uid <= 0) return;
+          if (_peerUserId != null && _peerUserId != uid) return;
+          final online = data['is_online'] == true;
+          if (_isOnline != online) {
+            setState(() => _isOnline = online);
+          }
+        },
       );
     }, (error, stackTrace) {
       debugPrint('[ChatRoom] realtime subscribe failed: $error');
@@ -155,6 +168,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
       'sender': {
         'id': sender['id'],
         'name': sender['name']?.toString() ?? '',
+        'is_online': sender['is_online'] == true,
         'profile_image': sender['profile_image'],
         'profile_image_url': sender['profile_image_url'],
         'avatar': sender['avatar'],

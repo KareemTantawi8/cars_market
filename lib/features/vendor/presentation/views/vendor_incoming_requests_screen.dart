@@ -536,8 +536,7 @@ class _VendorIncomingRequestsScreenState
         .join(' ');
 
     // Parse created_at for countdown and timeAgo
-    final createdAtRaw = request['created_at']?.toString();
-    final createdAt = createdAtRaw != null ? DateTime.tryParse(createdAtRaw) : null;
+    final createdAt = _parseCreatedAt(request['created_at']);
     final timeAgo = _formatTimeAgo(createdAt);
 
     return _RequestCard(
@@ -553,6 +552,35 @@ class _VendorIncomingRequestsScreenState
       onAccept: () => _handleAccept(requestId),
       onReject: () => _handleReject(requestId),
     );
+  }
+
+  DateTime? _parseCreatedAt(dynamic raw) {
+    if (raw == null) return null;
+
+    if (raw is DateTime) return raw;
+
+    if (raw is int) {
+      // Supports both unix seconds and milliseconds.
+      final ms = raw > 1000000000000 ? raw : raw * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms);
+    }
+
+    if (raw is num) {
+      final n = raw.toInt();
+      final ms = n > 1000000000000 ? n : n * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms);
+    }
+
+    final text = raw.toString().trim();
+    if (text.isEmpty) return null;
+
+    final asInt = int.tryParse(text);
+    if (asInt != null) {
+      final ms = asInt > 1000000000000 ? asInt : asInt * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(ms);
+    }
+
+    return DateTime.tryParse(text);
   }
 
   void _handleAccept(String requestId) {
@@ -692,10 +720,12 @@ class _RequestCardState extends State<_RequestCard> {
   Timer? _timer;
   Duration _remaining = const Duration(hours: 48);
   static const _deadline = Duration(hours: 48);
+  late final DateTime _startAt;
 
   @override
   void initState() {
     super.initState();
+    _startAt = widget.createdAt ?? DateTime.now();
     _updateRemaining();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) _updateRemaining();
@@ -703,8 +733,7 @@ class _RequestCardState extends State<_RequestCard> {
   }
 
   void _updateRemaining() {
-    final start = widget.createdAt ?? DateTime.now();
-    final elapsed = DateTime.now().difference(start);
+    final elapsed = DateTime.now().difference(_startAt);
     final rem = _deadline - elapsed;
     setState(() => _remaining = rem.isNegative ? Duration.zero : rem);
   }

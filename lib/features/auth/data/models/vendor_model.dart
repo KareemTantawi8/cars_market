@@ -13,6 +13,7 @@ class VendorModel {
   final double averageRating;
   final int? responseTimeHours;
   final bool isVerified;
+  final bool isOnline;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime? deletedAt;
@@ -32,6 +33,7 @@ class VendorModel {
     this.averageRating = 0.0,
     this.responseTimeHours,
     this.isVerified = false,
+    this.isOnline = false,
     required this.createdAt,
     required this.updatedAt,
     this.deletedAt,
@@ -70,6 +72,7 @@ class VendorModel {
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
       responseTimeHours: json['response_time_hours'] != null ? (json['response_time_hours'] is num ? (json['response_time_hours'] as num).toInt() : int.tryParse(json['response_time_hours'].toString())) : null,
       isVerified: json['is_verified'] as bool? ?? false,
+      isOnline: json['is_online'] as bool? ?? false,
       createdAt: createdAt ?? now,
       updatedAt: updatedAt ?? now,
       deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at'].toString()) : null,
@@ -93,6 +96,7 @@ class VendorModel {
       'average_rating': averageRating,
       'response_time_hours': responseTimeHours,
       'is_verified': isVerified,
+      'is_online': isOnline,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),

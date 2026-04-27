@@ -13,6 +13,7 @@ class UserProfileModel {
   final String? imageUrl;
   final String? backgroundImageUrl;
   final bool isVerified;
+  final bool isOnline;
   final String userType; // 'customer' or 'vendor'
   final int loyaltyPoints;
   final String? status;
@@ -31,6 +32,7 @@ class UserProfileModel {
     this.imageUrl,
     this.backgroundImageUrl,
     this.isVerified = false,
+    this.isOnline = false,
     required this.userType,
     this.loyaltyPoints = 0,
     this.status,
@@ -145,6 +147,7 @@ class UserProfileModel {
       imageUrl: imageUrlValue,
       backgroundImageUrl: json['background_image_url'] as String?,
       isVerified: isVerified,
+      isOnline: json['is_online'] == true,
       userType: type,
       loyaltyPoints: points,
       status: status,
@@ -167,6 +170,7 @@ class UserProfileModel {
       if (imageUrl != null) 'image_url': imageUrl,
       if (backgroundImageUrl != null) 'background_image_url': backgroundImageUrl,
       'is_verified': isVerified,
+      'is_online': isOnline,
       'type': userType,
       'loyalty_points': loyaltyPoints,
       if (status != null) 'status': status,

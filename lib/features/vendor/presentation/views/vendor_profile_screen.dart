@@ -16,6 +16,8 @@ import '../cubit/vendor_profile_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
 import '../../../chat/data/repositories/chat_repository.dart';
 import '../../../home/data/repositories/search_requests_repository.dart';
+import '../../../home/data/repositories/category_repository.dart';
+import '../../../home/data/models/category_models.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../ads/data/repositories/ads_repository.dart';
 import '../../../ads/data/models/ad_model.dart';
@@ -117,7 +119,7 @@ class _ProfileBody extends StatelessWidget {
         // ── Body cards ───────────────────────────────────────────────────────
         SliverToBoxAdapter(
           child: Transform.translate(
-            offset: const Offset(0, -28),
+            offset: const Offset(0, -18),
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -127,7 +129,7 @@ class _ProfileBody extends StatelessWidget {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+                padding: const EdgeInsets.fromLTRB(16, 34, 16, 40),
                 child: profile.isVendorAccount
                     ? _VendorContent(profile: profile, adsUserId: _adsUserId)
                     : _CustomerContent(profile: profile, adsUserId: _adsUserId),
@@ -292,7 +294,7 @@ class _ProfileHeroHeader extends StatelessWidget {
                       ),
                     if (isVendor)
                       _HeroBadge(
-                        label: profile.isOpen ? 'مفتوح الآن' : 'مغلق',
+                        label: profile.isOpen ? 'أونلاين' : 'مغلق',
                         icon: Icons.circle,
                         color: profile.isOpen
                             ? AppColors.success.withOpacity(0.28)
@@ -439,7 +441,7 @@ class _VendorContent extends StatelessWidget {
                 valueColor: AppColors.ratingStar,
                 trailing: _StarsMini(rating: profile.rating),
               ),
-              if (profile.governorate != null || profile.address != null) ...[
+              if (profile.address != null && profile.address!.trim().isNotEmpty) ...[
                 _DetailDivider(),
                 _DetailRow(
                   icon: Icons.location_on_outlined,
@@ -473,10 +475,11 @@ class _VendorContent extends StatelessWidget {
           _SectionCard(
             title: 'الماركات المدعومة',
             icon: Icons.directions_car_outlined,
-            child: _BrandsChips(
+            child: _BrandsGrid(
               brands: profile.supportedBrands
                   .where((b) => b.trim().isNotEmpty)
                   .toList(),
+              supportedBrandIds: profile.supportedBrandIds,
             ),
           ),
           const SizedBox(height: 16),
@@ -493,9 +496,7 @@ class _VendorContent extends StatelessWidget {
         ],
 
         // ── Address map card ─────────────────────────────────────────────────
-        if ((profile.address != null && profile.address!.isNotEmpty) ||
-            (profile.governorate != null &&
-                profile.governorate!.isNotEmpty)) ...[
+        if (profile.address != null && profile.address!.trim().isNotEmpty) ...[
           _AddressCard(profile: profile),
           const SizedBox(height: 16),
         ],
@@ -521,11 +522,8 @@ class _VendorContent extends StatelessWidget {
   }
 
   String _displayAddress(VendorProfileModel p) {
-    final parts = <String>[];
-    if (p.governorate?.trim().isNotEmpty == true)
-      parts.add(p.governorate!.trim());
-    if (p.address?.trim().isNotEmpty == true) parts.add(p.address!.trim());
-    return parts.isEmpty ? 'غير متوفر' : parts.join(' - ');
+    final address = p.address?.trim();
+    return (address != null && address.isNotEmpty) ? address : 'غير متوفر';
   }
 
   String _displayResponseSpeed(VendorProfileModel p) {
@@ -606,7 +604,8 @@ class _VendorStatsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return IntrinsicHeight(
+      child: Row(
       children: [
         Expanded(
           child: _StatCard(
@@ -634,13 +633,13 @@ class _VendorStatsRow extends StatelessWidget {
             icon: profile.isOpen
                 ? Icons.check_circle_outline_rounded
                 : Icons.cancel_outlined,
-            value: profile.isOpen ? 'مفتوح' : 'مغلق',
+            value: profile.isOpen ? 'أونلاين' : 'مغلق',
             label: profile.openUntil ?? '',
             color: profile.isOpen ? AppColors.success : AppColors.error,
           ),
         ),
       ],
-    );
+    ));
   }
 
   String _responseValue(VendorProfileModel p) {
@@ -668,6 +667,7 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(minHeight: 168),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 18),
       decoration: BoxDecoration(
         color: context.cardBg,
@@ -930,57 +930,130 @@ class _StarsMini extends StatelessWidget {
 // Brands chips
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BrandsChips extends StatelessWidget {
+class _BrandsGrid extends StatelessWidget {
   final List<String> brands;
+  final List<int> supportedBrandIds;
 
-  const _BrandsChips({required this.brands});
+  const _BrandsGrid({
+    required this.brands,
+    this.supportedBrandIds = const [],
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: brands
-          .map(
-            (brand) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryColor.withOpacity(0.14),
-                    AppColors.primaryColor.withOpacity(0.06),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: AppColors.primaryColor.withOpacity(0.4),
-                  width: 1.2,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.directions_car_rounded,
-                    size: 17,
-                    color: AppColors.primaryColor,
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    brand,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primaryColor,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15.5,
-                    ),
-                  ),
-                ],
-              ),
+    return FutureBuilder<List<BrandModel>>(
+      future: CategoryRepository().getBrands(),
+      builder: (context, snapshot) {
+        final allBrands = snapshot.data ?? const <BrandModel>[];
+        final tiles = brands.map((brandName) {
+          final matchedById = allBrands.where(
+            (b) => supportedBrandIds.contains(b.id),
+          );
+          final byId = matchedById.isNotEmpty
+              ? matchedById.firstWhere(
+                  (b) =>
+                      b.displayName.trim().toLowerCase() ==
+                      brandName.trim().toLowerCase(),
+                  orElse: () => matchedById.first,
+                )
+              : null;
+          final byName = allBrands.where((b) {
+            final n = b.name.trim().toLowerCase();
+            final na = (b.nameAr ?? '').trim().toLowerCase();
+            final target = brandName.trim().toLowerCase();
+            return n == target || na == target;
+          });
+          final match = byId ?? (byName.isNotEmpty ? byName.first : null);
+
+          return _BrandImageTile(
+            name: brandName,
+            logoUrl: _normalizeBrandLogo(match?.logo),
+          );
+        }).toList();
+
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: tiles,
+        );
+      },
+    );
+  }
+
+  String? _normalizeBrandLogo(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    final logo = raw.trim();
+    if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
+    final base = AppConstants.storageBaseUrl.endsWith('/')
+        ? AppConstants.storageBaseUrl.substring(0, AppConstants.storageBaseUrl.length - 1)
+        : AppConstants.storageBaseUrl;
+    final path = logo.startsWith('/') ? logo.substring(1) : logo;
+    return '$base/$path';
+  }
+}
+
+class _BrandImageTile extends StatelessWidget {
+  final String name;
+  final String? logoUrl;
+
+  const _BrandImageTile({required this.name, this.logoUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 98,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(
+        color: context.surfaceBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: context.inputBorderColor),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: context.inputBorderColor.withOpacity(0.8)),
             ),
-          )
-          .toList(),
+            child: ClipOval(
+              child: logoUrl != null
+                  ? CachedNetworkImage(
+                      imageUrl: logoUrl!,
+                      fit: BoxFit.cover,
+                      placeholder: (_, __) => _fallback(context),
+                      errorWidget: (_, __, ___) => _fallback(context),
+                    )
+                  : _fallback(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            name,
+            style: AppTextStyles.caption.copyWith(
+              color: context.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fallback(BuildContext context) {
+    return ColoredBox(
+      color: context.surfaceBg,
+      child: Icon(
+        Icons.directions_car_rounded,
+        color: AppColors.primaryColor,
+        size: 24,
+      ),
     );
   }
 }
@@ -1060,19 +1133,12 @@ class _AddressCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (profile.governorate != null &&
-                    profile.governorate!.isNotEmpty)
-                  Text(
-                    profile.governorate!,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
                 if (profile.address != null && profile.address!.isNotEmpty)
                   Text(
                     profile.address!,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: context.textSecondary,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: context.textPrimary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
               ],

@@ -256,6 +256,7 @@ class RealtimeService with WidgetsBindingObserver {
   void subscribeChat(
     int chatId, {
     required void Function(Map<String, dynamic> data) onMessage,
+    void Function(Map<String, dynamic> data)? onUserStatusChanged,
   }) {
     final c = _client;
     if (c == null || c.socketId == null) return;
@@ -268,6 +269,17 @@ class RealtimeService with WidgetsBindingObserver {
       ch.bind('message.sent', (_, data) {
         onMessage(coerceMap(data));
       });
+      if (onUserStatusChanged != null) {
+        for (final event in const [
+          'UserStatusChanged',
+          'App\\Events\\UserStatusChanged',
+          '.UserStatusChanged',
+        ]) {
+          ch.bind(event, (_, data) {
+            onUserStatusChanged(coerceMap(data));
+          });
+        }
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('[Realtime] chat auth failed: $e');
     }
