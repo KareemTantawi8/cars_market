@@ -16,11 +16,15 @@ import '../../../../core/services/push_notification_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../home/presentation/cubit/category_cubit.dart';
+import '../../../home/data/repositories/category_repository.dart';
+import '../../../home/data/models/category_models.dart';
 import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 import '../../../browse_ads/presentation/views/browse_ads_screen.dart';
+import '../../../profile/data/repositories/user_profile_repository.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
+import '../../../../shared/widgets/common/custom_toast.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
 import '../../data/repositories/vendor_profile_repository.dart';
@@ -162,6 +166,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     style: AppTextStyles.headingSmall.copyWith(
                       color: context.textPrimary,
                       fontWeight: FontWeight.bold,
+                      fontSize: 24,
                     ),
                   ),
                   Padding(
@@ -187,6 +192,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: AppTextStyles.headingMedium.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.bold,
+                        fontSize: 28,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -207,7 +213,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             const SizedBox(height: 8),
             // Badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.primaryColor.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
@@ -218,13 +224,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
+                  fontSize: 14.5,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             // Online toggle button
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildOnlineToggleButton(context, profile),
             ),
             const SizedBox(height: 56),
@@ -286,16 +293,16 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           backgroundColor:
               isOpen ? AppColors.success.withOpacity(0.92) : AppColors.error.withOpacity(0.9),
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          visualDensity: VisualDensity.compact,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 2,
         ),
         icon: Icon(
           isOpen ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-          size: 22,
+          size: 34,
         ),
         label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 220),
+          constraints: const BoxConstraints(maxWidth: 260),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -303,15 +310,16 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               Text(
                 isOpen ? 'متصل — اضغط لإيقاف الظهور' : 'غير متصل — اضغط للاستلام',
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   height: 1.2,
                 ),
               ),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                   color: Colors.white.withOpacity(0.9),
                   height: 1.2,
@@ -345,6 +353,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: context.textSecondary,
                   height: 1.6,
+                  fontSize: 16.5,
                 ),
               ),
               const SizedBox(height: 24),
@@ -469,14 +478,17 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             style: AppTextStyles.bodyMedium.copyWith(
               color: context.textPrimary,
               fontWeight: FontWeight.w700,
-              fontSize: 15,
+              fontSize: 16.5,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
           Text(
             label,
-            style: AppTextStyles.caption.copyWith(color: context.textSecondary),
+            style: AppTextStyles.caption.copyWith(
+              color: context.textSecondary,
+              fontSize: 13,
+            ),
             textAlign: TextAlign.center,
           ),
         ],
@@ -541,6 +553,8 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           title,
           style: AppTextStyles.headingSmall.copyWith(
             color: context.textPrimary,
+            fontSize: 23,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],
@@ -1047,6 +1061,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: context.textPrimary,
                               fontWeight: FontWeight.w600,
+                              fontSize: 16.5,
                             ),
                           ),
                         if (profile.address != null &&
@@ -1057,12 +1072,31 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodySmall.copyWith(
                               color: context.textSecondary,
                               height: 1.4,
+                              fontSize: 14.5,
                             ),
                           ),
                         ],
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => _showEditAddressDialog(context, profile),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.edit_outlined,
+                        color: AppColors.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   // Arrow to open maps
                   GestureDetector(
                     onTap: () => _openGoogleMaps(
@@ -1348,6 +1382,25 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       }
+    }
+  }
+
+  Future<void> _showEditAddressDialog(
+    BuildContext context,
+    VendorProfileModel profile,
+  ) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => _VendorAddressEditDialog(profile: profile),
+    );
+    if (saved == true && context.mounted) {
+      await context.read<VendorDashboardCubit>().refresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث العنوان بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
     }
   }
 
@@ -1770,6 +1823,192 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _VendorAddressEditDialog extends StatefulWidget {
+  final VendorProfileModel profile;
+  const _VendorAddressEditDialog({required this.profile});
+
+  @override
+  State<_VendorAddressEditDialog> createState() =>
+      _VendorAddressEditDialogState();
+}
+
+class _VendorAddressEditDialogState extends State<_VendorAddressEditDialog> {
+  final _addressController = TextEditingController();
+  final _repo = UserProfileRepository();
+  final _categoryRepo = CategoryRepository();
+  List<GovernorateModel> _governorates = const [];
+  int? _selectedGovernorateId;
+  bool _loading = true;
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _addressController.text = widget.profile.address ?? '';
+    _loadGovernorates();
+  }
+
+  Future<void> _loadGovernorates() async {
+    try {
+      final list = await _categoryRepo.getGovernorates();
+      if (!mounted) return;
+      final currentGov = (widget.profile.governorate ?? '').trim().toLowerCase();
+      int? selected;
+      if (currentGov.isNotEmpty) {
+        for (final g in list) {
+          if (g.displayName.trim().toLowerCase() == currentGov) {
+            selected = g.id;
+            break;
+          }
+        }
+      }
+      setState(() {
+        _governorates = list;
+        _selectedGovernorateId = selected ?? (list.isNotEmpty ? list.first.id : null);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    final gid = _selectedGovernorateId;
+    final address = _addressController.text.trim();
+    if (gid == null || gid <= 0) {
+      CustomToast.showError(context, 'اختر المحافظة');
+      return;
+    }
+    if (address.isEmpty) {
+      CustomToast.showError(context, 'أدخل العنوان التفصيلي');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await _repo.updateProfileAddress(governorateId: gid, address: address);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        CustomToast.showError(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: context.cardBg,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text('تعديل العنوان', style: AppTextStyles.headingSmall),
+      content: _loading
+          ? const SizedBox(height: 120, child: Center(child: LoadingIndicator()))
+          : _error != null
+              ? Text(
+                  _error!,
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                )
+              : SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'المحافظة',
+                        style: AppTextStyles.caption.copyWith(
+                          color: context.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: _selectedGovernorateId,
+                        items: _governorates
+                            .map(
+                              (g) => DropdownMenuItem<int>(
+                                value: g.id,
+                                child: Text(g.displayName),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: _saving
+                            ? null
+                            : (v) => setState(() => _selectedGovernorateId = v),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: context.inputBg,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: context.inputBorderColor),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'العنوان التفصيلي',
+                        style: AppTextStyles.caption.copyWith(
+                          color: context.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _addressController,
+                        maxLines: 3,
+                        enabled: !_saving,
+                        decoration: InputDecoration(
+                          hintText: 'الشارع، المنطقة، أقرب معلم...',
+                          filled: true,
+                          fillColor: context.inputBg,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: context.inputBorderColor),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: Text(
+            'إلغاء',
+            style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary),
+          ),
+        ),
+        TextButton(
+          onPressed: (_loading || _error != null || _saving) ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(
+                  'حفظ',
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }
