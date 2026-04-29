@@ -18,6 +18,9 @@ class VendorProfileModel {
 
   /// Ids from API (auth/me / vendor profile) for editing supported brands.
   final List<int> supportedBrandIds;
+
+  /// Full brand objects with name + imageUrl for display.
+  final List<Map<String, String>> supportedBrandsData;
   final List<String> availableServices;
   final String? phone;
 
@@ -50,6 +53,7 @@ class VendorProfileModel {
       ratingCount: ratingCount,
       supportedBrands: supportedBrands,
       supportedBrandIds: supportedBrandIds,
+      supportedBrandsData: supportedBrandsData,
       availableServices: availableServices,
       phone: phone,
       shopPhone: shopPhone,
@@ -79,6 +83,7 @@ class VendorProfileModel {
     this.ratingCount = 0,
     required this.supportedBrands,
     this.supportedBrandIds = const [],
+    this.supportedBrandsData = const [],
     required this.availableServices,
     this.phone,
     this.shopPhone,
@@ -126,14 +131,15 @@ class VendorProfileModel {
   factory VendorProfileModel.fromJson(Map<String, dynamic> json) {
     // Handle supported brands
     List<String> brands = [];
-    final brandsData =
+    final rawBrandsData =
         json['supported_brands'] ??
         json['brands'] ??
         json['brand_names'] ??
         json['car_brands'];
     final brandIds = <int>[];
-    if (brandsData is List) {
-      brands = brandsData.map((e) {
+    final brandsDataList = <Map<String, String>>[];
+    if (rawBrandsData is List) {
+      brands = rawBrandsData.map((e) {
         if (e is String) return e;
         if (e is Map) {
           final m = e;
@@ -143,10 +149,19 @@ class VendorProfileModel {
           } else if (bid is num && bid > 0) {
             brandIds.add(bid.toInt());
           }
-          return m['name']?.toString() ??
+          final imgUrl = m['image']?.toString() ??
+              m['image_url']?.toString() ??
+              m['logo']?.toString() ??
+              m['icon']?.toString() ??
+              '';
+          final name = m['name']?.toString() ??
               m['name_ar']?.toString() ??
               m['brand_name']?.toString() ??
               '';
+          if (name.isNotEmpty) {
+            brandsDataList.add({'name': name, 'imageUrl': imgUrl});
+          }
+          return name;
         }
         return e.toString();
       }).toList();
@@ -260,6 +275,7 @@ class VendorProfileModel {
           0,
       supportedBrands: brands,
       supportedBrandIds: brandIds,
+      supportedBrandsData: brandsDataList,
       availableServices: services,
       phone:
           json['phone'] as String? ??
@@ -318,6 +334,7 @@ class VendorProfileModel {
     // Brands from vendor.categories
     final brands = <String>[];
     final brandIds = <int>[];
+    final brandsDataList = <Map<String, String>>[];
     final categoriesRaw = vendor?['categories'];
     if (categoriesRaw is List) {
       for (final e in categoriesRaw) {
@@ -329,7 +346,13 @@ class VendorProfileModel {
             brandIds.add(bid.toInt());
           }
           final n = e['name']?.toString() ?? '';
-          if (n.isNotEmpty) brands.add(n);
+          final imgUrl = e['image']?.toString() ??
+              e['image_url']?.toString() ??
+              e['logo']?.toString() ?? '';
+          if (n.isNotEmpty) {
+            brands.add(n);
+            brandsDataList.add({'name': n, 'imageUrl': imgUrl});
+          }
         }
       }
     }
@@ -365,6 +388,7 @@ class VendorProfileModel {
           : 0,
       supportedBrands: brands,
       supportedBrandIds: brandIds,
+      supportedBrandsData: brandsDataList,
       availableServices: const [],
       phone: userData['phone']?.toString(),
       shopPhone: vendor?['company_phone']?.toString()
