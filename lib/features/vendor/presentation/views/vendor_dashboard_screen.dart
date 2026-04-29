@@ -185,24 +185,39 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Top bar
+            // Top bar — centered title; online pill (start) + notifications (end)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  const SizedBox(width: 48),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: _buildHeaderOnlinePill(context, profile),
+                        ),
+                      ),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(start: 8),
+                            child: NotificationBell(iconColor: context.textPrimary),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Text(
                     'لوحة التحكم',
                     style: AppTextStyles.headingSmall.copyWith(
                       color: context.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 24,
+                      fontSize: 26,
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: NotificationBell(iconColor: context.textPrimary),
                   ),
                 ],
               ),
@@ -249,7 +264,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: AppTextStyles.headingMedium.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 28,
+                        fontSize: 30,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -281,17 +296,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14.5,
+                  fontSize: 16,
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            // Online toggle button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildOnlineToggleButton(context, profile),
-            ),
-            const SizedBox(height: 56),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -332,10 +341,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 child: const Icon(Icons.storefront, size: 52, color: Colors.white70),
               ),
       ),
-    );
+    );  
   }
 
-  Widget _buildOnlineToggleButton(BuildContext context, VendorProfileModel profile) {
+  /// Compact pill in the app bar (tap toggles online search visibility).
+  Widget _buildHeaderOnlinePill(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
     final statusColor = isOpen ? AppColors.success : AppColors.error;
     final title = isOpen ? 'المحل مفتوح الآن' : 'المحل مغلق حالياً';
@@ -435,7 +445,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: context.textSecondary,
                   height: 1.6,
-                  fontSize: 16.5,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 24),
@@ -560,7 +570,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             style: AppTextStyles.bodyMedium.copyWith(
               color: context.textPrimary,
               fontWeight: FontWeight.w700,
-              fontSize: 16.5,
+              fontSize: 18,
             ),
             textAlign: TextAlign.center,
           ),
@@ -569,7 +579,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             label,
             style: AppTextStyles.caption.copyWith(
               color: context.textSecondary,
-              fontSize: 13,
+              fontSize: 14.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -725,7 +735,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           title,
           style: AppTextStyles.headingSmall.copyWith(
             color: context.textPrimary,
-            fontSize: 23,
+            fontSize: 25,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -1118,7 +1128,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           color: Colors.transparent,
                           child: InkWell(
                             onTap: () =>
-                                _showSetLocationDialog(context, profile),
+                                _showVendorLocationForm(context, profile),
                             borderRadius: BorderRadius.circular(24),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -1148,10 +1158,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    'تحديد الموقع',
+                                    'تعديل الموقع',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 14,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1265,7 +1275,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: context.textPrimary,
                               fontWeight: FontWeight.w600,
-                              fontSize: 16.5,
+                              fontSize: 18,
                             ),
                           ),
                         if (profile.address != null &&
@@ -1276,7 +1286,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodySmall.copyWith(
                               color: context.textSecondary,
                               height: 1.4,
-                              fontSize: 14.5,
+                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -1285,7 +1295,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _showEditAddressDialog(context, profile),
+                    onTap: () => _showVendorLocationForm(context, profile),
                     child: Container(
                       width: 36,
                       height: 36,
@@ -1362,6 +1372,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           'رقم المحل',
                           style: AppTextStyles.caption.copyWith(
                             color: context.textSecondary,
+                            fontSize: 14,
                           ),
                         ),
                         Text(
@@ -1369,6 +1380,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: context.textPrimary,
                             fontWeight: FontWeight.w600,
+                            fontSize: 17,
                           ),
                         ),
                       ],
@@ -1436,7 +1448,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
               ),
             ],
@@ -1446,21 +1458,38 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Future<void> _showSetLocationDialog(
+  /// Customer-style sheet: governorate (list picker) + detail address + GPS coords.
+  Future<void> _showVendorLocationForm(
     BuildContext context,
     VendorProfileModel profile,
   ) async {
-    showDialog<void>(
+    final rootContext = context;
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) => _SetLocationDialog(
-        onSetLocation: () async {
-          Navigator.of(dialogContext).pop();
-          await _performSetLocation(context, profile);
-        },
-        onCancel: () => Navigator.of(dialogContext).pop(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: _VendorLocationFormSheet(
+          profile: profile,
+          onUseCurrentGps: () {
+            Navigator.of(sheetContext).pop();
+            unawaited(_performSetLocation(rootContext, profile));
+          },
+        ),
       ),
     );
+    if (saved == true && rootContext.mounted) {
+      await rootContext.read<VendorDashboardCubit>().refresh();
+      ScaffoldMessenger.of(rootContext).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث العنوان بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   Future<void> _performSetLocation(
@@ -1662,7 +1691,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 18,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1670,7 +1699,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         'ملخص الطلبات والتقييمات',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.75),
-                          fontSize: 13,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -1875,6 +1904,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: AppTextStyles.bodyLarge.copyWith(
                         fontWeight: FontWeight.w700,
                         color: context.textPrimary,
+                        fontSize: 18,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1882,6 +1912,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       'تواصل مع العملاء',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: context.textSecondary,
+                        fontSize: 15,
                       ),
                     ),
                   ],
@@ -2015,6 +2046,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: titleColor ?? context.textPrimary,
                     fontWeight: FontWeight.w500,
+                    fontSize: 17,
                   ),
                 ),
               ),
@@ -2105,21 +2137,10 @@ class _SetLocationDialog extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  elevation: 0,
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Cancel
-            TextButton(
-              onPressed: onCancel,
-              child: Text(
-                'إلغاء',
-                style: TextStyle(color: context.textSecondary),
-              ),
-            ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );
