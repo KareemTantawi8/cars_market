@@ -18,6 +18,7 @@ import '../utils/constants.dart';
 import 'notification_payload.dart';
 import 'storage_service.dart';
 import '../../firebase_options.dart';
+import 'realtime_service.dart' as import_realtime;
 
 // -----------------------------------------------------------------------------
 // Killed / swiped-away app: only FCM can alert. Reverb and GET /notifications
@@ -226,11 +227,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         ),
       );
 
-  await plugin.show(
-    trayId,
-    title,
-    body,
-    const NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
         _channelId,
         _channelName,
@@ -238,15 +235,27 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         importance: Importance.max,
         priority: Priority.max,
         icon: _androidNotificationIcon,
+        styleInformation: BigTextStyleInformation(
+          body,
+          contentTitle: title,
+          htmlFormatContentTitle: true,
+          htmlFormatSummaryText: true,
+        ),
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
       ),
-    ),
-    payload: jsonEncode(data),
-  );
+    );
+
+    await plugin.show(
+      trayId,
+      title,
+      body,
+      details,
+      payload: jsonEncode(data),
+    );
 }
 
 class PushNotificationService {
@@ -600,6 +609,10 @@ class PushNotificationService {
             playSound: true,
             enableVibration: true,
             visibility: NotificationVisibility.public,
+            styleInformation: BigTextStyleInformation(
+              body,
+              contentTitle: title,
+            ),
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -678,6 +691,10 @@ class PushNotificationService {
             playSound: true,
             enableVibration: true,
             visibility: NotificationVisibility.public,
+            styleInformation: BigTextStyleInformation(
+              body,
+              contentTitle: title,
+            ),
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -939,8 +956,22 @@ class PushNotificationService {
         debugPrint('[FCM] notification: ${message.notification?.title}');
         debugPrint('[FCM] data: ${message.data}');
       }
+      _handleForegroundFCMData(message.data);
       _showLocalNotification(message);
     });
+  }
+
+  void _handleForegroundFCMData(Map<String, dynamic> data) {
+    final type = data['type']?.toString() ?? '';
+    if (type == 'search_request' || type == 'search_request_created' || type == 'search-request.created') {
+      import_realtime.RealtimeService.instance.onVendorSearchRequestCreated?.call(data);
+      import_realtime.RealtimeService.instance.onVendorShowRequestsPopup?.call(data);
+    } else if (type == 'new-message' || type == 'new_message' || type == 'chat') {
+      import_realtime.RealtimeService.instance.onVendorNewMessage?.call(data);
+      import_realtime.RealtimeService.instance.onCustomerNewMessage?.call(data);
+    } else if (type == 'search_approved' || type == 'search_request_accepted') {
+      import_realtime.RealtimeService.instance.onCustomerSearchAccepted?.call(data);
+    }
   }
 
   void _showLocalNotification(RemoteMessage message) {

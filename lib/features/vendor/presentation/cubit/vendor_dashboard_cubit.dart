@@ -107,6 +107,9 @@ class VendorDashboardCubit extends Cubit<VendorDashboardState> {
       supportedBrands: v.brands.map((b) => b.name).toList(),
       supportedBrandIds:
           v.brands.map((b) => b.id).where((id) => id > 0).toList(),
+      supportedBrandsData: v.brands
+          .map((b) => {'name': b.name, 'imageUrl': b.imageUrl ?? ''})
+          .toList(),
       availableServices: const [], // auth/me does not include services
       phone: v.phone ?? user.phone,
       whatsapp: v.phone ?? user.phone,

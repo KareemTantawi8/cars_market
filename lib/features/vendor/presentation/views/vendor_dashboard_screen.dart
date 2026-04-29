@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
@@ -25,6 +27,7 @@ import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../shared/widgets/dialogs/vendor_requests_popup.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
 import '../../data/repositories/vendor_profile_repository.dart';
@@ -43,13 +46,29 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startVendorRealtime();
+      _checkAndShowPopupOnLoad();
     });
+  }
+
+  // Prevents showing the popup too frequently (debounce)
+  static DateTime? _lastPopupTime;
+
+  void _checkAndShowPopupOnLoad() {
+    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
+    if (_lastPopupTime != null &&
+        DateTime.now().difference(_lastPopupTime!).inMinutes < 5) {
+      return; // Only auto-show once every 5 minutes on load
+    }
+    _lastPopupTime = DateTime.now();
+    showVendorRequestsPopup(context);
   }
 
   void _startVendorRealtime() {
     if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
     RealtimeService.instance.onVendorSearchRequestCreated =
         _onVendorSearchRequestCreated;
+    RealtimeService.instance.onVendorShowRequestsPopup =
+        _onVendorShowRequestsPopup;
     RealtimeService.instance.onVendorNewMessage = _onVendorNewMessage;
     unawaited(RealtimeService.instance.start());
     unawaited(
@@ -62,6 +81,17 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     unawaited(InAppNotificationService.showVendorNewSearchRequest(data));
   }
 
+  void _onVendorShowRequestsPopup(Map<String, dynamic> data) {
+    if (!mounted) return;
+    // Debounce to prevent multiple popups stacking simultaneously from burst events
+    if (_lastPopupTime != null &&
+        DateTime.now().difference(_lastPopupTime!).inSeconds < 5) {
+      return;
+    }
+    _lastPopupTime = DateTime.now();
+    showVendorRequestsPopup(context);
+  }
+
   void _onVendorNewMessage(Map<String, dynamic> data) {
     InAppNotificationService.showNewMessageReverb(data);
   }
@@ -69,6 +99,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   @override
   void dispose() {
     RealtimeService.instance.onVendorSearchRequestCreated = null;
+    RealtimeService.instance.onVendorShowRequestsPopup = null;
     RealtimeService.instance.onVendorNewMessage = null;
     super.dispose();
   }
@@ -177,8 +208,34 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            // Avatar
-            _buildFlatAvatar(profile),
+            // Avatar — tappable to change photo
+            GestureDetector(
+              onTap: () => _changeProfileImage(context),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  _buildFlatAvatar(profile),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.camera_alt_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             // Name
             Padding(
@@ -280,53 +337,78 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   Widget _buildOnlineToggleButton(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
+    final statusColor = isOpen ? AppColors.success : AppColors.error;
+    final title = isOpen ? 'المحل مفتوح الآن' : 'المحل مغلق حالياً';
     final subtitle = isOpen
         ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-            ? 'مفتوح حتى ${profile.openUntil}'
-            : 'تستلم طلبات البحث الآن')
-        : 'لن يظهر لك طلبات بحث جديدة';
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: () => _toggleOnlineStatus(context),
-        style: FilledButton.styleFrom(
-          backgroundColor:
-              isOpen ? AppColors.success.withOpacity(0.92) : AppColors.error.withOpacity(0.9),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
+            ? '${profile.openUntil} — تستقبل طلبات البحث'
+            : 'أنت مرئي للعملاء وتستقبل طلبات البحث')
+        : 'لن تصلك طلبات بحث جديدة حتى تعود للوضع المفتوح';
+
+    return GestureDetector(
+      onTap: () => _toggleOnlineStatus(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        decoration: BoxDecoration(
+          color: statusColor.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: statusColor.withOpacity(0.35), width: 1.5),
         ),
-        icon: Icon(
-          isOpen ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-          size: 34,
-        ),
-        label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 260),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isOpen ? 'متصل — اضغط لإيقاف الظهور' : 'غير متصل — اضغط للاستلام',
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1.2,
-                ),
+        child: Row(
+          children: [
+            // Animated status dot
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.15),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.9),
-                  height: 1.2,
-                ),
+              child: Icon(
+                isOpen ? Icons.storefront_rounded : Icons.storefront_outlined,
+                color: statusColor,
+                size: 22,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 14),
+            // Text block
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                      color: context.textSecondary,
+                      height: 1.3,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Switch
+            Switch.adaptive(
+              value: isOpen,
+              onChanged: (_) => _toggleOnlineStatus(context),
+              activeColor: AppColors.success,
+              inactiveThumbColor: AppColors.error,
+              inactiveTrackColor: AppColors.error.withOpacity(0.25),
+            ),
+          ],
         ),
       ),
     );
@@ -535,6 +617,96 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     }
   }
 
+  Future<void> _changeProfileImage(BuildContext context) async {
+    final picker = ImagePicker();
+    // Bottom sheet to pick source
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.primaryColor,
+                  child: Icon(Icons.photo_library_rounded, color: Colors.white),
+                ),
+                title: const Text('اختر من المعرض'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppColors.primaryDark,
+                  child: Icon(Icons.camera_alt_rounded, color: Colors.white),
+                ),
+                title: const Text('التقط صورة جديدة'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null || !context.mounted) return;
+
+    final picked = await picker.pickImage(
+      source: source,
+      imageQuality: 85,
+      maxWidth: 1024,
+    );
+    if (picked == null || !context.mounted) return;
+
+    final file = File(picked.path);
+
+    // Show uploading indicator
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            SizedBox(
+              width: 18, height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            ),
+            SizedBox(width: 12),
+            Text('جاري رفع الصورة...'),
+          ],
+        ),
+        duration: Duration(seconds: 10),
+      ),
+    );
+
+    try {
+      final repo = UserProfileRepository();
+      await repo.uploadProfileImages(profileImage: file);
+      if (!context.mounted) return;
+      messenger.hideCurrentSnackBar();
+      CustomToast.showSuccess(context, 'تم تحديث صورة الملف الشخصي');
+      await context.read<VendorDashboardCubit>().refresh();
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.hideCurrentSnackBar();
+      CustomToast.showError(
+        context,
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
+
   // ─── Section header ───────────────────────────────────────────────────────
 
   Widget _buildSectionHeader(String title) {
@@ -719,44 +891,76 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             ],
           )
         else
-          _buildBrandsRow(brands),
+          _buildBrandsRow(profile.supportedBrandsData.isNotEmpty
+              ? profile.supportedBrandsData
+              : brands.map((b) => {'name': b, 'imageUrl': ''}).toList()),
       ],
     );
   }
 
-  Widget _buildBrandsRow(List<String> brands) {
+  Widget _buildBrandsRow(List<Map<String, String>> brands) {
     return SizedBox(
-      height: 96,
+      height: 100,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: brands.length,
         separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
+          final brand = brands[i];
+          final name = brand['name'] ?? '';
+          final imageUrl = brand['imageUrl'] ?? '';
+          final hasImage = imageUrl.isNotEmpty;
           return Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 58,
-                height: 58,
+                width: 60,
+                height: 60,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryColor.withOpacity(0.1),
+                  color: context.cardBg,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: AppColors.primaryColor.withOpacity(0.2),
                     width: 1.5,
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.directions_car_outlined,
-                  color: AppColors.primaryColor,
-                  size: 26,
+                child: ClipOval(
+                  child: hasImage
+                      ? CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.contain,
+                          placeholder: (_, __) => const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 1.5),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => const Icon(
+                            Icons.directions_car_outlined,
+                            color: AppColors.primaryColor,
+                            size: 26,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.directions_car_outlined,
+                          color: AppColors.primaryColor,
+                          size: 26,
+                        ),
                 ),
               ),
               const SizedBox(height: 8),
               SizedBox(
-                width: 64,
+                width: 68,
                 child: Text(
-                  brands[i],
+                  name,
                   style: AppTextStyles.caption.copyWith(
                     color: context.textPrimary,
                     fontWeight: FontWeight.w500,
@@ -1389,9 +1593,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     BuildContext context,
     VendorProfileModel profile,
   ) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (_) => _VendorAddressEditDialog(profile: profile),
+    final saved = await Navigator.of(context).pushNamed(
+      AppRoutes.vendorLocationEdit,
+      arguments: profile,
     );
     if (saved == true && context.mounted) {
       await context.read<VendorDashboardCubit>().refresh();
@@ -1827,191 +2031,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 }
 
-class _VendorAddressEditDialog extends StatefulWidget {
-  final VendorProfileModel profile;
-  const _VendorAddressEditDialog({required this.profile});
-
-  @override
-  State<_VendorAddressEditDialog> createState() =>
-      _VendorAddressEditDialogState();
-}
-
-class _VendorAddressEditDialogState extends State<_VendorAddressEditDialog> {
-  final _addressController = TextEditingController();
-  final _repo = UserProfileRepository();
-  final _categoryRepo = CategoryRepository();
-  List<GovernorateModel> _governorates = const [];
-  int? _selectedGovernorateId;
-  bool _loading = true;
-  bool _saving = false;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _addressController.text = widget.profile.address ?? '';
-    _loadGovernorates();
-  }
-
-  Future<void> _loadGovernorates() async {
-    try {
-      final list = await _categoryRepo.getGovernorates();
-      if (!mounted) return;
-      final currentGov = (widget.profile.governorate ?? '').trim().toLowerCase();
-      int? selected;
-      if (currentGov.isNotEmpty) {
-        for (final g in list) {
-          if (g.displayName.trim().toLowerCase() == currentGov) {
-            selected = g.id;
-            break;
-          }
-        }
-      }
-      setState(() {
-        _governorates = list;
-        _selectedGovernorateId = selected ?? (list.isNotEmpty ? list.first.id : null);
-        _loading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString().replaceFirst('Exception: ', '');
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _save() async {
-    final gid = _selectedGovernorateId;
-    final address = _addressController.text.trim();
-    if (gid == null || gid <= 0) {
-      CustomToast.showError(context, 'اختر المحافظة');
-      return;
-    }
-    if (address.isEmpty) {
-      CustomToast.showError(context, 'أدخل العنوان التفصيلي');
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      await _repo.updateProfileAddress(governorateId: gid, address: address);
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      if (mounted) {
-        CustomToast.showError(context, e.toString().replaceFirst('Exception: ', ''));
-      }
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _addressController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: context.cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text('تعديل العنوان', style: AppTextStyles.headingSmall),
-      content: _loading
-          ? const SizedBox(height: 120, child: Center(child: LoadingIndicator()))
-          : _error != null
-              ? Text(
-                  _error!,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
-                )
-              : SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'المحافظة',
-                        style: AppTextStyles.caption.copyWith(
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<int>(
-                        value: _selectedGovernorateId,
-                        items: _governorates
-                            .map(
-                              (g) => DropdownMenuItem<int>(
-                                value: g.id,
-                                child: Text(g.displayName),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _saving
-                            ? null
-                            : (v) => setState(() => _selectedGovernorateId = v),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: context.inputBg,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: context.inputBorderColor),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'العنوان التفصيلي',
-                        style: AppTextStyles.caption.copyWith(
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _addressController,
-                        maxLines: 3,
-                        enabled: !_saving,
-                        decoration: InputDecoration(
-                          hintText: 'الشارع، المنطقة، أقرب معلم...',
-                          filled: true,
-                          fillColor: context.inputBg,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: context.inputBorderColor),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(
-            'إلغاء',
-            style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary),
-          ),
-        ),
-        TextButton(
-          onPressed: (_loading || _error != null || _saving) ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  'حفظ',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
 
 // ─── Set Location Dialog ────────────────────────────────────────────────────
 

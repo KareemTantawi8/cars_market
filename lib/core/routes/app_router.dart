@@ -22,6 +22,7 @@ import '../../features/profile/presentation/cubit/user_profile_cubit.dart';
 import '../../features/notifications/presentation/views/notifications_screen.dart';
 import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
 import '../../features/vendor/presentation/views/vendor_incoming_requests_screen.dart';
+import '../../features/vendor/presentation/views/vendor_location_edit_screen.dart';
 import '../../features/vendor/presentation/cubit/vendor_requests_cubit.dart';
 import '../../features/my_ads/presentation/views/create_ad_screen.dart';
 import '../../features/ads/presentation/cubit/my_ads_cubit.dart';
@@ -164,6 +165,19 @@ class AppRouter {
             create: (_) => CategoryCubit()..loadInitialData(),
             child: VendorSupportedBrandsScreen(initialBrandIds: initial),
           ),
+        );
+
+      case AppRoutes.vendorLocationEdit:
+        final profile = settings.arguments as dynamic;
+        if (profile == null) {
+          return MaterialPageRoute(
+            builder: (_) => const Scaffold(
+              body: Center(child: Text('Profile not found')),
+            ),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => VendorLocationEditScreen(profile: profile),
         );
 
       case AppRoutes.profile:

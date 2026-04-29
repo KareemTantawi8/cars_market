@@ -113,6 +113,8 @@ class ApiEndpoints {
   // Vendor
   // GET /api/v1/vendor/search-requests - Get vendor incoming requests
   static const String vendorSearchRequests = '$basePath/vendor/search-requests';
+  // GET /api/v1/vendor/pending-requests/summary - First 5 pending requests for popup dialog
+  static const String vendorPendingRequestsSummary = '$basePath/vendor/pending-requests/summary';
   // POST /api/v1/vendor/online - Toggle vendor online status
   static const String vendorOnline = '$basePath/vendor/online';
   // GET /api/v1/vendors/:id - Get vendor profile (legacy)
