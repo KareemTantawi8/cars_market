@@ -154,24 +154,39 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         bottom: false,
         child: Column(
           children: [
-            // Top bar
+            // Top bar — centered title; online pill (start) + notifications (end)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  const SizedBox(width: 48),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: _buildHeaderOnlinePill(context, profile),
+                        ),
+                      ),
+                      Expanded(
+                        child: Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Padding(
+                            padding: const EdgeInsetsDirectional.only(start: 8),
+                            child: NotificationBell(iconColor: context.textPrimary),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   Text(
                     'لوحة التحكم',
                     style: AppTextStyles.headingSmall.copyWith(
                       color: context.textPrimary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 24,
+                      fontSize: 26,
                     ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: NotificationBell(iconColor: context.textPrimary),
                   ),
                 ],
               ),
@@ -192,7 +207,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: AppTextStyles.headingMedium.copyWith(
                         color: context.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 28,
+                        fontSize: 30,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -224,17 +239,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodySmall.copyWith(
                   color: AppColors.primaryColor,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14.5,
+                  fontSize: 16,
                 ),
               ),
             ),
-            const SizedBox(height: 18),
-            // Online toggle button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildOnlineToggleButton(context, profile),
-            ),
-            const SizedBox(height: 56),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -278,54 +287,43 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Widget _buildOnlineToggleButton(BuildContext context, VendorProfileModel profile) {
+  /// Compact pill in the app bar (tap toggles online search visibility).
+  Widget _buildHeaderOnlinePill(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
-    final subtitle = isOpen
-        ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-            ? 'مفتوح حتى ${profile.openUntil}'
-            : 'تستلم طلبات البحث الآن')
-        : 'لن يظهر لك طلبات بحث جديدة';
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: () => _toggleOnlineStatus(context),
-        style: FilledButton.styleFrom(
-          backgroundColor:
-              isOpen ? AppColors.success.withOpacity(0.92) : AppColors.error.withOpacity(0.9),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          elevation: 2,
-        ),
-        icon: Icon(
-          isOpen ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-          size: 34,
-        ),
-        label: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 260),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isOpen ? 'متصل — اضغط لإيقاف الظهور' : 'غير متصل — اضغط للاستلام',
-                style: const TextStyle(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w700,
-                  height: 1.2,
+    final accent = isOpen ? AppColors.success : AppColors.error;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _toggleOnlineStatus(context),
+        borderRadius: BorderRadius.circular(28),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: accent.withOpacity(0.85), width: 1.5),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: accent,
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white.withOpacity(0.9),
-                  height: 1.2,
+                const SizedBox(width: 8),
+                Text(
+                  isOpen ? 'متصل' : 'غير متصل',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: accent,
+                    height: 1.1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -353,7 +351,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: AppTextStyles.bodyMedium.copyWith(
                   color: context.textSecondary,
                   height: 1.6,
-                  fontSize: 16.5,
+                  fontSize: 18,
                 ),
               ),
               const SizedBox(height: 24),
@@ -478,7 +476,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             style: AppTextStyles.bodyMedium.copyWith(
               color: context.textPrimary,
               fontWeight: FontWeight.w700,
-              fontSize: 16.5,
+              fontSize: 18,
             ),
             textAlign: TextAlign.center,
           ),
@@ -487,7 +485,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             label,
             style: AppTextStyles.caption.copyWith(
               color: context.textSecondary,
-              fontSize: 13,
+              fontSize: 14.5,
             ),
             textAlign: TextAlign.center,
           ),
@@ -553,7 +551,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           title,
           style: AppTextStyles.headingSmall.copyWith(
             color: context.textPrimary,
-            fontSize: 23,
+            fontSize: 25,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -914,7 +912,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           color: Colors.transparent,
                           child: InkWell(
                             onTap: () =>
-                                _showSetLocationDialog(context, profile),
+                                _showVendorLocationForm(context, profile),
                             borderRadius: BorderRadius.circular(24),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -944,10 +942,10 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                                   ),
                                   SizedBox(width: 8),
                                   Text(
-                                    'تحديد الموقع',
+                                    'تعديل الموقع',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 14,
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1061,7 +1059,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodyMedium.copyWith(
                               color: context.textPrimary,
                               fontWeight: FontWeight.w600,
-                              fontSize: 16.5,
+                              fontSize: 18,
                             ),
                           ),
                         if (profile.address != null &&
@@ -1072,7 +1070,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                             style: AppTextStyles.bodySmall.copyWith(
                               color: context.textSecondary,
                               height: 1.4,
-                              fontSize: 14.5,
+                              fontSize: 16,
                             ),
                           ),
                         ],
@@ -1081,7 +1079,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => _showEditAddressDialog(context, profile),
+                    onTap: () => _showVendorLocationForm(context, profile),
                     child: Container(
                       width: 36,
                       height: 36,
@@ -1158,6 +1156,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           'رقم المحل',
                           style: AppTextStyles.caption.copyWith(
                             color: context.textSecondary,
+                            fontSize: 14,
                           ),
                         ),
                         Text(
@@ -1165,6 +1164,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: context.textPrimary,
                             fontWeight: FontWeight.w600,
+                            fontSize: 17,
                           ),
                         ),
                       ],
@@ -1232,7 +1232,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 16,
                 ),
               ),
             ],
@@ -1242,21 +1242,38 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );
   }
 
-  Future<void> _showSetLocationDialog(
+  /// Customer-style sheet: governorate (list picker) + detail address + GPS coords.
+  Future<void> _showVendorLocationForm(
     BuildContext context,
     VendorProfileModel profile,
   ) async {
-    showDialog<void>(
+    final rootContext = context;
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      barrierDismissible: true,
-      builder: (dialogContext) => _SetLocationDialog(
-        onSetLocation: () async {
-          Navigator.of(dialogContext).pop();
-          await _performSetLocation(context, profile);
-        },
-        onCancel: () => Navigator.of(dialogContext).pop(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
+        ),
+        child: _VendorLocationFormSheet(
+          profile: profile,
+          onUseCurrentGps: () {
+            Navigator.of(sheetContext).pop();
+            unawaited(_performSetLocation(rootContext, profile));
+          },
+        ),
       ),
     );
+    if (saved == true && rootContext.mounted) {
+      await rootContext.read<VendorDashboardCubit>().refresh();
+      ScaffoldMessenger.of(rootContext).showSnackBar(
+        const SnackBar(
+          content: Text('تم تحديث العنوان بنجاح'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
   }
 
   Future<void> _performSetLocation(
@@ -1385,25 +1402,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     }
   }
 
-  Future<void> _showEditAddressDialog(
-    BuildContext context,
-    VendorProfileModel profile,
-  ) async {
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (_) => _VendorAddressEditDialog(profile: profile),
-    );
-    if (saved == true && context.mounted) {
-      await context.read<VendorDashboardCubit>().refresh();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('تم تحديث العنوان بنجاح'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    }
-  }
-
   // ─── Performance report ───────────────────────────────────────────────────
 
   Widget _buildPerformanceCard(
@@ -1458,7 +1456,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 16,
+                          fontSize: 18,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1466,7 +1464,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                         'ملخص الطلبات والتقييمات',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.75),
-                          fontSize: 13,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -1671,6 +1669,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       style: AppTextStyles.bodyLarge.copyWith(
                         fontWeight: FontWeight.w700,
                         color: context.textPrimary,
+                        fontSize: 18,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1678,6 +1677,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       'تواصل مع العملاء',
                       style: AppTextStyles.bodySmall.copyWith(
                         color: context.textSecondary,
+                        fontSize: 15,
                       ),
                     ),
                   ],
@@ -1811,6 +1811,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                   style: AppTextStyles.bodyMedium.copyWith(
                     color: titleColor ?? context.textPrimary,
                     fontWeight: FontWeight.w500,
+                    fontSize: 17,
                   ),
                 ),
               ),
@@ -1827,16 +1828,21 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   }
 }
 
-class _VendorAddressEditDialog extends StatefulWidget {
+/// Same flow as customer home: tap field → list sheet for governorate; address + save; optional GPS.
+class _VendorLocationFormSheet extends StatefulWidget {
   final VendorProfileModel profile;
-  const _VendorAddressEditDialog({required this.profile});
+  final VoidCallback onUseCurrentGps;
+
+  const _VendorLocationFormSheet({
+    required this.profile,
+    required this.onUseCurrentGps,
+  });
 
   @override
-  State<_VendorAddressEditDialog> createState() =>
-      _VendorAddressEditDialogState();
+  State<_VendorLocationFormSheet> createState() => _VendorLocationFormSheetState();
 }
 
-class _VendorAddressEditDialogState extends State<_VendorAddressEditDialog> {
+class _VendorLocationFormSheetState extends State<_VendorLocationFormSheet> {
   final _addressController = TextEditingController();
   final _repo = UserProfileRepository();
   final _categoryRepo = CategoryRepository();
@@ -1881,6 +1887,134 @@ class _VendorAddressEditDialogState extends State<_VendorAddressEditDialog> {
     }
   }
 
+  String _governorateDisplayLabel() {
+    final id = _selectedGovernorateId;
+    if (id == null || _governorates.isEmpty) return 'اختر المحافظة';
+    for (final g in _governorates) {
+      if (g.id == id) return g.displayName;
+    }
+    return 'اختر المحافظة';
+  }
+
+  void _openGovernoratePicker() {
+    if (_saving || _governorates.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: context.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.88,
+        builder: (_, scrollController) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: context.textHint,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'اختر المحافظة',
+                style: AppTextStyles.headingSmall.copyWith(
+                  color: context.textPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: _governorates.length,
+                itemBuilder: (context, index) {
+                  final g = _governorates[index];
+                  final selected = g.id == _selectedGovernorateId;
+                  return ListTile(
+                    title: Text(
+                      g.displayName,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        fontSize: 17,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                        color: selected ? AppColors.primaryColor : context.textPrimary,
+                      ),
+                    ),
+                    trailing: selected
+                        ? const Icon(Icons.check_circle, color: AppColors.primaryColor)
+                        : null,
+                    onTap: () {
+                      setState(() => _selectedGovernorateId = g.id);
+                      Navigator.of(context).pop();
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGovernorateField() {
+    final label = _governorateDisplayLabel();
+    final isPlaceholder =
+        _selectedGovernorateId == null || _governorates.isEmpty;
+    return InkWell(
+      onTap: _saving ? null : _openGovernoratePicker,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: context.inputBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: context.inputBorderColor),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'المحافظة',
+                    style: AppTextStyles.inputLabel.copyWith(
+                      fontSize: 13,
+                      color: context.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: isPlaceholder
+                        ? AppTextStyles.inputHint.copyWith(fontSize: 16.5)
+                        : AppTextStyles.input.copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_drop_down, color: context.textSecondary, size: 28),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _save() async {
     final gid = _selectedGovernorateId;
     final address = _addressController.text.trim();
@@ -1914,193 +2048,165 @@ class _VendorAddressEditDialogState extends State<_VendorAddressEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: context.cardBg,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text('تعديل العنوان', style: AppTextStyles.headingSmall),
-      content: _loading
-          ? const SizedBox(height: 120, child: Center(child: LoadingIndicator()))
-          : _error != null
-              ? Text(
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * 0.92,
+      ),
+      decoration: BoxDecoration(
+        color: context.cardBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: context.inputBorderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'موقع المحل',
+                      style: AppTextStyles.headingSmall.copyWith(
+                        color: context.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close_rounded, color: context.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'اختر المحافظة والعنوان التفصيلي. لتحديث موقع الدبوس على الخريطة استخدم زر الموقع من الجهاز.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: context.textSecondary,
+                  height: 1.45,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 22),
+              if (_loading)
+                const SizedBox(
+                  height: 160,
+                  child: Center(child: LoadingIndicator()),
+                )
+              else if (_error != null)
+                Text(
                   _error!,
-                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.error,
+                    fontSize: 16,
+                  ),
                 )
-              : SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'المحافظة',
-                        style: AppTextStyles.caption.copyWith(
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<int>(
-                        value: _selectedGovernorateId,
-                        items: _governorates
-                            .map(
-                              (g) => DropdownMenuItem<int>(
-                                value: g.id,
-                                child: Text(g.displayName),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: _saving
-                            ? null
-                            : (v) => setState(() => _selectedGovernorateId = v),
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: context.inputBg,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: context.inputBorderColor),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'العنوان التفصيلي',
-                        style: AppTextStyles.caption.copyWith(
-                          color: context.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _addressController,
-                        maxLines: 3,
-                        enabled: !_saving,
-                        decoration: InputDecoration(
-                          hintText: 'الشارع، المنطقة، أقرب معلم...',
-                          filled: true,
-                          fillColor: context.inputBg,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(color: context.inputBorderColor),
-                          ),
-                        ),
-                      ),
-                    ],
+              else ...[
+                _buildGovernorateField(),
+                const SizedBox(height: 18),
+                Text(
+                  'العنوان التفصيلي',
+                  style: AppTextStyles.caption.copyWith(
+                    color: context.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(
-            'إلغاء',
-            style: AppTextStyles.bodySmall.copyWith(color: context.textSecondary),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _addressController,
+                  maxLines: 3,
+                  enabled: !_saving,
+                  style: AppTextStyles.bodyMedium.copyWith(fontSize: 17),
+                  decoration: InputDecoration(
+                    hintText: 'الشارع، المنطقة، أقرب معلم...',
+                    hintStyle: AppTextStyles.inputHint.copyWith(fontSize: 16),
+                    filled: true,
+                    fillColor: context.inputBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: context.inputBorderColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: (_loading || _error != null || _saving) ? null : _save,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: _saving
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            'حفظ العنوان',
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 17,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Divider(color: context.textSecondary.withOpacity(0.12)),
+                const SizedBox(height: 16),
+                Text(
+                  'الظهور على الخريطة',
+                  style: AppTextStyles.caption.copyWith(
+                    color: context.textSecondary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : widget.onUseCurrentGps,
+                  icon: const Icon(Icons.my_location_rounded, size: 22),
+                  label: Text(
+                    'تحديث موقع المحل من موقع الجهاز',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    side: BorderSide(color: AppColors.primaryColor.withOpacity(0.5)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
-        ),
-        TextButton(
-          onPressed: (_loading || _error != null || _saving) ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(
-                  'حفظ',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.primaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Set Location Dialog ────────────────────────────────────────────────────
-
-class _SetLocationDialog extends StatelessWidget {
-  final VoidCallback onSetLocation;
-  final VoidCallback onCancel;
-
-  const _SetLocationDialog({
-    required this.onSetLocation,
-    required this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Icon
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.primaryColor.withOpacity(0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.location_on_rounded,
-                color: AppColors.primaryColor,
-                size: 36,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Title
-            Text(
-              'تحديد موقع المحل',
-              style: AppTextStyles.headingSmall.copyWith(
-                color: context.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 10),
-
-            // Subtitle
-            Text(
-              'سيتم استخدام موقعك الحالي كموقع للمحل وسيظهر للعملاء على الخريطة',
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: context.textSecondary,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-
-            // Set location button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: onSetLocation,
-                icon: const Icon(Icons.my_location_rounded, size: 20),
-                label: const Text('تحديد موقعي الحالي'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // Cancel
-            TextButton(
-              onPressed: onCancel,
-              child: Text(
-                'إلغاء',
-                style: TextStyle(color: context.textSecondary),
-              ),
-            ),
-          ],
         ),
       ),
     );
