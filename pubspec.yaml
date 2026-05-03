@@ -92,6 +92,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     # Explicit list — keeps app_logo.gif (2.8 MB) out of the bundle
+    - assets/adi-registration.properties
     - assets/images/app_icon.jpeg
     - assets/images/app_logo.jpeg
     - assets/images/splash_video.mp4

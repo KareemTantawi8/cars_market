@@ -1,0 +1,12 @@
+# Copy to android/key.properties (gitignored) and fill in your Play upload keystore.
+# See: https://docs.flutter.dev/deployment/android#signing-the-app
+#
+# storePassword=<keystore password>
+# keyPassword=<key password>
+# keyAlias=<alias>
+# storeFile=<path relative to android/app, e.g. upload-keystore.jks>
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=upload-keystore.jks

@@ -64,6 +64,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Optional: after installing Android NDK, add native debug symbols for Play crash reports:
+            // ndk { debugSymbolLevel = "FULL" }
         }
     }
 }

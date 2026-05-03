@@ -34,9 +34,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void _handleLogin(BuildContext context) {
     if (_formKey.currentState!.validate()) {
       context.read<LoginCubit>().login(
-            phone: _phoneController.text,
-            password: _passwordController.text,
-          );
+        phone: _phoneController.text,
+        password: _passwordController.text,
+      );
     }
   }
 
@@ -47,22 +47,34 @@ class _LoginScreenState extends State<LoginScreen> {
       child: BlocListener<LoginCubit, LoginState>(
         listener: (context, state) {
           if (state is LoginSuccess) {
-            CustomToast.showSuccess(context, state.response.message,
-                duration: const Duration(seconds: 2));
+            CustomToast.showSuccess(
+              context,
+              state.response.message,
+              duration: const Duration(seconds: 2),
+            );
             Future.delayed(const Duration(milliseconds: 500), () {
               if (context.mounted) {
                 if (state.response.user.type == AppConstants.userTypeVendor) {
                   Navigator.pushNamedAndRemoveUntil(
-                      context, AppRoutes.vendorDashboard, (r) => false);
+                    context,
+                    AppRoutes.vendorDashboard,
+                    (r) => false,
+                  );
                 } else {
                   Navigator.pushNamedAndRemoveUntil(
-                      context, AppRoutes.home, (r) => false);
+                    context,
+                    AppRoutes.home,
+                    (r) => false,
+                  );
                 }
               }
             });
           } else if (state is LoginError) {
-            CustomToast.showError(context, state.message,
-                duration: const Duration(seconds: 4));
+            CustomToast.showError(
+              context,
+              state.message,
+              duration: const Duration(seconds: 4),
+            );
           }
         },
         child: BlocBuilder<LoginCubit, LoginState>(
@@ -147,8 +159,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color:
-                                          AppColors.primaryColor.withOpacity(0.55),
+                                      color: AppColors.primaryColor.withOpacity(
+                                        0.55,
+                                      ),
                                       blurRadius: 36,
                                       spreadRadius: 4,
                                     ),
@@ -166,8 +179,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: AppColors.primaryDark,
-                                      child: const Icon(Icons.directions_car,
-                                          size: 52, color: Colors.white),
+                                      child: const Icon(
+                                        Icons.directions_car,
+                                        size: 52,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -180,7 +196,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 children: List.generate(3, (i) {
                                   final isCenter = i == 1;
                                   return Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    margin: const EdgeInsets.symmetric(
+                                      horizontal: 3,
+                                    ),
                                     width: isCenter ? 20 : 6,
                                     height: 6,
                                     decoration: BoxDecoration(
@@ -222,7 +240,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             decoration: BoxDecoration(
                               color: Theme.of(context).scaffoldBackgroundColor,
                               borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(36)),
+                                top: Radius.circular(36),
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.35),
@@ -232,7 +251,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                             child: SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+                              padding: const EdgeInsets.fromLTRB(
+                                24,
+                                20,
+                                24,
+                                32,
+                              ),
                               child: Form(
                                 key: _formKey,
                                 child: Column(
@@ -243,10 +267,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Container(
                                         width: 44,
                                         height: 4,
-                                        margin: const EdgeInsets.only(bottom: 28),
+                                        margin: const EdgeInsets.only(
+                                          bottom: 28,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: context.inputBorderColor,
-                                          borderRadius: BorderRadius.circular(2),
+                                          borderRadius: BorderRadius.circular(
+                                            2,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -259,12 +287,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                           height: 22,
                                           decoration: BoxDecoration(
                                             color: AppColors.primaryColor,
-                                            borderRadius: BorderRadius.circular(2),
+                                            borderRadius: BorderRadius.circular(
+                                              2,
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(width: 10),
-                                        Text('تسجيل الدخول',
-                                            style: AppTextStyles.headingSmall),
+                                        Text(
+                                          'تسجيل الدخول',
+                                          style: AppTextStyles.headingSmall,
+                                        ),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
@@ -273,7 +305,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                       child: Text(
                                         'أدخل بياناتك للمتابعة',
                                         style: AppTextStyles.bodySmall.copyWith(
-                                            color: context.textSecondary),
+                                          color: context.textSecondary,
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(height: 28),
@@ -286,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       keyboardType: TextInputType.phone,
                                       textInputAction: TextInputAction.next,
                                       inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly
+                                        FilteringTextInputFormatter.digitsOnly,
                                       ],
                                       style: AppTextStyles.input,
                                       decoration: _inputDecoration(
@@ -328,9 +361,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                             color: context.textSecondary,
                                             size: 22,
                                           ),
-                                          onPressed: () => setState(() =>
-                                              _obscurePassword =
-                                                  !_obscurePassword),
+                                          onPressed: () => setState(
+                                            () => _obscurePassword =
+                                                !_obscurePassword,
+                                          ),
                                         ),
                                       ),
                                       validator: (v) {
@@ -344,28 +378,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                         return null;
                                       },
                                     ),
-                                    const SizedBox(height: 10),
+                                    // const SizedBox(height: 10),
 
-                                    // Forgot password
-                                    Align(
-                                      alignment: Alignment.centerLeft,
-                                      child: TextButton(
-                                        onPressed: isLoading ? null : () {},
-                                        style: TextButton.styleFrom(
-                                          padding: EdgeInsets.zero,
-                                          minimumSize: Size.zero,
-                                          tapTargetSize:
-                                              MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        child: Text(
-                                          'هل نسيت كلمة المرور ؟',
-                                          style: AppTextStyles.bodySmall.copyWith(
-                                            color: AppColors.primaryColor,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    // // Forgot password
+                                    // Align(
+                                    //   alignment: Alignment.centerLeft,
+                                    //   child: TextButton(
+                                    //     onPressed: isLoading ? null : () {},
+                                    //     style: TextButton.styleFrom(
+                                    //       padding: EdgeInsets.zero,
+                                    //       minimumSize: Size.zero,
+                                    //       tapTargetSize:
+                                    //           MaterialTapTargetSize.shrinkWrap,
+                                    //     ),
+                                    //     child: Text(
+                                    //       'هل نسيت كلمة المرور ؟',
+                                    //       style: AppTextStyles.bodySmall.copyWith(
+                                    //         color: AppColors.primaryColor,
+                                    //         fontWeight: FontWeight.w600,
+                                    //       ),
+                                    //     ),
+                                    //   ),
+                                    // ),
                                     const SizedBox(height: 28),
 
                                     // Login button
@@ -383,22 +417,27 @@ class _LoginScreenState extends State<LoginScreen> {
                                       children: [
                                         Expanded(
                                           child: Divider(
-                                              color: AppColors.inputBorder
-                                                  .withOpacity(0.6)),
+                                            color: AppColors.inputBorder
+                                                .withOpacity(0.6),
+                                          ),
                                         ),
                                         Padding(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 12),
+                                            horizontal: 12,
+                                          ),
                                           child: Text(
                                             'أو',
-                                            style: AppTextStyles.caption.copyWith(
-                                                color: context.textSecondary),
+                                            style: AppTextStyles.caption
+                                                .copyWith(
+                                                  color: context.textSecondary,
+                                                ),
                                           ),
                                         ),
                                         Expanded(
                                           child: Divider(
-                                              color: AppColors.inputBorder
-                                                  .withOpacity(0.6)),
+                                            color: AppColors.inputBorder
+                                                .withOpacity(0.6),
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -408,11 +447,14 @@ class _LoginScreenState extends State<LoginScreen> {
                                     Center(
                                       child: RichText(
                                         text: TextSpan(
-                                          style: AppTextStyles.bodySmall.copyWith(
-                                              color: context.textSecondary),
+                                          style: AppTextStyles.bodySmall
+                                              .copyWith(
+                                                color: context.textSecondary,
+                                              ),
                                           children: [
                                             const TextSpan(
-                                                text: 'ليس لديك حساب؟  '),
+                                              text: 'ليس لديك حساب؟  ',
+                                            ),
                                             WidgetSpan(
                                               alignment:
                                                   PlaceholderAlignment.middle,
@@ -420,19 +462,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 onTap: isLoading
                                                     ? null
                                                     : () => context.navigateTo(
-                                                        const RegisterScreen()),
+                                                        const RegisterScreen(),
+                                                      ),
                                                 child: Text(
                                                   'إنشاء حساب جديد',
                                                   style: AppTextStyles.bodySmall
                                                       .copyWith(
-                                                    color:
-                                                        AppColors.primaryColor,
-                                                    fontWeight: FontWeight.w700,
-                                                    decoration:
-                                                        TextDecoration.underline,
-                                                    decorationColor:
-                                                        AppColors.primaryColor,
-                                                  ),
+                                                        color: AppColors
+                                                            .primaryColor,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
+                                                        decorationColor:
+                                                            AppColors
+                                                                .primaryColor,
+                                                      ),
                                                 ),
                                               ),
                                             ),
@@ -449,7 +495,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
-
                 ],
               ),
             );
@@ -473,8 +518,7 @@ class _LoginScreenState extends State<LoginScreen> {
       suffixIcon: suffix,
       filled: true,
       fillColor: context.inputBg,
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: borderColor),
@@ -485,8 +529,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide:
-            const BorderSide(color: AppColors.primaryColor, width: 2),
+        borderSide: const BorderSide(color: AppColors.primaryColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),

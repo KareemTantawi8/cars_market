@@ -1,16 +1,35 @@
 /// Application Constants
+///
+/// Release builds should pass production values via `--dart-define`, for example:
+/// `flutter build appbundle --dart-define=API_BASE_URL=https://api.example.com/api/v1`
+///
+/// Optional defines: `STORAGE_BASE_URL`, `REVERB_APP_KEY`, `REVERB_USE_TLS` (true/false).
 class AppConstants {
   AppConstants._();
 
-  // App Info
+  // App Info (keep [appVersion] in sync with `version:` in pubspec.yaml)
   static const String appName = 'وش سلندر';
-  static const String appVersion = '2.4.0';
+  static const String appVersion = '1.0.0';
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
-  // API Configuration
-  static const String baseUrl = 'http://187.124.35.51/api/v1';
+  // API Configuration — override per environment with dart-define
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://187.124.35.51/api/v1',
+  );
+
+  static const String _storageBaseUrlOverride = String.fromEnvironment(
+    'STORAGE_BASE_URL',
+    defaultValue: '',
+  );
+
   /// Base URL for storage (e.g. ad images). Paths from API are relative (e.g. "ads/img.jpg").
-  static const String storageBaseUrl = 'http://187.124.35.51/storage';
+  static String get storageBaseUrl {
+    if (_storageBaseUrlOverride.isNotEmpty) {
+      return _storageBaseUrlOverride;
+    }
+    return '$apiOrigin/storage';
+  }
   static const int connectionTimeout = 30000; // 30 seconds
   static const int receiveTimeout = 30000; // 30 seconds
 
@@ -30,8 +49,19 @@ class AppConstants {
   /// WebSocket host (defaults to API host).
   static String get reverbHost => Uri.parse(apiOrigin).host;
   static const int reverbPort = 8080;
-  static const String reverbAppKey = 'juc1rbrua6fd6qlcubm0';
-  static const bool reverbUseTls = false;
+
+  /// Public Reverb app key (same as server `REVERB_APP_KEY`); override per deployment if needed.
+  static const String reverbAppKey = String.fromEnvironment(
+    'REVERB_APP_KEY',
+    defaultValue: 'juc1rbrua6fd6qlcubm0',
+  );
+
+  static const String _reverbUseTlsEnv = String.fromEnvironment(
+    'REVERB_USE_TLS',
+    defaultValue: 'false',
+  );
+
+  static bool get reverbUseTls => _reverbUseTlsEnv.toLowerCase() == 'true';
 
   // Storage Keys
   static const String authTokenKey = 'auth_token';

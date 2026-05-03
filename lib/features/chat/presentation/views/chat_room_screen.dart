@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart' as foundation;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -146,7 +147,9 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
         },
       );
     }, (error, stackTrace) {
-      debugPrint('[ChatRoom] realtime subscribe failed: $error');
+      if (foundation.kDebugMode) {
+        foundation.debugPrint('[ChatRoom] realtime subscribe failed: $error');
+      }
     });
   }
 

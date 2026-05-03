@@ -30,7 +30,8 @@ class VendorIncomingRequestsScreen extends StatefulWidget {
 
 class _VendorIncomingRequestsScreenState
     extends State<VendorIncomingRequestsScreen> {
-  final SearchRequestsRepository _searchRequestsRepo = SearchRequestsRepository();
+  final SearchRequestsRepository _searchRequestsRepo =
+      SearchRequestsRepository();
 
   @override
   void initState() {
@@ -43,7 +44,8 @@ class _VendorIncomingRequestsScreenState
         final id = _parseSearchRequestId(m);
         if (id != null) cubit.removeBySearchRequestId(id);
       };
-      RealtimeService.instance.onVendorSearchRequestCreated = (_) => cubit.getIncomingRequests();
+      RealtimeService.instance.onVendorSearchRequestCreated = (_) =>
+          cubit.getIncomingRequests();
       RealtimeService.instance.onVendorSearchRejected = (m) {
         final id = _parseSearchRequestId(m);
         if (id != null) cubit.removeBySearchRequestId(id);
@@ -77,10 +79,7 @@ class _VendorIncomingRequestsScreenState
           icon: const Icon(Icons.arrow_forward),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text(
-          'طلبات جديدة',
-          style: AppTextStyles.headingMedium,
-        ),
+        title: Text('طلبات جديدة', style: AppTextStyles.headingMedium),
         centerTitle: true,
         actions: [
           Stack(
@@ -122,7 +121,10 @@ class _VendorIncomingRequestsScreenState
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryColor.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -234,7 +236,9 @@ class _VendorIncomingRequestsScreenState
                         PrimaryButton(
                           text: 'إعادة المحاولة',
                           onPressed: () {
-                            context.read<VendorRequestsCubit>().getIncomingRequests();
+                            context
+                                .read<VendorRequestsCubit>()
+                                .getIncomingRequests();
                           },
                         ),
                       ],
@@ -427,11 +431,7 @@ class _VendorIncomingRequestsScreenState
                   color: AppColors.primaryColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  icon,
-                  color: AppColors.primaryColor,
-                  size: 24,
-                ),
+                child: Icon(icon, color: AppColors.primaryColor, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -523,7 +523,8 @@ class _VendorIncomingRequestsScreenState
   Widget _buildRequestCardFromData(Map<String, dynamic> request) {
     final requestId = request['id']?.toString() ?? '';
     final rid = int.tryParse(requestId);
-    final highlight = widget.initialHighlightSearchRequestId != null &&
+    final highlight =
+        widget.initialHighlightSearchRequestId != null &&
         rid == widget.initialHighlightSearchRequestId;
     final customer = request['customer'] as Map<String, dynamic>? ?? {};
     final customerName = customer['name']?.toString() ?? 'عميل';
@@ -531,9 +532,10 @@ class _VendorIncomingRequestsScreenState
     final partText = request['part_text']?.toString() ?? '';
     final brand = request['brand'] as Map<String, dynamic>?;
     final model = request['model'] as Map<String, dynamic>?;
-    final carDetails = [brand?['name'], model?['name']]
-        .where((s) => s != null && s.toString().isNotEmpty)
-        .join(' ');
+    final carDetails = [
+      brand?['name'],
+      model?['name'],
+    ].where((s) => s != null && s.toString().isNotEmpty).join(' ');
 
     // Parse created_at for countdown and timeAgo
     final createdAt = _parseCreatedAt(request['created_at']);
@@ -610,14 +612,12 @@ class _VendorIncomingRequestsScreenState
               cubit.getIncomingRequests();
             }
 
-            final chatId = response['chat']?['id'] ?? response['data']?['chat']?['id'];
+            final chatId =
+                response['chat']?['id'] ?? response['data']?['chat']?['id'];
             if (chatId != null) {
               rootNav.pushNamed(
                 AppRoutes.chatRoom,
-                arguments: {
-                  'chatId': chatId.toString(),
-                  'chatName': '',
-                },
+                arguments: {'chatId': chatId.toString(), 'chatName': ''},
               );
             }
           } catch (e) {
@@ -641,10 +641,7 @@ class _VendorIncomingRequestsScreenState
       context: this.context,
       builder: (dialogCtx) => AlertDialog(
         backgroundColor: dialogCtx.cardBg,
-        title: Text(
-          'تجاهل الطلب',
-          style: AppTextStyles.headingSmall,
-        ),
+        title: Text('تجاهل الطلب', style: AppTextStyles.headingSmall),
         content: Text(
           'هل أنت متأكد من تجاهل هذا الطلب؟',
           style: AppTextStyles.bodyMedium,
@@ -652,17 +649,16 @@ class _VendorIncomingRequestsScreenState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: Text(
-              'إلغاء',
-              style: AppTextStyles.link,
-            ),
+            child: Text('إلغاء', style: AppTextStyles.link),
           ),
           PrimaryButton(
             text: 'تجاهل',
             onPressed: () async {
               Navigator.pop(dialogCtx);
               try {
-                await _searchRequestsRepo.rejectSearchRequest(int.parse(requestId));
+                await _searchRequestsRepo.rejectSearchRequest(
+                  int.parse(requestId),
+                );
                 if (mounted) {
                   CustomToast.showSuccess(scaffoldCtx, 'تم تجاهل الطلب');
                   cubit.getIncomingRequests();
@@ -748,14 +744,20 @@ class _RequestCardState extends State<_RequestCard> {
   Widget build(BuildContext context) {
     final expired = _remaining == Duration.zero;
     final hours = _remaining.inHours.toString().padLeft(2, '0');
-    final minutes = _remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = _remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+    final minutes = _remaining.inMinutes
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
+    final seconds = _remaining.inSeconds
+        .remainder(60)
+        .toString()
+        .padLeft(2, '0');
     final isUrgent = !expired && _remaining.inHours < 6;
     final timerColor = expired
         ? AppColors.error
         : isUrgent
-            ? AppColors.warning
-            : AppColors.success;
+        ? AppColors.warning
+        : AppColors.success;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -788,8 +790,8 @@ class _RequestCardState extends State<_RequestCard> {
                     expired
                         ? Icons.timer_off_outlined
                         : isUrgent
-                            ? Icons.timer
-                            : Icons.timer_outlined,
+                        ? Icons.timer
+                        : Icons.timer_outlined,
                     color: timerColor,
                     size: 18,
                   ),
@@ -999,10 +1001,7 @@ class _AcceptRequestModal extends StatefulWidget {
   final String requestId;
   final Function(String) onAccept;
 
-  const _AcceptRequestModal({
-    required this.requestId,
-    required this.onAccept,
-  });
+  const _AcceptRequestModal({required this.requestId, required this.onAccept});
 
   @override
   State<_AcceptRequestModal> createState() => _AcceptRequestModalState();
@@ -1034,10 +1033,7 @@ class _AcceptRequestModalState extends State<_AcceptRequestModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'قبول الطلب',
-                style: AppTextStyles.headingSmall,
-              ),
+              Text('قبول الطلب', style: AppTextStyles.headingSmall),
               IconButton(
                 icon: Icon(Icons.close, color: context.textPrimary),
                 onPressed: () => Navigator.pop(context),
@@ -1046,10 +1042,7 @@ class _AcceptRequestModalState extends State<_AcceptRequestModal> {
           ),
           const SizedBox(height: 16),
           // Message Input
-          Text(
-            'اكتب رسالتك الأولى للعميل',
-            style: AppTextStyles.inputLabel,
-          ),
+          Text('اكتب رسالتك الأولى للعميل', style: AppTextStyles.inputLabel),
           const SizedBox(height: 8),
           TextField(
             controller: _messageController,
@@ -1093,4 +1086,3 @@ class _AcceptRequestModalState extends State<_AcceptRequestModal> {
     );
   }
 }
-

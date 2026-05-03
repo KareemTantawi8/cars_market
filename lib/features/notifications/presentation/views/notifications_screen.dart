@@ -38,8 +38,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final state = context.read<NotificationsCubit>().state;
       if (state is NotificationsLoaded && state.hasMore) {
         context.read<NotificationsCubit>().getNotifications(
-              page: state.currentPage + 1,
-            );
+          page: state.currentPage + 1,
+        );
       }
     }
   }
@@ -127,7 +127,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     unawaited(_handleNotificationTapAsync(notification));
   }
 
-  Future<void> _handleNotificationTapAsync(Map<String, dynamic> notification) async {
+  Future<void> _handleNotificationTapAsync(
+    Map<String, dynamic> notification,
+  ) async {
     final notificationId = notificationRowId(notification);
     if (notificationId != null) {
       try {
@@ -236,19 +238,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 children: [
                   if (todayNotifications.isNotEmpty) ...[
                     _buildSectionHeader('اليوم'),
-                    ...todayNotifications.map((notification) =>
-                        _buildNotificationCard(notification)),
+                    ...todayNotifications.map(
+                      (notification) => _buildNotificationCard(notification),
+                    ),
                     const SizedBox(height: 16),
                   ],
                   if (yesterdayNotifications.isNotEmpty) ...[
                     _buildSectionHeader('الأمس'),
-                    ...yesterdayNotifications.map((notification) =>
-                        _buildNotificationCard(notification)),
+                    ...yesterdayNotifications.map(
+                      (notification) => _buildNotificationCard(notification),
+                    ),
                     const SizedBox(height: 16),
                   ],
                   if (olderNotifications.isNotEmpty) ...[
-                    ...olderNotifications.map((notification) =>
-                        _buildNotificationCard(notification)),
+                    ...olderNotifications.map(
+                      (notification) => _buildNotificationCard(notification),
+                    ),
                   ],
                   if (state.hasMore)
                     const Padding(
@@ -308,8 +313,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final body = notification['body']?.toString() ?? '';
     final createdAt = notification['created_at']?.toString();
     final meta = parseNotificationMeta(notification['meta']);
-    final vendor = meta?['vendor_name']?.toString() ??
-        meta?['company_name']?.toString();
+    final vendor =
+        meta?['vendor_name']?.toString() ?? meta?['company_name']?.toString();
 
     return InkWell(
       onTap: () => _handleNotificationTap(notification),
@@ -320,7 +325,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           color: context.cardBg,
           borderRadius: BorderRadius.circular(12),
           border: isUnread
-              ? Border.all(color: AppColors.primaryColor.withOpacity(0.3), width: 1)
+              ? Border.all(
+                  color: AppColors.primaryColor.withOpacity(0.3),
+                  width: 1,
+                )
               : null,
         ),
         child: Row(
@@ -362,7 +370,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         child: Text(
                           title,
                           style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: isUnread
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -404,4 +414,3 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 }
-
