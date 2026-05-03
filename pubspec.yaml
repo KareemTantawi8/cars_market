@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.1
+  sdk: '>=3.7.2 <4.0.0'
 
 dependencies:
   flutter:
@@ -31,13 +31,13 @@ dependencies:
   get_it: ^7.6.7
 
   # Utilities
-  intl: ^0.20.2
+  intl: ^0.19.0
   uuid: ^4.3.3
 
   # Real-time Chat (WebSocket) — legacy; Reverb uses Pusher protocol below
   web_socket_channel: ^2.4.0
   # Laravel Reverb (custom host/port for self-hosted)
-  pusher_reverb_flutter: ^0.0.4
+  pusher_reverb_flutter: any
 
   # Image Loading
   cached_network_image: ^3.3.1
@@ -69,7 +69,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^6.0.0
+  flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.14.3
 
 flutter_launcher_icons:
@@ -123,3 +123,7 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+dependency_overrides:
+  pusher_reverb_flutter:
+    path: packages/pusher_reverb_flutter

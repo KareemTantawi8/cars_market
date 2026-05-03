@@ -182,14 +182,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.notifications_none,
-                      size: 64,
-                      color: context.textSecondary,
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryColor.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.notifications_active_outlined,
+                        size: 72,
+                        color: AppColors.primaryLight,
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
                     Text(
                       'لا توجد إشعارات',
+                      style: AppTextStyles.headingMedium.copyWith(
+                        color: context.textPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'أنت على اطلاع بكل جديد',
                       style: AppTextStyles.bodyMedium.copyWith(
                         color: context.textSecondary,
                       ),
@@ -313,102 +328,170 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final body = notification['body']?.toString() ?? '';
     final createdAt = notification['created_at']?.toString();
     final meta = parseNotificationMeta(notification['meta']);
-    final vendor =
-        meta?['vendor_name']?.toString() ?? meta?['company_name']?.toString();
+    final vendor = meta?['vendor_name']?.toString() ??
+        meta?['company_name']?.toString();
+    final notificationId = notificationRowId(notification);
 
-    return InkWell(
-      onTap: () => _handleNotificationTap(notification),
-      child: Container(
+    final color = _getNotificationColor(type);
+    final icon = _getNotificationIcon(type);
+
+    return Dismissible(
+      key: Key(notificationId?.toString() ?? notification.hashCode.toString()),
+      direction: DismissDirection.horizontal,
+      background: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: context.cardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: isUnread
-              ? Border.all(
-                  color: AppColors.primaryColor.withOpacity(0.3),
-                  width: 1,
-                )
-              : null,
+          color: AppColors.primaryColor,
+          borderRadius: BorderRadius.circular(16),
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Notification Icon
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: _getNotificationColor(type).withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _getNotificationIcon(type),
-                color: _getNotificationColor(type),
-                size: 24,
-              ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.mark_email_read, color: Colors.white),
+      ),
+      secondaryBackground: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.error,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: const Icon(Icons.delete_outline, color: Colors.white),
+      ),
+      onDismissed: (direction) {
+        if (direction == DismissDirection.endToStart) {
+           // delete logic if we had one
+        } else {
+           if (notificationId != null) {
+              context.read<NotificationsCubit>().markAsRead(notificationId);
+           }
+        }
+      },
+      child: InkWell(
+        onTap: () => _handleNotificationTap(notification),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isUnread
+                ? color.withOpacity(0.08)
+                : context.cardBg,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isUnread
+                  ? color.withOpacity(0.3)
+                  : Theme.of(context).dividerColor,
+              width: 1,
             ),
-            const SizedBox(width: 12),
-            // Notification Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      if (isUnread)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          margin: const EdgeInsets.only(left: 8),
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryColor,
-                            shape: BoxShape.circle,
+            boxShadow: isUnread
+                ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ]
+                : [],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Notification Icon with glowing background
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: color.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Notification Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: AppTextStyles.bodyMedium.copyWith(
+                              fontWeight: isUnread ? FontWeight.w800 : FontWeight.w600,
+                              color: context.textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            fontWeight: isUnread
-                                ? FontWeight.bold
-                                : FontWeight.normal,
+                        const SizedBox(width: 8),
+                        Text(
+                          _formatTimestamp(createdAt),
+                          style: AppTextStyles.captionSmall.copyWith(
+                            color: isUnread ? color : context.textHint,
+                            fontWeight: isUnread ? FontWeight.w600 : FontWeight.normal,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
+                      ],
+                    ),
+                    if (vendor != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.storefront_outlined, size: 14, color: context.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            vendor,
+                            style: AppTextStyles.caption.copyWith(
+                              color: context.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                  if (vendor != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
-                      vendor,
-                      style: AppTextStyles.caption.copyWith(
-                        color: context.textSecondary,
+                      body,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: isUnread ? context.textPrimary.withOpacity(0.9) : context.textSecondary,
+                        height: 1.4,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  Text(
-                    body,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: context.textSecondary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _formatTimestamp(createdAt),
-                    style: AppTextStyles.captionSmall.copyWith(
-                      color: context.textHint,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+              if (isUnread)
+                Container(
+                  width: 10,
+                  height: 10,
+                  margin: const EdgeInsets.only(top: 6, left: 4),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.4),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      )
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

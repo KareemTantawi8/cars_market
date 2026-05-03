@@ -113,14 +113,18 @@ class BrandInfo {
   final int id;
   final String name;
   final String? slug;
+  final String? imageUrl;
 
-  BrandInfo({required this.id, required this.name, this.slug});
+  BrandInfo({required this.id, required this.name, this.slug, this.imageUrl});
 
   factory BrandInfo.fromJson(Map<String, dynamic> json) {
     return BrandInfo(
       id: (json['id'] as num?)?.toInt() ?? 0,
       name: json['name']?.toString() ?? '',
       slug: json['slug']?.toString(),
+      imageUrl: json['image']?.toString() ??
+          json['image_url']?.toString() ??
+          json['logo']?.toString(),
     );
   }
 }

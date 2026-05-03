@@ -37,6 +37,8 @@ class RealtimeService with WidgetsBindingObserver {
   void Function(Map<String, dynamic> data)? onVendorSearchRequestCreated;
   void Function(Map<String, dynamic> data)? onVendorSearchRejected;
   void Function(Map<String, dynamic> data)? onVendorNewMessage;
+  /// Called after a new search request arrives — lets the dashboard show the popup.
+  void Function(Map<String, dynamic> data)? onVendorShowRequestsPopup;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
@@ -137,6 +139,7 @@ class RealtimeService with WidgetsBindingObserver {
     onVendorSearchRequestCreated = null;
     onVendorSearchRejected = null;
     onVendorNewMessage = null;
+    onVendorShowRequestsPopup = null;
     try {
       // ignore: invalid_use_of_visible_for_testing_member
       ReverbClient.resetInstance();
@@ -308,7 +311,7 @@ class RealtimeService with WidgetsBindingObserver {
     return {};
   }
 
-  /// Tray first (always), then UI callback (overlay when resumed, or cubit refresh).
+  /// Tray first (always), then UI callbacks (overlay + popup when resumed).
   Future<void> _deliverVendorSearchCreated(Map<String, dynamic> map) async {
     try {
       await PushNotificationService.instance.showVendorSearchReverbTray(map);
@@ -318,6 +321,8 @@ class RealtimeService with WidgetsBindingObserver {
       }
     }
     onVendorSearchRequestCreated?.call(map);
+    // Trigger popup if handler is registered (set by VendorDashboardScreen)
+    onVendorShowRequestsPopup?.call(map);
   }
 }
 
