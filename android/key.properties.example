@@ -1,10 +1,14 @@
 # Copy to android/key.properties (gitignored) and fill in your Play upload keystore.
 # See: https://docs.flutter.dev/deployment/android#signing-the-app
 #
+# Without this file, `flutter build appbundle --release` uses the DEBUG key
+# and Google Play will reject the upload. Generate once:
+#   ./scripts/create_play_store_keystore.sh
+#
 # storePassword=<keystore password>
 # keyPassword=<key password>
 # keyAlias=<alias>
-# storeFile=<path relative to android/app, e.g. upload-keystore.jks>
+# storeFile=<filename only, file must sit in android/app/ e.g. upload-keystore.jks>
 
 storePassword=CHANGE_ME
 keyPassword=CHANGE_ME

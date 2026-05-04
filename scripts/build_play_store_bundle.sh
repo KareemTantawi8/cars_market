@@ -15,9 +15,8 @@ KP="$ROOT/android/key.properties"
 if [[ ! -f "$KP" ]]; then
   echo ""
   echo "  Missing: android/key.properties"
-  echo "  1. Copy:  cp android/key.properties.example android/key.properties"
-  echo "  2. Edit android/key.properties with your storePassword, keyPassword, keyAlias, storeFile."
-  echo "  3. Put your .jks/.keystore where storeFile points (often android/app/upload-keystore.jks)."
+  echo "  1. Create keystore + key.properties:  ./scripts/create_play_store_keystore.sh"
+  echo "     (or copy android/key.properties.example → android/key.properties and add your .jks path + passwords.)"
   echo ""
   exit 1
 fi
