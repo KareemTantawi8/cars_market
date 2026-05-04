@@ -11,6 +11,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Prefer user Gradle cache + Studio JDK so Flutter/Gradle does not use a broken sandbox cache or macOS Java stub.
+if [[ -z "${GRADLE_USER_HOME:-}" ]]; then
+  export GRADLE_USER_HOME="${HOME}/.gradle"
+fi
+if [[ -z "${JAVA_HOME:-}" && -d "/Applications/Android Studio.app/Contents/jbr/Contents/Home" ]]; then
+  export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+  export PATH="$JAVA_HOME/bin:$PATH"
+fi
+
 KP="$ROOT/android/key.properties"
 if [[ ! -f "$KP" ]]; then
   echo ""
