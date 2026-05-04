@@ -31,6 +31,7 @@ import '../../../../shared/widgets/dialogs/vendor_requests_popup.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
 import '../../data/repositories/vendor_profile_repository.dart';
+import 'vendor_location_edit_screen.dart';
 
 /// Vendor Dashboard Screen
 class VendorDashboardScreen extends StatefulWidget {
@@ -1124,51 +1125,75 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () =>
-                                _showVendorLocationForm(context, profile),
-                            borderRadius: BorderRadius.circular(24),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 12,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryColor,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () =>
+                                    _showVendorLocationForm(context, profile),
                                 borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primaryColor.withOpacity(
-                                      0.4,
-                                    ),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 12,
                                   ),
-                                ],
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.location_on_rounded,
-                                    color: Colors.white,
-                                    size: 20,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primaryColor,
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color:
+                                            AppColors.primaryColor.withOpacity(
+                                          0.4,
+                                        ),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'تعديل الموقع',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.location_on_rounded,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'تعديل الموقع',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
+                            TextButton(
+                              onPressed: () => unawaited(
+                                _performSetLocation(context, profile),
+                              ),
+                              child: Text(
+                                'استخدام موقع الجهاز الحالي',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withOpacity(0.65),
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -1464,21 +1489,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     VendorProfileModel profile,
   ) async {
     final rootContext = context;
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-        ),
-        child: _VendorLocationFormSheet(
-          profile: profile,
-          onUseCurrentGps: () {
-            Navigator.of(sheetContext).pop();
-            unawaited(_performSetLocation(rootContext, profile));
-          },
-        ),
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => VendorLocationEditScreen(profile: profile),
       ),
     );
     if (saved == true && rootContext.mounted) {
@@ -2138,9 +2151,17 @@ class _SetLocationDialog extends StatelessWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-              ],
-            ],
-          ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onCancel,
+              child: Text(
+                'إلغاء',
+                style: TextStyle(color: context.textSecondary),
+              ),
+            ),
+          ],
         ),
       ),
     );
