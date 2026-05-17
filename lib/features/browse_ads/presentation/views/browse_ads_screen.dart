@@ -9,6 +9,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/extensions.dart';
+import '../../../../core/utils/format_price.dart';
+import '../../../../shared/widgets/common/searchable_selection_bottom_sheet.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/presentation/cubit/ads_list_cubit.dart';
@@ -39,10 +41,8 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
   BrandModel? _brand;
   CarModelModel? _model;
   YearModel? _year;
+  GovernorateModel? _selectedGovernorate;
   String? _condition; // 'new' | 'used' | null
-
-  bool get _hasFilter =>
-      _brand != null || _model != null || _year != null || _condition != null;
 
   @override
   void initState() {
@@ -53,7 +53,13 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
       if (cat is CategoryInitial || (cat is CategoryLoaded && cat.brands.isEmpty)) {
         context.read<CategoryCubit>().loadBrands();
       }
-      context.read<AdsListCubit>().loadAds();
+      if (cat is CategoryInitial ||
+          (cat is CategoryLoaded && cat.governorates.isEmpty)) {
+        context.read<CategoryCubit>().loadGovernorates();
+      }
+      context.read<AdsListCubit>().loadAds(
+        governorateId: _selectedGovernorate?.id,
+      );
     });
   }
 
@@ -64,20 +70,20 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
       brandId: _brand?.id,
       modelId: _model?.id,
       yearId: _year?.id,
+      governorateId: _selectedGovernorate?.id,
       condition: _condition,
     );
   }
 
-  void _clearFilters() {
-    setState(() {
-      _step = _BrowseStep.brand;
-      _brand = null;
-      _model = null;
-      _year = null;
-      _condition = null;
-    });
-    context.read<CategoryCubit>().clearSelections();
-    context.read<AdsListCubit>().loadAds();
+  void _onGovernorateSelected(GovernorateModel? governorate) {
+    setState(() => _selectedGovernorate = governorate);
+    if (_step == _BrowseStep.results && _model != null) {
+      _applyFilters();
+    } else if (_step == _BrowseStep.brand) {
+      context.read<AdsListCubit>().loadAds(
+        governorateId: governorate?.id,
+      );
+    }
   }
 
   /// Returns true if the back press was handled internally.
@@ -104,54 +110,17 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
     }
   }
 
-  void _showSearchDialog() {
-    final controller = TextEditingController();
-    showDialog<void>(
+  void _showGovernoratePicker(List<GovernorateModel> governorates) {
+    showSearchableSelectionBottomSheet<GovernorateModel>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: context.cardBg,
-        title: Text(
-          'بحث في الإعلانات',
-          style: AppTextStyles.headingSmall.copyWith(color: context.textPrimary),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          style: AppTextStyles.input.copyWith(color: context.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'ابحث عن قطعة أو إعلان...',
-            hintStyle: AppTextStyles.inputHint,
-          ),
-          onSubmitted: (q) {
-            Navigator.pop(ctx);
-            setState(() {
-              _step = _BrowseStep.results;
-              _brand = null;
-              _model = null;
-            });
-            context.read<AdsListCubit>().loadAds(search: q.trim().isEmpty ? null : q.trim());
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          TextButton(
-            onPressed: () {
-              final q = controller.text.trim();
-              Navigator.pop(ctx);
-              setState(() {
-                _step = _BrowseStep.results;
-                _brand = null;
-                _model = null;
-              });
-              context.read<AdsListCubit>().loadAds(search: q.isEmpty ? null : q);
-            },
-            child: const Text('بحث'),
-          ),
-        ],
-      ),
+      title: 'اختر المحافظة',
+      items: governorates,
+      selectedItem: _selectedGovernorate,
+      getDisplayName: (g) => g.displayName,
+      onSelected: _onGovernorateSelected,
+      searchHint: 'ابحث عن المحافظة...',
+      clearOptionLabel: 'كل المحافظات',
+      onClear: () => _onGovernorateSelected(null),
     );
   }
 
@@ -175,17 +144,13 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
     await context.read<CategoryCubit>().loadModels(brand.id);
   }
 
-  void _selectModel(CarModelModel? model) {
+  void _selectModel(CarModelModel model) {
     setState(() {
       _model = model;
       _year = null;
       _step = _BrowseStep.results;
     });
-    if (model == null) {
-      context.read<CategoryCubit>().clearModelAndYearKeepingBrand();
-    } else {
-      context.read<CategoryCubit>().selectModel(model);
-    }
+    context.read<CategoryCubit>().selectModel(model);
     _applyFilters();
   }
 
@@ -234,54 +199,93 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
       centerTitle: true,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      actions: [
-        if (_hasFilter)
-          TextButton(
-            onPressed: _clearFilters,
-            child: Text(
-              'مسح',
-              style: AppTextStyles.bodySmall.copyWith(
-                color: AppColors.primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-      ],
     );
   }
 
   Widget _buildBrowseHeader() {
     return SafeArea(
       bottom: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-        child: Row(
-          children: [
-            IconButton(
-              icon: Icon(Icons.search, color: context.textPrimary, size: 26),
-              onPressed: _showSearchDialog,
-            ),
-            Expanded(
-              child: Text(
-                'تصفح الإعلانات',
-                textAlign: TextAlign.center,
-                style: AppTextStyles.headingMedium.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: context.textPrimary,
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              'تصفح الإعلانات',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.headingMedium.copyWith(
+                fontWeight: FontWeight.bold,
+                color: context.textPrimary,
               ),
             ),
-            const SizedBox(width: 48),
-          ],
-        ),
+          ),
+          _buildMainGovernorateDropdown(),
+        ],
       ),
+    );
+  }
+
+  Widget _buildMainGovernorateDropdown() {
+    return BlocBuilder<CategoryCubit, CategoryState>(
+      builder: (context, state) {
+        if (state is! CategoryLoaded || state.governorates.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final label = _selectedGovernorate?.displayName ?? 'كل المحافظات';
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: InkWell(
+            onTap: () => _showGovernoratePicker(state.governorates),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: context.cardBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: context.inputBorderColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined,
+                      size: 20, color: AppColors.primaryColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'المحافظة',
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: context.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  Flexible(
+                    child: Text(
+                      label,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: context.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(Icons.keyboard_arrow_down_rounded,
+                      color: context.textSecondary),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildStepBody() {
     if (_step == _BrowseStep.brand) return _buildBrandsStep();
     if (_step == _BrowseStep.model) return _buildModelsStep();
-    return const _AdsList();
+    return _AdsList(onRetry: _applyFilters);
   }
 
   Widget _buildBrandsStep() {
@@ -350,18 +354,10 @@ class BrowseAdsScreenState extends State<BrowseAdsScreen> {
 
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
-          itemCount: models.length + 1,
+          itemCount: models.length,
           separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
-            if (index == 0) {
-              return _SelectionTile(
-                label: 'عرض كل موديلات ${_brand!.displayName}',
-                subtitle: 'بدون تحديد موديل',
-                active: _model == null,
-                onTap: () => _selectModel(null),
-              );
-            }
-            final model = models[index - 1];
+            final model = models[index];
             final active = _model?.id == model.id;
             return _SelectionTile(
               label: model.displayName,
@@ -461,14 +457,12 @@ class _BrandGridCard extends StatelessWidget {
 
 class _SelectionTile extends StatelessWidget {
   final String label;
-  final String? subtitle;
   final bool active;
   final VoidCallback onTap;
 
   const _SelectionTile({
     required this.label,
     required this.onTap,
-    this.subtitle,
     this.active = false,
   });
 
@@ -491,26 +485,13 @@ class _SelectionTile extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      label,
-                      textAlign: TextAlign.right,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: context.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle!,
-                        textAlign: TextAlign.right,
-                        style: AppTextStyles.caption.copyWith(color: context.textSecondary),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  label,
+                  textAlign: TextAlign.right,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: context.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -571,7 +552,9 @@ class _SelectionError extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AdsList extends StatelessWidget {
-  const _AdsList();
+  final VoidCallback? onRetry;
+
+  const _AdsList({this.onRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -600,8 +583,8 @@ class _AdsList extends StatelessWidget {
                     textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 TextButton(
-                  onPressed: () =>
-                      context.read<AdsListCubit>().loadAds(),
+                  onPressed: onRetry ??
+                      () => context.read<AdsListCubit>().loadAds(),
                   child: const Text('إعادة المحاولة'),
                 ),
               ],
@@ -860,7 +843,11 @@ class _AdCardState extends State<_AdCard> {
                     Positioned(
                       bottom: 12,
                       left: 12,
-                      child: Container(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.62,
+                        ),
+                        child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 13,
                           vertical: 7,
@@ -880,12 +867,21 @@ class _AdCardState extends State<_AdCard> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              ad.priceFormatted,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15,
+                            Directionality(
+                              textDirection: TextDirection.ltr,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  ad.priceFormatted,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: priceDisplayFontSize(
+                                      ad.priceFormatted,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                             if (ad.isNegotiable) ...[
@@ -911,6 +907,7 @@ class _AdCardState extends State<_AdCard> {
                             ],
                           ],
                         ),
+                      ),
                       ),
                     ),
 

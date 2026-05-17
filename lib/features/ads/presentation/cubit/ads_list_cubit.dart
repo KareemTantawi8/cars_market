@@ -44,6 +44,7 @@ class AdsListCubit extends Cubit<AdsListState> {
     int? brandId,
     int? modelId,
     int? yearId,
+    int? governorateId,
     String? condition,
     String? search,
     int page = 1,
@@ -54,6 +55,7 @@ class AdsListCubit extends Cubit<AdsListState> {
         brandId: brandId,
         modelId: modelId,
         yearId: yearId,
+        governorateId: governorateId,
         condition: condition,
         search: search,
         page: page,
@@ -71,13 +73,29 @@ class AdsListCubit extends Cubit<AdsListState> {
     }
   }
 
-  Future<void> refresh({int? brandId, int? modelId, int? yearId, String? condition, String? search}) =>
-      loadAds(page: 1, brandId: brandId, modelId: modelId, yearId: yearId, condition: condition, search: search);
+  Future<void> refresh({
+    int? brandId,
+    int? modelId,
+    int? yearId,
+    int? governorateId,
+    String? condition,
+    String? search,
+  }) =>
+      loadAds(
+        page: 1,
+        brandId: brandId,
+        modelId: modelId,
+        yearId: yearId,
+        governorateId: governorateId,
+        condition: condition,
+        search: search,
+      );
 
   Future<void> loadMore({
     int? brandId,
     int? modelId,
     int? yearId,
+    int? governorateId,
     String? condition,
     String? search,
   }) async {
@@ -88,6 +106,7 @@ class AdsListCubit extends Cubit<AdsListState> {
       brandId: brandId,
       modelId: modelId,
       yearId: yearId,
+      governorateId: governorateId,
       condition: condition,
       search: search,
     );

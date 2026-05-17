@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../shared/widgets/common/searchable_selection_bottom_sheet.dart';
 import '../../../../shared/widgets/common/segment_control.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../home/presentation/cubit/category_cubit.dart';
@@ -39,7 +40,9 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryCubit>().loadInitialData();
+      context.read<CategoryCubit>().loadInitialData(
+        withSearchFormDefaults: false,
+      );
     });
   }
 
@@ -193,6 +196,14 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
                     onTap: state.selectedModel != null
                         ? () => _showYearSelection(state)
                         : null,
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFieldLabel('المحافظة'),
+                  const SizedBox(height: 8),
+                  _buildDropdownField(
+                    value: state.selectedGovernorate?.displayName,
+                    hint: 'اختر المحافظة',
+                    onTap: () => _showGovernorateSelection(state),
                   ),
                 ],
               );
@@ -465,6 +476,15 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
             );
             return;
           }
+          if (state.selectedGovernorate == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('الرجاء اختيار المحافظة'),
+                backgroundColor: AppColors.warning,
+              ),
+            );
+            return;
+          }
           // Normalize Arabic-Indic digits before parsing to double
           final normalizedPriceText = _normalizeDigits(
             _priceController.text.trim(),
@@ -478,6 +498,7 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
               'brandId': state.selectedBrand!.id,
               'modelId': state.selectedModel?.id,
               'yearId': state.selectedYear?.id,
+              'governorateId': state.selectedGovernorate!.id,
               'condition': _condition == AdCondition.used ? 'used' : 'new',
               'price':
                   double.tryParse(normalizedPriceText.replaceAll(',', '')) ??
@@ -530,6 +551,18 @@ class _CreateAdScreenState extends State<CreateAdScreen> {
       selectedItem: state.selectedYear,
       getDisplayName: (y) => y.displayName,
       onSelected: (y) => context.read<CategoryCubit>().selectYear(y),
+    );
+  }
+
+  void _showGovernorateSelection(CategoryLoaded state) {
+    showSearchableSelectionBottomSheet<GovernorateModel>(
+      context: context,
+      title: 'اختر المحافظة',
+      items: state.governorates,
+      selectedItem: state.selectedGovernorate,
+      getDisplayName: (g) => g.displayName,
+      onSelected: (g) => context.read<CategoryCubit>().selectGovernorate(g),
+      searchHint: 'ابحث عن المحافظة...',
     );
   }
 

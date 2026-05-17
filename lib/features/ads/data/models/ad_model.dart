@@ -1,3 +1,5 @@
+import '../../../../core/utils/format_price.dart';
+
 /// API response models for Ads endpoints
 
 /// Parse int from JSON (API may return int or string)
@@ -384,15 +386,8 @@ class AdModel {
     );
   }
 
-  /// Price formatted for display (e.g. "4,500 ج.م")
-  String get priceFormatted {
-    if (price == null) return '0 ج.م';
-    final p = price!.round();
-    if (p >= 1000) {
-      return '${(p / 1000).toStringAsFixed(p % 1000 == 0 ? 0 : 1)}${p % 1000 == 0 ? ',000' : ''} ج.م';
-    }
-    return '$p ج.م';
-  }
+  /// Price formatted for display (e.g. "1,250,000 ج.م")
+  String get priceFormatted => formatPriceEgp(price);
 
   /// Condition label in Arabic
   String get conditionLabel => condition == 'new' ? 'جديد' : 'مستعمل';

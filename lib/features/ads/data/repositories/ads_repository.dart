@@ -14,6 +14,7 @@ class AdsRepository {
     int? brandId,
     int? modelId,
     int? yearId,
+    int? governorateId,
     String? condition,
     String? search,
     int page = 1,
@@ -26,6 +27,7 @@ class AdsRepository {
     if (brandId != null) query['brand_id'] = brandId;
     if (modelId != null) query['model_id'] = modelId;
     if (yearId != null) query['year_id'] = yearId;
+    if (governorateId != null) query['governorate_id'] = governorateId;
     if (condition != null && condition.isNotEmpty) query['condition'] = condition;
     if (search != null && search.isNotEmpty) query['search'] = search;
 
@@ -56,6 +58,7 @@ class AdsRepository {
     required int brandId,
     int? modelId,
     int? yearId,
+    int? governorateId,
     required String condition,
     double? price,
     bool isNegotiable = false,
@@ -72,6 +75,7 @@ class AdsRepository {
       if (description != null && description.isNotEmpty) 'description': description,
       if (modelId != null) 'model_id': modelId,
       if (yearId != null) 'year_id': yearId,
+      if (governorateId != null) 'governorate_id': governorateId,
       if (price != null) 'price': price,
       if (expiresAt != null && expiresAt.isNotEmpty) 'expires_at': expiresAt,
     });
