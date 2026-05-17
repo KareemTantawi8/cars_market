@@ -73,13 +73,14 @@ class MyApp extends StatelessWidget {
           ],
 
           builder: (context, child) {
-            final placeholderBg = AppTheme.lightTheme.scaffoldBackgroundColor;
+            // Match SplashScreen gradient start — avoids a light flash before Flutter draws.
+            const placeholderBg = Color(0xFF060D1F);
             return Directionality(
               textDirection: TextDirection.rtl,
               child: child ??
-                  ColoredBox(
+                  const ColoredBox(
                     color: placeholderBg,
-                    child: const SizedBox.expand(),
+                    child: SizedBox.expand(),
                   ),
             );
           },

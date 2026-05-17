@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Used by FCM default notifications (tint behind small icon on some API levels) -->
+    <!-- Matches Flutter SplashScreen gradient start (Color 0xFF060D1F) -->
+    <color name="splash_background">#060D1F</color>
+    <!-- FCM default notifications (tint behind small icon on some API levels) -->
     <color name="notification_color">#FF1565C0</color>
 </resources>

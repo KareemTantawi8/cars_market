@@ -107,7 +107,7 @@ class AdsRepository {
       if (e.response?.statusCode == 413) {
         throw Exception('حجم الصور كبير جداً. جرب تقليل عدد الصور أو استخدام صور أصغر.');
       }
-      rethrow;
+      throw Exception(_messageFromDioException(e));
     }
     if (response.statusCode != 201) {
       throw Exception(_messageFromResponse(response));
@@ -167,14 +167,22 @@ class AdsRepository {
       }
     }
 
-    final response = await _api.put(
-      ApiEndpoints.updateAd(id),
-      data: formData,
-      options: Options(
-        sendTimeout: const Duration(seconds: 60),
-        receiveTimeout: const Duration(seconds: 30),
-      ),
-    );
+    Response response;
+    try {
+      response = await _api.put(
+        ApiEndpoints.updateAd(id),
+        data: formData,
+        options: Options(
+          sendTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 413) {
+        throw Exception('حجم الصور كبير جداً. جرب تقليل عدد الصور أو استخدام صور أصغر.');
+      }
+      throw Exception(_messageFromDioException(e));
+    }
     _ensureSuccess(response);
     final data = response.data;
     if (data is! Map<String, dynamic>) throw Exception('Invalid response: no data');
@@ -274,11 +282,43 @@ class AdsRepository {
   }
 
   String _messageFromResponse(Response response) {
-    final data = response.data;
-    if (data is Map<String, dynamic>) {
-      return data['message'] as String? ?? 'Request failed';
+    return _messageFromResponseData(response.data) ??
+        'Request failed: ${response.statusCode}';
+  }
+
+  String _messageFromDioException(DioException e) {
+    final fromBody = _messageFromResponseData(e.response?.data);
+    if (fromBody != null && fromBody.isNotEmpty) return fromBody;
+    return e.message ?? 'تعذّر إتمام الطلب';
+  }
+
+  /// Extracts API `message`, validation `errors`, or `required_permissions`.
+  String? _messageFromResponseData(dynamic data) {
+    if (data is! Map<String, dynamic>) return null;
+
+    final errors = data['errors'];
+    if (errors is Map) {
+      final parts = <String>[];
+      for (final entry in errors.entries) {
+        final v = entry.value;
+        if (v is List && v.isNotEmpty) {
+          parts.add(v.first.toString());
+        } else if (v != null) {
+          parts.add(v.toString());
+        }
+      }
+      if (parts.isNotEmpty) return parts.join('\n');
     }
-    return 'Request failed: ${response.statusCode}';
+
+    final msg = data['message']?.toString().trim();
+    if (msg == null || msg.isEmpty) return null;
+
+    final perms = data['required_permissions'];
+    if (perms is List && perms.isNotEmpty) {
+      final list = perms.map((p) => p.toString()).join(', ');
+      return '$msg\n($list)';
+    }
+    return msg;
   }
 
   /// Compress image to stay under [maxBytes] to avoid 413 from nginx. Targets ~280KB per image so 5 images fit under 1.5MB.

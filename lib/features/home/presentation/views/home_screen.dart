@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
@@ -19,6 +20,7 @@ import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/in_app_notification_service.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/governorate_filter.dart';
 
 /// Home Screen (User)
 class HomeScreen extends StatefulWidget {
@@ -30,6 +32,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _partNameController = TextEditingController();
+  final _browseAdsKey = GlobalKey<BrowseAdsScreenState>();
   int _currentNavIndex = 0;
 
   // Rate limiting: max 10 requests total, 30s cooldown between each
@@ -40,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _countdownSeconds = 0;
 
   /// Bottom nav order: الرئيسية، الإعلانات، إعلاناتي، المحادثات، حسابي
+  static const int _adsTabIndex = 1;
   static const int _chatsTabIndex = 3;
 
   @override
@@ -47,14 +51,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Load initial data (brands and governorates)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CategoryCubit>().loadInitialData(withSearchFormDefaults: false);
+      context.read<CategoryCubit>().loadInitialData(
+        withSearchFormDefaults: false,
+        homeGovernorateFilter: true,
+      );
       _bindCustomerRealtime();
     });
   }
 
   void _bindCustomerRealtime() {
     if (StorageService.getUserType() == AppConstants.userTypeVendor) return;
-    RealtimeService.instance.onCustomerSearchAccepted = _onSearchRequestAccepted;
+    RealtimeService.instance.onCustomerSearchAccepted =
+        _onSearchRequestAccepted;
     RealtimeService.instance.onCustomerNewMessage = _onNewMessageFromReverb;
     unawaited(RealtimeService.instance.start());
   }
@@ -89,7 +97,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (StorageService.getUserType() == AppConstants.userTypeVendor) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('هذه الميزة للعملاء فقط. يرجى تسجيل الدخول بحساب عميل.'),
+          content: Text(
+            'هذه الميزة للعملاء فقط. يرجى تسجيل الدخول بحساب عميل.',
+          ),
           backgroundColor: AppColors.warning,
           duration: Duration(seconds: 4),
         ),
@@ -100,7 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_requestTimestamps.length >= _maxRequests) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('لقد وصلت للحد الأقصى (١٠ طلبات). يرجى التواصل مع الدعم.'),
+          content: Text(
+            'لقد وصلت للحد الأقصى (١٠ طلبات). يرجى التواصل مع الدعم.',
+          ),
           backgroundColor: AppColors.error,
           duration: Duration(seconds: 4),
         ),
@@ -134,9 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
         categoryState.selectedGovernorate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'الرجاء اختيار الماركة والموديل والمحافظة',
-          ),
+          content: Text('الرجاء اختيار الماركة والموديل والمحافظة'),
           backgroundColor: AppColors.warning,
         ),
       );
@@ -145,9 +155,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final y = categoryState.selectedYear;
     searchCubit.searchSuppliers(
-      partName: _partNameController.text.trim().isEmpty
-          ? null
-          : _partNameController.text.trim(),
+      partName:
+          _partNameController.text.trim().isEmpty
+              ? null
+              : _partNameController.text.trim(),
       brandId: categoryState.selectedBrand!.id,
       modelId: categoryState.selectedModel!.id,
       yearId: y?.id,
@@ -274,9 +285,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showGovernorateSelectionDialog(CategoryLoaded state) {
+    final homeGovernorates = GovernorateFilter.forHomeSearch(state.governorates);
     _showSelectionBottomSheet<GovernorateModel>(
       title: 'اختر المحافظة',
-      items: state.governorates,
+      items: homeGovernorates,
       selectedItem: state.selectedGovernorate,
       getDisplayName: (governorate) => governorate.displayName,
       onSelected: (governorate) {
@@ -299,78 +311,81 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.5,
-        minChildSize: 0.3,
-        maxChildSize: 0.8,
-        expand: false,
-        builder: (context, scrollController) => Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: context.textHint,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                title,
-                style: AppTextStyles.headingSmall,
-              ),
-            ),
-            const Divider(color: AppColors.dividerColor),
-            // Items list
-            Expanded(
-              child: items.isEmpty
-                  ? Center(
-                      child: Text(
-                        'لا توجد بيانات',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: context.textSecondary,
-                        ),
+      builder:
+          (context) => DraggableScrollableSheet(
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.8,
+            expand: false,
+            builder:
+                (context, scrollController) => Column(
+                  children: [
+                    // Handle bar
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: context.textHint,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    )
-                  : ListView.builder(
-                      controller: scrollController,
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final isSelected = item == selectedItem;
-                        return ListTile(
-                          title: Text(
-                            getDisplayName(item),
-                            style: AppTextStyles.bodyMedium.copyWith(
-                              color: isSelected
-                                  ? AppColors.primaryColor
-                                  : context.textPrimary,
-                              fontWeight: isSelected
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          ),
-                          trailing: isSelected
-                              ? const Icon(
-                                  Icons.check_circle,
-                                  color: AppColors.primaryColor,
-                                )
-                              : null,
-                          onTap: () {
-                            onSelected(item);
-                            Navigator.pop(context);
-                          },
-                        );
-                      },
                     ),
-            ),
-          ],
-        ),
-      ),
+                    // Title
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(title, style: AppTextStyles.headingSmall),
+                    ),
+                    const Divider(color: AppColors.dividerColor),
+                    // Items list
+                    Expanded(
+                      child:
+                          items.isEmpty
+                              ? Center(
+                                child: Text(
+                                  'لا توجد بيانات',
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: context.textSecondary,
+                                  ),
+                                ),
+                              )
+                              : ListView.builder(
+                                controller: scrollController,
+                                itemCount: items.length,
+                                itemBuilder: (context, index) {
+                                  final item = items[index];
+                                  final isSelected = item == selectedItem;
+                                  return ListTile(
+                                    title: Text(
+                                      getDisplayName(item),
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        color:
+                                            isSelected
+                                                ? AppColors.primaryColor
+                                                : context.textPrimary,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                      ),
+                                    ),
+                                    trailing:
+                                        isSelected
+                                            ? const Icon(
+                                              Icons.check_circle,
+                                              color: AppColors.primaryColor,
+                                            )
+                                            : null,
+                                    onTap: () {
+                                      onSelected(item);
+                                      Navigator.pop(context);
+                                    },
+                                  );
+                                },
+                              ),
+                    ),
+                  ],
+                ),
+          ),
     );
   }
 
@@ -385,11 +400,12 @@ class _HomeScreenState extends State<HomeScreen> {
               context.read<SearchCubit>().clearSearch();
             } else if (state is SearchError) {
               final msg = state.message.toLowerCase();
-              final displayMessage = msg.contains('unauthorized') ||
-                      msg.contains('unauthenticated') ||
-                      msg.contains('forbidden')
-                  ? 'غير مصرح لك بإرسال الطلبات. يرجى التأكد من نوع حسابك أو تسجيل الخروج وإعادة الدخول.'
-                  : state.message;
+              final displayMessage =
+                  msg.contains('unauthorized') ||
+                          msg.contains('unauthenticated') ||
+                          msg.contains('forbidden')
+                      ? 'غير مصرح لك بإرسال الطلبات. يرجى التأكد من نوع حسابك أو تسجيل الخروج وإعادة الدخول.'
+                      : state.message;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(displayMessage),
@@ -412,53 +428,74 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         ),
       ],
-      child: Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: IndexedStack(
-          index: _currentNavIndex,
-          children: [
-            _buildHomeContent(),
-            const BrowseAdsScreen(),
-            const MyAdsScreen(),
-            const ChatListScreen(loadOnInit: false),
-            const UserProfileScreen(isEmbeddedInTab: true),
-          ],
-        ),
-        bottomNavigationBar: CustomBottomNavBar(
-          currentIndex: _currentNavIndex,
-          onTap: (index) {
-            setState(() => _currentNavIndex = index);
-            if (index == _chatsTabIndex) {
-              context.read<ChatCubit>().getChats();
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (_currentNavIndex == _adsTabIndex) {
+            final handled =
+                _browseAdsKey.currentState?.handleSystemBack() ?? false;
+            if (!handled) {
+              setState(() => _currentNavIndex = 0);
             }
-          },
-          items: const [
-            BottomNavItem(
-              label: 'الرئيسية',
-              icon: Icons.home,
-              route: '/home',
-            ),
-            BottomNavItem(
-              label: 'الإعلانات',
-              icon: Icons.directions_car_outlined,
-              route: '/browse-ads',
-            ),
-            BottomNavItem(
-              label: 'إعلاناتي',
-              icon: Icons.sell_outlined,
-              route: '/my-ads',
-            ),
-            BottomNavItem(
-              label: 'المحادثات',
-              icon: Icons.chat_bubble,
-              route: '/chat',
-            ),
-            BottomNavItem(
-              label: 'حسابي',
-              icon: Icons.person,
-              route: '/profile',
-            ),
-          ],
+          } else if (_currentNavIndex != 0) {
+            setState(() => _currentNavIndex = 0);
+          } else {
+            SystemNavigator.pop();
+          }
+        },
+        child: Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          body: IndexedStack(
+            index: _currentNavIndex,
+            children: [
+              _buildHomeContent(),
+              BrowseAdsScreen(
+                key: _browseAdsKey,
+                isEmbeddedInShell: true,
+                onBackToHome: () => setState(() => _currentNavIndex = 0),
+              ),
+              const MyAdsScreen(),
+              const ChatListScreen(loadOnInit: false),
+              const UserProfileScreen(isEmbeddedInTab: true),
+            ],
+          ),
+          bottomNavigationBar: CustomBottomNavBar(
+            currentIndex: _currentNavIndex,
+            onTap: (index) {
+              setState(() => _currentNavIndex = index);
+              if (index == _chatsTabIndex) {
+                context.read<ChatCubit>().getChats();
+              }
+            },
+            items: const [
+              BottomNavItem(
+                label: 'الرئيسية',
+                icon: Icons.home,
+                route: '/home',
+              ),
+              BottomNavItem(
+                label: 'الإعلانات',
+                icon: Icons.directions_car_outlined,
+                route: '/browse-ads',
+              ),
+              BottomNavItem(
+                label: 'إعلاناتي',
+                icon: Icons.sell_outlined,
+                route: '/my-ads',
+              ),
+              BottomNavItem(
+                label: 'المحادثات',
+                icon: Icons.chat_bubble,
+                route: '/chat',
+              ),
+              BottomNavItem(
+                label: 'حسابي',
+                icon: Icons.person,
+                route: '/profile',
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -474,9 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSearchSection(),
-                ],
+                children: [_buildSearchSection()],
               ),
             ),
           ),
@@ -494,10 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Notification Bell
           NotificationBell(iconColor: context.textPrimary),
           // Title
-          Text(
-            'سوق القطع',
-            style: AppTextStyles.headingMedium,
-          ),
+          Text("سوق قطع غيار متكامل", style: AppTextStyles.headingMedium),
           // Car Icon
           Container(
             width: 40,
@@ -505,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: AppColors.primaryColor,
               borderRadius: BorderRadius.circular(8),
-          ),
+            ),
             child: Icon(
               Icons.directions_car,
               color: context.textPrimary,
@@ -522,10 +554,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Main Title
-        Text(
-          'طلب قطعة غيار',
-          style: AppTextStyles.headingLarge,
-        ),
+        Text('طلب قطعة غيار', style: AppTextStyles.headingLarge),
         const SizedBox(height: 8),
         // Subtitle
         Text(
@@ -536,20 +565,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 24),
         // Part Name Field
-        Text(
-          'ما هي القطعة التي تبحث عنها؟',
-          style: AppTextStyles.inputLabel,
-        ),
+        Text('ما هي القطعة التي تبحث عنها؟', style: AppTextStyles.inputLabel),
         const SizedBox(height: 8),
         TextFormField(
           controller: _partNameController,
           decoration: InputDecoration(
             hintText: 'مثال: تيل فرامل، مساعدين، فانوس...',
             hintStyle: AppTextStyles.inputHint,
-            suffixIcon: Icon(
-              Icons.search,
-              color: context.textSecondary,
-            ),
+            suffixIcon: Icon(Icons.search, color: context.textSecondary),
             filled: true,
             fillColor: context.inputBg,
             border: OutlineInputBorder(
@@ -592,7 +615,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _buildSelectionField(
                           label: 'الماركة',
                           value:
-                              state.selectedBrand?.displayName ?? 'اختر الماركة',
+                              state.selectedBrand?.displayName ??
+                              'اختر الماركة',
                           isPlaceholder: state.selectedBrand == null,
                           onTap: () => _showBrandSelectionDialog(state),
                         ),
@@ -602,7 +626,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: _buildSelectionField(
                           label: 'الموديل',
                           value:
-                              state.selectedModel?.displayName ?? 'اختر الموديل',
+                              state.selectedModel?.displayName ??
+                              'اختر الموديل',
                           isPlaceholder: state.selectedModel == null,
                           onTap: () => _showModelSelectionDialog(state),
                         ),
@@ -616,7 +641,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'المحافظة',
-                          value: state.selectedGovernorate?.displayName ??
+                          value:
+                              state.selectedGovernorate?.displayName ??
                               'اختر المحافظة',
                           isPlaceholder: state.selectedGovernorate == null,
                           onTap: () => _showGovernorateSelectionDialog(state),
@@ -626,7 +652,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Expanded(
                         child: _buildSelectionField(
                           label: 'السنة (اختياري)',
-                          value: state.selectedYear?.displayName ?? 'بدون سنة محددة',
+                          value:
+                              state.selectedYear?.displayName ??
+                              'بدون سنة محددة',
                           isPlaceholder: state.selectedYear == null,
                           onTap: () => _showYearSelectionDialog(state),
                         ),
@@ -651,8 +679,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     TextButton(
                       onPressed: () {
                         context.read<CategoryCubit>().loadInitialData(
-                              withSearchFormDefaults: false,
-                            );
+                          withSearchFormDefaults: false,
+                          homeGovernorateFilter: true,
+                        );
                       },
                       child: const Text('إعادة المحاولة'),
                     ),
@@ -674,20 +703,32 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 if (_isInCooldown) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.warning.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.warning.withOpacity(0.4)),
+                      border: Border.all(
+                        color: AppColors.warning.withOpacity(0.4),
+                      ),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.timer_outlined, size: 18, color: AppColors.warning),
+                        const Icon(
+                          Icons.timer_outlined,
+                          size: 18,
+                          color: AppColors.warning,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'يمكنك الإرسال بعد $_countdownSeconds ثانية  ($requestCount/$_maxRequests طلبات)',
-                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.warning, fontWeight: FontWeight.w600),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.warning,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -695,28 +736,42 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                 ] else if (requestCount >= _maxRequests) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.error.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.error.withOpacity(0.4)),
+                      border: Border.all(
+                        color: AppColors.error.withOpacity(0.4),
+                      ),
                     ),
                     child: Text(
                       'وصلت للحد الأقصى ($requestCount/$_maxRequests طلبات)',
-                      style: AppTextStyles.bodySmall.copyWith(color: AppColors.error, fontWeight: FontWeight.w600),
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.error,
+                        fontWeight: FontWeight.w600,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
                   const SizedBox(height: 8),
                 ],
                 PrimaryButton(
-                  text: _isInCooldown
-                      ? 'انتظر $_countdownSeconds ث...'
-                      : requestCount >= _maxRequests
+                  text:
+                      _isInCooldown
+                          ? 'انتظر $_countdownSeconds ث...'
+                          : requestCount >= _maxRequests
                           ? 'تم الوصول للحد الأقصى'
                           : 'إرسال الطلب الآن',
                   icon: Icons.arrow_forward,
-                  onPressed: (isLoading || _isInCooldown || requestCount >= _maxRequests) ? null : _handleSearch,
+                  onPressed:
+                      (isLoading ||
+                              _isInCooldown ||
+                              requestCount >= _maxRequests)
+                          ? null
+                          : _handleSearch,
                   isLoading: isLoading,
                 ),
               ],
@@ -730,9 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             color: context.cardBg,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: context.inputBorderColor,
-            ),
+            border: Border.all(color: context.inputBorderColor),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,29 +855,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Text(
                     label,
-                    style: AppTextStyles.inputLabel.copyWith(
-                      fontSize: 11,
-                    ),
+                    style: AppTextStyles.inputLabel.copyWith(fontSize: 11),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     value,
-                    style: isPlaceholder
-                        ? AppTextStyles.inputHint
-                        : AppTextStyles.input,
+                    style:
+                        isPlaceholder
+                            ? AppTextStyles.inputHint
+                            : AppTextStyles.input,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_drop_down,
-              color: context.textSecondary,
-            ),
+            Icon(Icons.arrow_drop_down, color: context.textSecondary),
           ],
         ),
       ),
     );
   }
-
 }

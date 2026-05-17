@@ -75,8 +75,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
-  image_path: "assets/images/app_icon.jpeg"
+  image_path: "assets/images/app_icon.png"
   min_sdk_android: 21
+  remove_alpha_ios: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -93,8 +94,10 @@ flutter:
   assets:
     # Explicit list — keeps app_logo.gif (2.8 MB) out of the bundle
     - assets/adi-registration.properties
+    - assets/images/app_icon.png
     - assets/images/app_icon.jpeg
     - assets/images/app_logo.jpeg
+    - assets/images/watermark_logo.png
     - assets/images/splash_video.mp4
     - shorebird.yaml
 

@@ -1560,7 +1560,7 @@ class _CustomerActionButtons extends StatelessWidget {
       return;
     }
     try {
-      final chatId = await ChatRepository().createChatWithUser(otherUserId);
+      final chatId = await ChatRepository().openChatWithUser(otherUserId);
       if (!context.mounted) return;
       if (chatId != null) {
         Navigator.pushNamed(

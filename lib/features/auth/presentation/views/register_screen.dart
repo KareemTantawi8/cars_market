@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -401,7 +402,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(23),
                                   child: Image.asset(
-                                    'assets/images/app_icon.jpeg',
+                                    'assets/images/app_icon.png',
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, __, ___) => Container(
                                       color: AppColors.primaryDark,
@@ -691,26 +692,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     const SizedBox(height: 8),
                                     TextFormField(
                                       controller: _phoneController,
-                                      keyboardType: TextInputType.phone,
+                                      keyboardType: TextInputType.number,
                                       textInputAction: TextInputAction.next,
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.digitsOnly
-                                      ],
+                                      inputFormatters: PhoneValidator.egyptPhoneInputFormatters,
                                       style: AppTextStyles.input,
                                       decoration: _inputDeco(
                                         hint: '01X XXXX XXXX',
                                         icon: Icons.phone_outlined,
                                         context: context,
                                       ),
-                                      validator: (v) {
-                                        if (v == null || v.isEmpty) {
-                                          return 'الرجاء إدخال رقم الموبايل';
-                                        }
-                                        if (v.length < 10) {
-                                          return 'رقم الموبايل غير صحيح';
-                                        }
-                                        return null;
-                                      },
+                                      validator: PhoneValidator.validateEgyptMobile,
                                     ),
                                     const SizedBox(height: 18),
 

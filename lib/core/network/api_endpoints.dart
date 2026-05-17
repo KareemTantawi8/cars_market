@@ -3,7 +3,7 @@ class ApiEndpoints {
   ApiEndpoints._();
 
   // Base URL (relative paths, base URL is in AppConstants)
-  // API Base: http://187.124.35.51/api/v1
+  // API Base: https://w4cylinder.tech/api/v1
   static const String basePath = '';
 
   // Authentication

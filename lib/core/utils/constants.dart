@@ -15,7 +15,7 @@ class AppConstants {
   // API Configuration — override per environment with dart-define
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://187.124.35.51/api/v1',
+    defaultValue: 'https://w4cylinder.tech/api/v1',
   );
 
   static const String _storageBaseUrlOverride = String.fromEnvironment(
@@ -58,7 +58,7 @@ class AppConstants {
 
   static const String _reverbUseTlsEnv = String.fromEnvironment(
     'REVERB_USE_TLS',
-    defaultValue: 'false',
+    defaultValue: 'true',
   );
 
   static bool get reverbUseTls => _reverbUseTlsEnv.toLowerCase() == 'true';

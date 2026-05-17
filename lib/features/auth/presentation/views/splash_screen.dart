@@ -363,36 +363,22 @@ class _LogoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 130,
-      height: 130,
+      width: 160,
+      height: 160,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(34),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1A3A6E), Color(0xFF0D2248)],
-        ),
-        border: Border.all(
-          color: AppColors.primaryColor.withOpacity(0.55),
-          width: 2.5,
-        ),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.5),
-            blurRadius: 40,
-            spreadRadius: 4,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: AppColors.primaryColor.withOpacity(0.4),
+            blurRadius: 36,
+            spreadRadius: 2,
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(31),
+        borderRadius: BorderRadius.circular(28),
         child: Image.asset(
-          'assets/images/app_icon.jpeg',
+          'assets/images/app_icon.png',
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => const Icon(
             Icons.directions_car_rounded,

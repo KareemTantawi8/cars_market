@@ -15,18 +15,26 @@ import '../../../ads/presentation/cubit/ads_list_cubit.dart';
 import '../../../home/data/models/category_models.dart';
 import '../../../home/presentation/cubit/category_cubit.dart';
 
-/// Browse Ads — old style flow:
-/// 1) choose brand screen
-/// 2) choose model screen
-/// 3) show filtered results
+/// Browse Ads flow:
+/// 1) brand grid (تصفح الإعلانات)
+/// 2) choose model
+/// 3) filtered results
 class BrowseAdsScreen extends StatefulWidget {
-  const BrowseAdsScreen({super.key});
+  const BrowseAdsScreen({
+    super.key,
+    this.isEmbeddedInShell = false,
+    this.onBackToHome,
+  });
+
+  /// When true, system back on brand step goes to home tab (see [HomeScreen]).
+  final bool isEmbeddedInShell;
+  final VoidCallback? onBackToHome;
 
   @override
-  State<BrowseAdsScreen> createState() => _BrowseAdsScreenState();
+  State<BrowseAdsScreen> createState() => BrowseAdsScreenState();
 }
 
-class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
+class BrowseAdsScreenState extends State<BrowseAdsScreen> {
   _BrowseStep _step = _BrowseStep.brand;
   BrandModel? _brand;
   CarModelModel? _model;
@@ -72,6 +80,88 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
     context.read<AdsListCubit>().loadAds();
   }
 
+  /// Returns true if the back press was handled internally.
+  bool handleSystemBack() {
+    if (_step == _BrowseStep.brand) return false;
+    setState(() {
+      if (_step == _BrowseStep.results) {
+        _step = _BrowseStep.model;
+      } else if (_step == _BrowseStep.model) {
+        _step = _BrowseStep.brand;
+        _brand = null;
+        _model = null;
+      }
+    });
+    return true;
+  }
+
+  void _goBackOneStep() {
+    if (handleSystemBack()) return;
+    if (widget.isEmbeddedInShell) {
+      widget.onBackToHome?.call();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  void _showSearchDialog() {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: context.cardBg,
+        title: Text(
+          'بحث في الإعلانات',
+          style: AppTextStyles.headingSmall.copyWith(color: context.textPrimary),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: AppTextStyles.input.copyWith(color: context.textPrimary),
+          decoration: InputDecoration(
+            hintText: 'ابحث عن قطعة أو إعلان...',
+            hintStyle: AppTextStyles.inputHint,
+          ),
+          onSubmitted: (q) {
+            Navigator.pop(ctx);
+            setState(() {
+              _step = _BrowseStep.results;
+              _brand = null;
+              _model = null;
+            });
+            context.read<AdsListCubit>().loadAds(search: q.trim().isEmpty ? null : q.trim());
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () {
+              final q = controller.text.trim();
+              Navigator.pop(ctx);
+              setState(() {
+                _step = _BrowseStep.results;
+                _brand = null;
+                _model = null;
+              });
+              context.read<AdsListCubit>().loadAds(search: q.isEmpty ? null : q);
+            },
+            child: const Text('بحث'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String? _brandLogoUrl(BrandModel brand) {
+    final logo = brand.logo;
+    if (logo == null || logo.isEmpty) return null;
+    if (logo.startsWith('http')) return logo;
+    return '${AppConstants.storageBaseUrl}/$logo';
+  }
+
   // ── old flow actions ───────────────────────────────────────────────────────
 
   Future<void> _selectBrand(BrandModel brand) async {
@@ -103,52 +193,88 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final scaffold = Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        leading: _step != _BrowseStep.brand
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                onPressed: () {
-                  setState(() {
-                    if (_step == _BrowseStep.results) {
-                      _step = _BrowseStep.model;
-                    } else if (_step == _BrowseStep.model) {
-                      _step = _BrowseStep.brand;
-                    }
-                  });
-                },
-              )
-            : null,
-        title: Text(
-          _step == _BrowseStep.brand
-              ? 'اختر الماركة'
-              : _step == _BrowseStep.model
-                  ? 'اختر الموديل'
-                  : 'نتائج الإعلانات',
-          style: AppTextStyles.headingMedium.copyWith(
-            fontWeight: FontWeight.bold,
-            color: context.textPrimary,
-          ),
+      appBar: _step == _BrowseStep.brand ? null : _buildInnerAppBar(),
+      body: _step == _BrowseStep.brand
+          ? Column(
+              children: [
+                _buildBrowseHeader(),
+                Expanded(child: _buildStepBody()),
+              ],
+            )
+          : _buildStepBody(),
+    );
+
+    if (widget.isEmbeddedInShell) return scaffold;
+
+    return PopScope(
+      canPop: _step == _BrowseStep.brand,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _goBackOneStep();
+      },
+      child: scaffold,
+    );
+  }
+
+  PreferredSizeWidget _buildInnerAppBar() {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new_rounded),
+        onPressed: _goBackOneStep,
+      ),
+      title: Text(
+        _step == _BrowseStep.model ? 'اختر الموديل' : 'نتائج الإعلانات',
+        style: AppTextStyles.headingMedium.copyWith(
+          fontWeight: FontWeight.bold,
+          color: context.textPrimary,
         ),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          if (_hasFilter)
-            TextButton(
-              onPressed: _clearFilters,
+      ),
+      centerTitle: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      actions: [
+        if (_hasFilter)
+          TextButton(
+            onPressed: _clearFilters,
+            child: Text(
+              'مسح',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBrowseHeader() {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+        child: Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.search, color: context.textPrimary, size: 26),
+              onPressed: _showSearchDialog,
+            ),
+            Expanded(
               child: Text(
-                'مسح',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.primaryColor,
+                'تصفح الإعلانات',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.headingMedium.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: context.textPrimary,
                 ),
               ),
             ),
-        ],
+            const SizedBox(width: 48),
+          ],
+        ),
       ),
-      body: _buildStepBody(),
     );
   }
 
@@ -176,16 +302,21 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
           return const _SelectionEmpty(message: 'لا توجد ماركات متاحة');
         }
 
-        return ListView.separated(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 24),
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.05,
+          ),
           itemCount: state.brands.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             final brand = state.brands[index];
-            final active = _brand?.id == brand.id;
-            return _SelectionTile(
-              label: brand.displayName,
-              active: active,
+            final logoUrl = _brandLogoUrl(brand);
+            return _BrandGridCard(
+              name: brand.name,
+              logoUrl: logoUrl,
               onTap: () => _selectBrand(brand),
             );
           },
@@ -245,6 +376,88 @@ class _BrowseAdsScreenState extends State<BrowseAdsScreen> {
 }
 
 enum _BrowseStep { brand, model, results }
+
+class _BrandGridCard extends StatelessWidget {
+  final String name;
+  final String? logoUrl;
+  final VoidCallback onTap;
+
+  const _BrandGridCard({
+    required this.name,
+    required this.onTap,
+    this.logoUrl,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.cardBg,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.inputBorderColor),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Center(
+                  child: logoUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: logoUrl!,
+                          fit: BoxFit.contain,
+                          placeholder: (_, __) => Icon(
+                            Icons.directions_car_outlined,
+                            size: 40,
+                            color: context.textHint,
+                          ),
+                          errorWidget: (_, __, ___) => Icon(
+                            Icons.directions_car_outlined,
+                            size: 40,
+                            color: context.textHint,
+                          ),
+                        )
+                      : Icon(
+                          Icons.directions_car_outlined,
+                          size: 44,
+                          color: context.textHint,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: context.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.textSecondary,
+                    size: 22,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SelectionTile extends StatelessWidget {
   final String label;

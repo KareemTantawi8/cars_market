@@ -6,6 +6,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/models/login_request_model.dart';
 import '../../data/models/login_response_model.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/realtime_service.dart';
@@ -68,15 +69,12 @@ class LoginCubit extends Cubit<LoginState> {
 
     try {
       // Validate inputs
-      if (phone.trim().isEmpty) {
-        emit(const LoginError('الرجاء إدخال رقم الموبايل'));
+      final phoneError = PhoneValidator.validateEgyptMobile(phone);
+      if (phoneError != null) {
+        emit(LoginError(phoneError));
         return;
       }
-
-      if (phone.trim().length < AppConstants.minPhoneLength) {
-        emit(const LoginError('رقم الموبايل غير صحيح'));
-        return;
-      }
+      final normalizedPhone = PhoneValidator.normalizeToLocal(phone);
 
       if (password.isEmpty) {
         emit(const LoginError('الرجاء إدخال كلمة المرور'));
@@ -93,7 +91,7 @@ class LoginCubit extends Cubit<LoginState> {
       final fcmToken = await PushNotificationService.instance.getToken();
 
       final request = LoginRequestModel(
-        phone: phone.trim(),
+        phone: normalizedPhone,
         password: password,
         deviceName: deviceName,
         tokenType: tokenType,

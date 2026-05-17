@@ -16,6 +16,7 @@ import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/data/repositories/ads_repository.dart';
 import '../../../chat/data/repositories/chat_repository.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../shared/widgets/common/watermarked_network_image.dart';
 
 /// Public Ad Details Screen
 class AdDetailsScreen extends StatefulWidget {
@@ -365,13 +366,13 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
                         color: context.cardBg,
                         alignment: Alignment.center,
                         child: url != null
-                            ? CachedNetworkImage(
+                            ? WatermarkedNetworkImage(
                                 imageUrl: url,
                                 fit: BoxFit.contain,
-                                placeholder: (_, _) => const Center(
+                                placeholder: const Center(
                                   child: CircularProgressIndicator(),
                                 ),
-                                errorWidget: (_, _, _) => _imagePlaceholder(),
+                                errorWidget: _imagePlaceholder(),
                               )
                             : _imagePlaceholder(),
                       ),
@@ -1198,14 +1199,15 @@ class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
                 child: SizedBox(
                   width: w,
                   height: h,
-                  child: CachedNetworkImage(
+                  child: WatermarkedNetworkImage(
                     imageUrl: widget.urls[index],
                     fit: BoxFit.contain,
                     alignment: Alignment.center,
-                    placeholder: (_, _) => const Center(
+                    watermarkWidthFactor: 0.45,
+                    placeholder: const Center(
                       child: CircularProgressIndicator(color: Colors.white),
                     ),
-                    errorWidget: (_, _, _) => const Icon(
+                    errorWidget: const Icon(
                       Icons.broken_image,
                       color: Colors.white,
                       size: 64,

@@ -179,6 +179,87 @@ class ChatRepository {
     return false;
   }
 
+  /// True when [participant] is the given user account (customer or vendor user).
+  static bool _participantMatchesUserAccount(
+    Map<String, dynamic> participant, {
+    required int userId,
+  }) {
+    if (userId <= 0) return false;
+    for (final raw in [
+      participant['user_id'],
+      participant['account_id'],
+      participant['owner_id'],
+    ]) {
+      if (_asInt(raw) == userId) return true;
+    }
+    final user = participant['user'];
+    if (user is Map) {
+      if (_asInt(Map<String, dynamic>.from(user)['id']) == userId) {
+        return true;
+      }
+    }
+    final role =
+        participant['type']?.toString().toLowerCase() ??
+        participant['role']?.toString().toLowerCase() ??
+        '';
+    final looksLikeVendor =
+        role.contains('vendor') || participant['company_name'] != null;
+    if (!looksLikeVendor && _asInt(participant['id']) == userId) {
+      return true;
+    }
+    return false;
+  }
+
+  static bool _legacyPartyMatchesUser(Map<String, dynamic> party, int userId) {
+    if (userId <= 0) return false;
+    if (_asInt(party['user_id']) == userId) return true;
+    final user = party['user'];
+    if (user is Map && _asInt(Map<String, dynamic>.from(user)['id']) == userId) {
+      return true;
+    }
+    final role = party['type']?.toString().toLowerCase() ?? '';
+    if (!role.contains('vendor') &&
+        party['company_name'] == null &&
+        _asInt(party['id']) == userId) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Inbox thread with a user account (customer↔vendor or vendor↔customer).
+  Future<int?> findChatIdWithUser(int otherUserId) async {
+    if (otherUserId <= 0) return null;
+    final chats = await getChats();
+    for (final c in chats) {
+      final cid = _chatRowId(c);
+      if (cid == null || cid <= 0) continue;
+
+      final participant = _participantFromChatEnvelope(c);
+      if (participant != null &&
+          _participantMatchesUserAccount(participant, userId: otherUserId)) {
+        return cid;
+      }
+
+      for (final key in ['customer', 'vendor', 'user', 'buyer', 'client']) {
+        final raw = c[key];
+        if (raw is Map &&
+            _legacyPartyMatchesUser(Map<String, dynamic>.from(raw), otherUserId)) {
+          return cid;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Resolves inbox thread or creates one with [otherUserId].
+  Future<int?> openChatWithUser(int otherUserId) async {
+    if (otherUserId <= 0) return null;
+    var chatId = await findChatIdWithUser(otherUserId);
+    chatId ??= await createChatWithUser(otherUserId);
+    chatId ??= await findChatIdWithUser(otherUserId);
+    return chatId;
+  }
+
   /// Resolves inbox chat with the seller. Pass [sellerVendorRecordId] when known (`vendors.id`).
   Future<int?> findChatIdWithSeller({
     int? sellerUserId,
@@ -542,32 +623,16 @@ class ChatRepository {
         data: {'user_id': userId},
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = response.data;
-        if (data is Map<String, dynamic>) {
-          final inner = data['data'];
-          final chatData = inner is Map<String, dynamic> ? inner : data;
-          final id = chatData['id'];
-          if (id is int) return id;
-          if (id is num) return id.toInt();
-          return int.tryParse(id?.toString() ?? '');
-        }
+        return _extractChatIdFromPayload(response.data);
       }
       return null;
     } on DioException catch (e) {
       _log('❌ Error creating chat: ${e.message}');
       final code = e.response?.statusCode;
       if (code == 422 || code == 409) {
-        final data = e.response?.data;
-        if (data is Map<String, dynamic>) {
-          final inner = data['data'];
-          if (inner is Map<String, dynamic>) {
-            final id = inner['id'];
-            if (id is int) return id;
-            if (id is num) return id.toInt();
-            final p = int.tryParse(id?.toString() ?? '');
-            if (p != null) return p;
-          }
-        }
+        final fromBody = _extractChatIdFromPayload(e.response?.data);
+        if (fromBody != null) return fromBody;
+        return findChatIdWithUser(userId);
       }
       return null;
     }

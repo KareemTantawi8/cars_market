@@ -42,26 +42,15 @@ class VendorDashboardScreen extends StatefulWidget {
 }
 
 class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
+  // Debounce realtime popup only (no auto-popup on dashboard open).
+  static DateTime? _lastPopupTime;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _startVendorRealtime();
-      _checkAndShowPopupOnLoad();
     });
-  }
-
-  // Prevents showing the popup too frequently (debounce)
-  static DateTime? _lastPopupTime;
-
-  void _checkAndShowPopupOnLoad() {
-    if (StorageService.getUserType() != AppConstants.userTypeVendor) return;
-    if (_lastPopupTime != null &&
-        DateTime.now().difference(_lastPopupTime!).inMinutes < 5) {
-      return; // Only auto-show once every 5 minutes on load
-    }
-    _lastPopupTime = DateTime.now();
-    showVendorRequestsPopup(context);
   }
 
   void _startVendorRealtime() {
@@ -129,33 +118,38 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           snackBarTheme: Theme.of(context).snackBarTheme.copyWith(
             behavior: SnackBarBehavior.fixed,
           ),
+          scaffoldBackgroundColor: Colors.black,
+          brightness: Brightness.dark,
+          canvasColor: Colors.black,
         ),
         child: Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          backgroundColor: Colors.black,
           body: BlocBuilder<VendorDashboardCubit, VendorDashboardState>(
-          builder: (context, state) {
-            if (state is VendorDashboardLoading) {
-              return const Center(child: LoadingIndicator());
-            }
-            if (state is VendorDashboardError) {
-              return Center(
-                child: ErrorState(
-                  message: state.message,
-                  onRetry: () {
-                    context.read<VendorDashboardCubit>().fetchVendorProfile();
-                  },
-                ),
-              );
-            }
-            if (state is VendorDashboardLoaded) {
-              return RefreshIndicator(
-                onRefresh: () => context.read<VendorDashboardCubit>().refresh(),
-                child: _buildDashboard(context, state.profile),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
+            builder: (context, state) {
+              if (state is VendorDashboardLoading) {
+                return const Center(child: LoadingIndicator());
+              }
+              if (state is VendorDashboardError) {
+                return Center(
+                  child: ErrorState(
+                    message: state.message,
+                    onRetry: () {
+                      context.read<VendorDashboardCubit>().fetchVendorProfile();
+                    },
+                  ),
+                );
+              }
+              if (state is VendorDashboardLoaded) {
+                return RefreshIndicator(
+                  color: AppColors.primaryColor,
+                  backgroundColor: AppColors.cardColor,
+                  onRefresh: () => context.read<VendorDashboardCubit>().refresh(),
+                  child: _buildDashboard(context, state.profile),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ),
       ),
     );
@@ -167,10 +161,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
       child: Column(
         children: [
           _buildFlatHeader(context, profile),
-          Transform.translate(
-            offset: const Offset(0, -32),
-            child: _buildContentSheet(context, profile),
-          ),
+          _buildContentSheet(context, profile),
         ],
       ),
     );
@@ -181,49 +172,43 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
   Widget _buildFlatHeader(BuildContext context, VendorProfileModel profile) {
     return Container(
       width: double.infinity,
-      color: Theme.of(context).scaffoldBackgroundColor,
+      color: Colors.black,
       child: SafeArea(
         bottom: false,
         child: Column(
           children: [
-            // Top bar — centered title; online pill (start) + notifications (end)
+            // Bell | title | shop toggle — fixed LTR so layout matches design in RTL locales.
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerStart,
-                          child: _buildHeaderOnlinePill(context, profile),
-                        ),
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+              child: Directionality(
+                textDirection: TextDirection.ltr,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 48,
+                      height: 48,
+                      child: Center(
+                        child: NotificationBell(iconColor: AppColors.textPrimary),
                       ),
-                      Expanded(
-                        child: Align(
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(start: 8),
-                            child: NotificationBell(iconColor: context.textPrimary),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'لوحة التحكم',
-                    style: AppTextStyles.headingSmall.copyWith(
-                      color: context.textPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 26,
                     ),
-                  ),
-                ],
+                    Expanded(
+                      child: Text(
+                        'لوحة التحكم',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.headingSmall.copyWith(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 26,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48, height: 48),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             // Avatar — tappable to change photo
             GestureDetector(
               onTap: () => _changeProfileImage(context),
@@ -231,9 +216,9 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                 clipBehavior: Clip.none,
                 children: [
                   _buildFlatAvatar(profile),
-                  Positioned(
+                  PositionedDirectional(
                     bottom: 0,
-                    right: 0,
+                    end: 0,
                     child: Container(
                       width: 28,
                       height: 28,
@@ -258,14 +243,15 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                textDirection: TextDirection.rtl,
                 children: [
                   Flexible(
                     child: Text(
                       profile.name,
                       style: AppTextStyles.headingMedium.copyWith(
-                        color: context.textPrimary,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.bold,
-                        fontSize: 30,
+                        fontSize: 28,
                       ),
                       textAlign: TextAlign.center,
                       maxLines: 2,
@@ -277,31 +263,52 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                     const Icon(
                       Icons.verified,
                       color: AppColors.primaryColor,
-                      size: 20,
+                      size: 22,
                     ),
                   ],
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             // Badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.primaryColor.withOpacity(0.2),
+                color: AppColors.primaryColor.withOpacity(0.18),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primaryColor.withOpacity(0.5)),
+                border: Border.all(color: AppColors.primaryColor.withOpacity(0.45)),
               ),
               child: Text(
                 'تاجر',
                 style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.primaryColor,
+                  color: AppColors.primaryLight,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 15,
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            if (profile.description != null &&
+                profile.description!.trim().isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Text(
+                  profile.description!.trim(),
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: _buildOnlineStatusCard(context, profile),
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -345,81 +352,78 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     );  
   }
 
-  /// Compact pill in the app bar (tap toggles online search visibility).
-  Widget _buildHeaderOnlinePill(BuildContext context, VendorProfileModel profile) {
+  /// Full-width online/offline control below profile header.
+  Widget _buildOnlineStatusCard(BuildContext context, VendorProfileModel profile) {
     final isOpen = profile.isOpen;
     final statusColor = isOpen ? AppColors.success : AppColors.error;
-    final title = isOpen ? 'المحل مفتوح الآن' : 'المحل مغلق حالياً';
+    final title = isOpen ? 'المحل مفتوح — متصل' : 'المحل مغلق — غير متصل';
     final subtitle = isOpen
         ? (profile.openUntil != null && profile.openUntil!.isNotEmpty
-            ? '${profile.openUntil} — تستقبل طلبات البحث'
-            : 'أنت مرئي للعملاء وتستقبل طلبات البحث')
-        : 'لن تصلك طلبات بحث جديدة حتى تعود للوضع المفتوح';
+            ? 'متاح حتى ${profile.openUntil}'
+            : 'تستقبل طلبات البحث الآن')
+        : 'لن تصلك طلبات بحث جديدة';
 
-    return GestureDetector(
-      onTap: () => _toggleOnlineStatus(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-        decoration: BoxDecoration(
-          color: statusColor.withOpacity(0.10),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: statusColor.withOpacity(0.35), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            // Animated status dot
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.15),
-                shape: BoxShape.circle,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _toggleOnlineStatus(context),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: statusColor.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: statusColor.withOpacity(0.4)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isOpen ? Icons.storefront_rounded : Icons.storefront_outlined,
+                  color: statusColor,
+                  size: 26,
+                ),
               ),
-              child: Icon(
-                isOpen ? Icons.storefront_rounded : Icons.storefront_outlined,
-                color: statusColor,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Text block
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: statusColor,
-                      height: 1.2,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
-                      color: context.textSecondary,
-                      height: 1.3,
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(width: 10),
-            // Switch
-            Switch.adaptive(
-              value: isOpen,
-              onChanged: (_) => _toggleOnlineStatus(context),
-              activeColor: AppColors.success,
-              inactiveThumbColor: AppColors.error,
-              inactiveTrackColor: AppColors.error.withOpacity(0.25),
-            ),
-          ],
+              Switch.adaptive(
+                value: isOpen,
+                onChanged: (_) => _toggleOnlineStatus(context),
+                activeColor: AppColors.success,
+                inactiveThumbColor: AppColors.error,
+                inactiveTrackColor: AppColors.error.withOpacity(0.35),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -429,30 +433,14 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
   Widget _buildContentSheet(BuildContext context, VendorProfileModel profile) {
     return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      width: double.infinity,
+      color: Colors.black,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Description
-            if (profile.description != null &&
-                profile.description!.isNotEmpty) ...[
-              Text(
-                profile.description!,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: context.textSecondary,
-                  height: 1.6,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Stats row
+            // Stats row (description lives in header)
             _buildStatsRow(context, profile),
             const SizedBox(height: 28),
 
@@ -474,10 +462,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             _buildLocationCard(context, profile),
             const SizedBox(height: 28),
 
-            // Performance
-            _buildPerformanceCard(context, profile),
-            const SizedBox(height: 16),
-
             // Messaging
             _buildMessagingCard(context),
             const SizedBox(height: 28),
@@ -497,44 +481,50 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         profile.responseTimeMinutes != null ||
         (profile.responseTimeHuman != null &&
             profile.responseTimeHuman!.isNotEmpty);
+    final responseValue = hasResponseTime
+        ? (profile.responseTimeMinutes != null
+            ? '${profile.responseTimeMinutes}د'
+            : (profile.responseTimeHuman ?? '—'))
+        : '—';
 
     return Row(
       children: [
         Expanded(
           child: _buildStatCard(
+            context,
             icon: Icons.star_rounded,
             iconColor: AppColors.ratingStar,
             value: profile.rating.toStringAsFixed(1),
             label: '${profile.ratingCount} تقييم',
           ),
         ),
-        const SizedBox(width: 12),
-        if (hasResponseTime) ...[
-          Expanded(
-            child: _buildStatCard(
-              icon: Icons.timer_outlined,
-              iconColor: AppColors.primaryLight,
-              value: profile.responseTimeMinutes != null
-                  ? '${profile.responseTimeMinutes}د'
-                  : (profile.responseTimeHuman ?? '—'),
-              label: 'سرعة الرد',
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
+        const SizedBox(width: 10),
         Expanded(
           child: _buildStatCard(
+            context,
+            icon: Icons.timer_outlined,
+            iconColor: AppColors.primaryLight,
+            value: responseValue,
+            label: 'سرعة الرد',
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildStatCard(
+            context,
             icon: Icons.storefront_outlined,
             iconColor: profile.isOpen ? AppColors.success : AppColors.error,
             value: profile.isOpen ? 'متصل' : 'غير متصل',
             label: 'الحالة',
+            onTap: () => _toggleOnlineStatus(context),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String value,
@@ -542,17 +532,11 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
     VoidCallback? onTap,
   }) {
     final card = Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: context.cardBg,
+        color: AppColors.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        border: Border.all(color: AppColors.borderColor.withOpacity(0.6)),
       ),
       child: Column(
         children: [
@@ -560,7 +544,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
+              color: iconColor.withOpacity(0.18),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor, size: 22),
@@ -569,20 +553,24 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
           Text(
             value,
             style: AppTextStyles.bodyMedium.copyWith(
-              color: context.textPrimary,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w700,
-              fontSize: 18,
+              fontSize: 17,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: AppTextStyles.caption.copyWith(
-              color: context.textSecondary,
-              fontSize: 14.5,
+              color: AppColors.textSecondary,
+              fontSize: 13,
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -1119,81 +1107,104 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
                       ),
                     ),
 
-                    // Set Address button - prominent CTA
+                    // Edit location — bottom center
                     Positioned(
                       bottom: 16,
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () =>
-                                    _showVendorLocationForm(context, profile),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () =>
+                                _showVendorLocationForm(context, profile),
+                            borderRadius: BorderRadius.circular(24),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryColor,
                                 borderRadius: BorderRadius.circular(24),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primaryColor,
-                                    borderRadius: BorderRadius.circular(24),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color:
-                                            AppColors.primaryColor.withOpacity(
-                                          0.4,
-                                        ),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.location_on_rounded,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        'تعديل الموقع',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => unawaited(
-                                _performSetLocation(context, profile),
-                              ),
-                              child: Text(
-                                'استخدام موقع الجهاز الحالي',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  shadows: [
-                                    Shadow(
-                                      color: Colors.black.withOpacity(0.65),
-                                      blurRadius: 6,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primaryColor.withOpacity(
+                                      0.4,
                                     ),
-                                  ],
-                                ),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.location_on_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'تعديل الموقع',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Use current GPS — top-left (separate from edit CTA)
+                    Positioned(
+                      top: 52,
+                      left: 12,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () => unawaited(
+                            _performSetLocation(context, profile),
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.25),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.my_location_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 6),
+                                Text(
+                                  'موقع الجهاز',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1648,226 +1659,6 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
         ),
       );
     }
-  }
-
-  // ─── Performance report ───────────────────────────────────────────────────
-
-  Widget _buildPerformanceCard(
-    BuildContext context,
-    VendorProfileModel profile,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          colors: [AppColors.primaryDark, AppColors.primaryColor],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryColor.withOpacity(0.35),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showPerformanceReport(context, profile.id),
-          borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.analytics_outlined,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'تقرير الأداء',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'ملخص الطلبات والتقييمات',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.75),
-                          fontSize: 15,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showPerformanceReport(
-    BuildContext context,
-    int vendorId,
-  ) async {
-    final repo = VendorProfileRepository();
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final report = await repo.getVendorPerformanceReport(vendorId);
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
-      _showReportDialog(context, report);
-    } catch (e) {
-      if (!context.mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-      );
-    }
-  }
-
-  void _showReportDialog(BuildContext context, Map<String, dynamic> report) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('تقرير الأداء'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: report.isEmpty
-                ? const Text('لا توجد بيانات في التقرير.')
-                : Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: _reportEntriesToList(report),
-                  ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _reportEntriesToList(
-    Map<String, dynamic> map, {
-    String prefix = '',
-  }) {
-    final list = <Widget>[];
-    final labels = <String, String>{
-      'total_orders': 'إجمالي الطلبات',
-      'accepted_orders': 'الطلبات المقبولة',
-      'rejected_orders': 'الطلبات المرفوضة',
-      'pending_orders': 'الطلبات المعلقة',
-      'response_time_human': 'وقت الاستجابة',
-      'average_rating': 'متوسط التقييم',
-      'ratings_count': 'عدد التقييمات',
-      'search_requests_accepted': 'طلبات البحث المقبولة',
-      'search_requests_rejected': 'طلبات البحث المرفوضة',
-    };
-    for (final e in map.entries) {
-      final key = e.key;
-      final value = e.value;
-      final label = labels[key] ?? _keyToLabel(key);
-      if (value is Map<String, dynamic>) {
-        list.add(
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Text(
-              label,
-              style: AppTextStyles.bodyMedium.copyWith(
-                color: context.textPrimary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        );
-        list.addAll(_reportEntriesToList(value, prefix: '$prefix  '));
-      } else if (value is List) {
-        list.add(const SizedBox(height: 8));
-        list.add(
-          Text(
-            '$label: ${value.length}',
-            style: AppTextStyles.bodySmall.copyWith(color: context.textPrimary),
-          ),
-        );
-      } else {
-        list.add(const SizedBox(height: 6));
-        list.add(
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 140,
-                child: Text(
-                  label,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: context.textSecondary,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  value?.toString() ?? '—',
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: context.textPrimary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-    return list;
-  }
-
-  String _keyToLabel(String key) {
-    return key
-        .replaceAllMapped(RegExp(r'([a-z])_([a-z])'), (m) => '${m[1]} ${m[2]}')
-        .replaceAll('_', ' ')
-        .trim();
   }
 
   // ─── Messaging card ───────────────────────────────────────────────────────

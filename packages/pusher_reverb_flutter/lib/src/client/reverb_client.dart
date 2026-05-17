@@ -520,8 +520,9 @@ class ReverbClient {
     _reconnectAttempts = 0;
 
     _subscription?.cancel();
-    _channel?.sink.close();
-    // Safe clear: create a copy of keys to avoid concurrent modification
+    // Unsubscribe while the WebSocket sink is still open. Closing the sink
+    // first causes channel.unsubscribe() -> _sendMessage to throw
+    // "Bad state: StreamSink is closed".
     final channelNames = _channels.keys.toList();
     for (final channelName in channelNames) {
       final channel = _channels[channelName];
@@ -531,6 +532,7 @@ class ReverbClient {
       }
     }
     _channels.clear();
+    _channel?.sink.close();
     _setConnectionState(ConnectionState.disconnected);
     onDisconnected?.call();
   }

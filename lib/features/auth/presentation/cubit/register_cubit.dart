@@ -7,6 +7,7 @@ import '../../data/models/register_request_model.dart';
 import '../../data/models/vendor_register_request_model.dart';
 import '../../data/models/register_response_model.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/phone_validator.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/realtime_service.dart';
@@ -78,15 +79,12 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      if (phone.trim().isEmpty) {
-        emit(const RegisterError('الرجاء إدخال رقم الموبايل'));
+      final phoneError = PhoneValidator.validateEgyptMobile(phone);
+      if (phoneError != null) {
+        emit(RegisterError(phoneError));
         return;
       }
-
-      if (phone.trim().length < AppConstants.minPhoneLength) {
-        emit(const RegisterError('رقم الموبايل غير صحيح'));
-        return;
-      }
+      final normalizedPhone = PhoneValidator.normalizeToLocal(phone);
 
       if (password.isEmpty) {
         emit(const RegisterError('الرجاء إدخال كلمة المرور'));
@@ -113,7 +111,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
       final request = RegisterRequestModel(
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         password: password,
         passwordConfirmation: passwordConfirmation,
         deviceName: deviceName,
@@ -168,15 +166,12 @@ class RegisterCubit extends Cubit<RegisterState> {
         return;
       }
 
-      if (phone.trim().isEmpty) {
-        emit(const RegisterError('الرجاء إدخال رقم الموبايل'));
+      final phoneError = PhoneValidator.validateEgyptMobile(phone);
+      if (phoneError != null) {
+        emit(RegisterError(phoneError));
         return;
       }
-
-      if (phone.trim().length < AppConstants.minPhoneLength) {
-        emit(const RegisterError('رقم الموبايل غير صحيح'));
-        return;
-      }
+      final normalizedPhone = PhoneValidator.normalizeToLocal(phone);
 
       if (password.isEmpty) {
         emit(const RegisterError('الرجاء إدخال كلمة المرور'));
@@ -216,7 +211,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
       final request = VendorRegisterRequestModel(
         name: name.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
         password: password,
         passwordConfirmation: passwordConfirmation,
         companyName: companyName.trim(),

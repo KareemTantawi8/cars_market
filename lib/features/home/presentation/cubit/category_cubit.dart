@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../../../core/utils/governorate_filter.dart';
 import '../../data/repositories/category_repository.dart';
 import '../../data/models/category_models.dart';
 
@@ -110,7 +111,10 @@ class CategoryCubit extends Cubit<CategoryState> {
   /// models/years and pre-selects brand/model/year/governorate.
   /// When false (e.g. register), emits as soon as brands + governorates are
   /// ready so pickers work without extra network or cubit selections.
-  Future<void> loadInitialData({bool withSearchFormDefaults = true}) async {
+  Future<void> loadInitialData({
+    bool withSearchFormDefaults = true,
+    bool homeGovernorateFilter = false,
+  }) async {
     emit(const CategoryLoading('initial'));
 
     try {
@@ -121,7 +125,10 @@ class CategoryCubit extends Cubit<CategoryState> {
       ]);
 
       final brands = results[0] as List<BrandModel>;
-      final governorates = results[1] as List<GovernorateModel>;
+      var governorates = results[1] as List<GovernorateModel>;
+      if (homeGovernorateFilter) {
+        governorates = GovernorateFilter.forHomeSearch(governorates);
+      }
 
       if (!withSearchFormDefaults) {
         // Still pick a default governorate (Cairo) for convenience —
@@ -284,11 +291,14 @@ class CategoryCubit extends Cubit<CategoryState> {
   }
 
   /// Load governorates
-  Future<void> loadGovernorates() async {
+  Future<void> loadGovernorates({bool homeGovernorateFilter = false}) async {
     final currentState = state;
 
     try {
-      final governorates = await _categoryRepository.getGovernorates();
+      var governorates = await _categoryRepository.getGovernorates();
+      if (homeGovernorateFilter) {
+        governorates = GovernorateFilter.forHomeSearch(governorates);
+      }
 
       if (currentState is CategoryLoaded) {
         emit(currentState.copyWith(governorates: governorates));
