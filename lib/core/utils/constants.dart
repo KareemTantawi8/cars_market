@@ -9,7 +9,7 @@ class AppConstants {
 
   // App Info (keep [appVersion] in sync with `version:` in pubspec.yaml)
   static const String appName = 'وش سلندر';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.0-alpha2';
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
   // API Configuration — override per environment with dart-define
