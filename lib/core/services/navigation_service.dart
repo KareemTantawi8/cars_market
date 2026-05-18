@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../routes/app_routes.dart';
-import '../utils/constants.dart';
-import '../services/storage_service.dart';
-import '../services/realtime_service.dart';
-import '../services/push_notification_service.dart';
+import '../../features/auth/data/repositories/auth_repository.dart';
 import '../controllers/user_type_controller.dart';
+import '../routes/app_routes.dart';
+import '../services/storage_service.dart';
+import '../utils/constants.dart';
+import 'session_service.dart';
 
 class NavigationService {
   NavigationService._();
@@ -60,11 +60,13 @@ class NavigationService {
     );
   }
 
-  static void navigateToLogout(BuildContext context) {
-    RealtimeService.instance.stop();
-    PushNotificationService.instance.unregisterToken();
-    StorageService.clearAll();
+  static Future<void> navigateToLogout(BuildContext context) async {
+    try {
+      await AuthRepository().logout();
+    } catch (_) {}
+    await SessionService.clearLocalSession();
 
+    if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,

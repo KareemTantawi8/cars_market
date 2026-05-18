@@ -64,6 +64,12 @@ class UserTypeController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Clears cached user type after storage was already wiped (logout / delete account).
+  void resetInMemory() {
+    _currentUserType = null;
+    notifyListeners();
+  }
+
   /// Get user type display name
   String get userTypeDisplayName {
     switch (currentUserType) {

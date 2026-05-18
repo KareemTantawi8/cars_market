@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/extensions.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/push_notification_service.dart';
+import '../../../../core/utils/extensions.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {

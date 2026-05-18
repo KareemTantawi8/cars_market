@@ -27,6 +27,7 @@ import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
+import '../../../../shared/widgets/buttons/delete_account_button.dart';
 import '../../../../shared/widgets/dialogs/vendor_requests_popup.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
@@ -468,6 +469,7 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
 
             // Account
             _buildAccountCard(context),
+            _buildDeleteAccountSection(context),
           ],
         ),
       ),
@@ -1804,11 +1806,17 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
             iconColor: AppColors.error,
             title: 'تسجيل الخروج',
             titleColor: AppColors.error,
-            isLast: true,
-            onTap: () => NavigationService.navigateToLogout(context),
+            onTap: () async => NavigationService.navigateToLogout(context),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDeleteAccountSection(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: 16),
+      child: DeleteAccountButton(),
     );
   }
 

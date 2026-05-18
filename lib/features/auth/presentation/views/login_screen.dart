@@ -5,7 +5,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/phone_validator.dart';
+import '../../../../core/navigation/root_navigator.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../../core/utils/extensions.dart';
@@ -54,21 +56,14 @@ class _LoginScreenState extends State<LoginScreen> {
               duration: const Duration(seconds: 2),
             );
             Future.delayed(const Duration(milliseconds: 500), () {
-              if (context.mounted) {
-                if (state.response.user.type == AppConstants.userTypeVendor) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.vendorDashboard,
-                    (r) => false,
-                  );
-                } else {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.home,
-                    (r) => false,
-                  );
-                }
-              }
+              UserTypeController().resetInMemory();
+              final navigator = rootNavigatorKey.currentState;
+              if (navigator == null) return;
+              final route = state.response.user.type ==
+                      AppConstants.userTypeVendor
+                  ? AppRoutes.vendorDashboard
+                  : AppRoutes.home;
+              navigator.pushNamedAndRemoveUntil(route, (_) => false);
             });
           } else if (state is LoginError) {
             CustomToast.showError(

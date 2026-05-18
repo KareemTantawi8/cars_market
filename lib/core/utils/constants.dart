@@ -12,6 +12,9 @@ class AppConstants {
   static const String appVersion = '1.0.0-alpha2';
   static const String appTagline = 'قطع غيار وخدمات في مكان واحد';
 
+  /// Public support page (must match App Store Connect Support URL).
+  static const String supportUrl = 'https://w4cylinder.tech/';
+
   // API Configuration — override per environment with dart-define
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',

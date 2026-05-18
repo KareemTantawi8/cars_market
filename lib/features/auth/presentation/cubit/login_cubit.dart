@@ -7,6 +7,7 @@ import '../../data/models/login_request_model.dart';
 import '../../data/models/login_response_model.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/utils/phone_validator.dart';
+import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/realtime_service.dart';
@@ -107,6 +108,7 @@ class LoginCubit extends Cubit<LoginState> {
       await StorageService.saveAbilities(response.abilities);
 
       _apiClient.setAuthToken(response.token);
+      UserTypeController().resetInMemory();
 
       try {
         final userProfile = await _authRepository.getCurrentUser();

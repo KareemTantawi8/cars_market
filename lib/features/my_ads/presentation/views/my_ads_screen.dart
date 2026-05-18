@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/auth_session.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../shared/widgets/loading/loading_indicator.dart';
 import '../../../ads/data/models/ad_model.dart';
@@ -34,7 +35,9 @@ class _MyAdsScreenState extends State<MyAdsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MyAdsCubit>().loadMyAds();
+      if (AuthSession.isLoggedIn) {
+        context.read<MyAdsCubit>().loadMyAds();
+      }
     });
   }
 

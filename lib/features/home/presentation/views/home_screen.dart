@@ -526,7 +526,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Notification Bell
           NotificationBell(iconColor: context.textPrimary),
           // Title
           Text("سوق قطع غيار متكامل", style: AppTextStyles.headingMedium),

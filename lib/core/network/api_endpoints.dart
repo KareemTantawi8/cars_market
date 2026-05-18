@@ -137,6 +137,8 @@ class ApiEndpoints {
   static String revokeToken(int tokenId) => '$basePath/auth/tokens/$tokenId';
   // POST /api/v1/auth/logout-all - Logout from all devices
   static const String logoutAll = '$basePath/auth/logout-all';
+  // DELETE /api/v1/user/account - Permanently delete current user account
+  static const String deleteAccount = '$basePath/user/account';
 
   // Categories - Brands, Models, Years (public)
   // GET /api/v1/categories/brands - List all brands (response: { data: [{ id, name, slug, meta }] })

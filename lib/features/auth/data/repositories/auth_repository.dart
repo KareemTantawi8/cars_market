@@ -184,6 +184,40 @@ class AuthRepository {
     }
   }
 
+  /// Permanently delete the authenticated user's account.
+  /// Tries common API paths; returns true when the server confirms deletion.
+  Future<bool> deleteAccount() async {
+    const candidates = <String>[
+      ApiEndpoints.deleteAccount,
+      '${ApiEndpoints.basePath}/user',
+    ];
+
+    for (final path in candidates) {
+      try {
+        final response = await _apiClient.delete(path);
+        final code = response.statusCode;
+        if (code == null) continue;
+        if (code == 200 || code == 204 || code == 202) {
+          return true;
+        }
+      } on DioException catch (e) {
+        final code = e.response?.statusCode;
+        if (code == 404 || code == 405 || code == 501) {
+          continue;
+        }
+        if (code == 401) {
+          throw Exception('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
+        }
+        final errorData = e.response?.data;
+        final errorMessage = errorData is Map<String, dynamic>
+            ? errorData['message'] ?? errorData['error'] ?? 'فشل حذف الحساب'
+            : 'فشل حذف الحساب';
+        throw Exception(errorMessage);
+      }
+    }
+    return false;
+  }
+
   /// Refresh token
   /// POST /api/v1/auth/refresh
   Future<Map<String, dynamic>> refreshToken() async {

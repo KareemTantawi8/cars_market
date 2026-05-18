@@ -23,6 +23,7 @@ import '../../../ads/data/repositories/ads_repository.dart';
 import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/presentation/cubit/my_ads_cubit.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
+import '../../../../shared/widgets/buttons/delete_account_button.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final bool isEmbeddedInTab;
@@ -188,10 +189,15 @@ class _ProfileContent extends StatelessWidget {
                       ),
                     ],
 
+                    const SizedBox(height: 12),
+                    _SupportTile(),
+
                     const SizedBox(height: 28),
 
                     // Logout button
                     _LogoutButton(),
+                    const SizedBox(height: 12),
+                    const DeleteAccountButton(),
                     const SizedBox(height: 12),
                   ],
                 ),
@@ -1496,6 +1502,28 @@ class _SettingTile extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Support link (matches App Store Connect Support URL)
+// ─────────────────────────────────────────────────────────────────────────────
+class _SupportTile extends StatelessWidget {
+  Future<void> _open(BuildContext context) async {
+    final uri = Uri.parse(AppConstants.supportUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingTile(
+      icon: Icons.support_agent_outlined,
+      title: 'الدعم والمساعدة',
+      subtitle: AppConstants.supportUrl,
+      onTap: () => _open(context),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Logout button
 // ─────────────────────────────────────────────────────────────────────────────
 class _LogoutButton extends StatelessWidget {
@@ -1550,7 +1578,10 @@ class _LogoutButton extends StatelessWidget {
                     .copyWith(color: context.textSecondary)),
           ),
           TextButton(
-            onPressed: () => NavigationService.navigateToLogout(context),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await NavigationService.navigateToLogout(context);
+            },
             child: Text('تسجيل الخروج',
                 style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.error, fontWeight: FontWeight.bold)),
