@@ -28,6 +28,7 @@ import '../../../../shared/widgets/common/error_state.dart';
 import '../../../../shared/widgets/common/notification_bell.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../../shared/widgets/buttons/delete_account_button.dart';
+import '../../../../shared/widgets/common/support_link_tile.dart';
 import '../../../../shared/widgets/dialogs/vendor_requests_popup.dart';
 import '../cubit/vendor_dashboard_cubit.dart';
 import '../../data/models/vendor_profile_model.dart';
@@ -1795,6 +1796,12 @@ class _VendorDashboardScreenState extends State<VendorDashboardScreen> {
               );
             },
           ),
+          Divider(
+            height: 1,
+            indent: 68,
+            color: context.textSecondary.withOpacity(0.1),
+          ),
+          const SupportLinkTile(embeddedInAccountCard: true),
           Divider(
             height: 1,
             indent: 68,

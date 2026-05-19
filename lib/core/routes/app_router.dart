@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../shared/widgets/auth/auth_guard_page.dart';
 import '../routes/app_routes.dart';
 import '../../features/auth/presentation/views/splash_screen.dart';
 import '../../features/auth/presentation/views/login_screen.dart';
@@ -41,6 +42,24 @@ import '../../features/home/presentation/cubit/search_requests_cubit.dart';
 
 /// Application Router
 class AppRouter {
+  static Route<dynamic> _protectedRoute(
+    RouteSettings settings, {
+    required String guardTitle,
+    required String guardDescription,
+    required Widget child,
+    IconData guardIcon = Icons.lock_outline,
+  }) {
+    return MaterialPageRoute(
+      settings: settings,
+      builder: (_) => AuthGuardPage(
+        title: guardTitle,
+        description: guardDescription,
+        icon: guardIcon,
+        child: child,
+      ),
+    );
+  }
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case AppRoutes.splash:
@@ -99,8 +118,13 @@ class AppRouter {
         );
 
       case AppRoutes.chatList:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'المحادثات',
+          guardDescription:
+              'سجّل الدخول لعرض محادثاتك والتواصل مع التجار.',
+          guardIcon: Icons.chat_bubble_outline,
+          child: BlocProvider(
             create: (_) => ChatCubit(),
             child: const ChatListScreen(),
           ),
@@ -113,8 +137,12 @@ class AppRouter {
         if (rawVid is int) peerVendorId = rawVid;
         if (rawVid is num) peerVendorId = rawVid.toInt();
         if (rawVid is String) peerVendorId = int.tryParse(rawVid);
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'المحادثة',
+          guardDescription: 'سجّل الدخول لإرسال واستقبال الرسائل.',
+          guardIcon: Icons.chat_bubble_outline,
+          child: BlocProvider(
             create: (_) => ChatCubit(),
             child: ChatRoomScreen(
               chatId: args?['chatId'] ?? '1',
@@ -131,18 +159,30 @@ class AppRouter {
         );
 
       case AppRoutes.subscriptionPlans:
-        return MaterialPageRoute(
-          builder: (_) => const SubscriptionPlansScreen(),
+        return _protectedRoute(
+          settings,
+          guardTitle: 'خطط الاشتراك',
+          guardDescription: 'سجّل الدخول كتاجر لإدارة اشتراكك.',
+          child: const SubscriptionPlansScreen(),
         );
 
       case AppRoutes.planDetails:
         final args = settings.arguments as Map<String, dynamic>?;
-        return MaterialPageRoute(
-          builder: (_) => PlanDetailsScreen(planId: args?['planId'] ?? 0),
+        return _protectedRoute(
+          settings,
+          guardTitle: 'تفاصيل الخطة',
+          guardDescription: 'سجّل الدخول لعرض تفاصيل الاشتراك.',
+          child: PlanDetailsScreen(planId: args?['planId'] ?? 0),
         );
 
       case AppRoutes.vendorDashboard:
-        return MaterialPageRoute(builder: (_) => const VendorDashboardScreen());
+        return _protectedRoute(
+          settings,
+          guardTitle: 'لوحة التاجر',
+          guardDescription: 'سجّل الدخول بحساب تاجر للوصول إلى لوحة التحكم.',
+          guardIcon: Icons.storefront_outlined,
+          child: const VendorDashboardScreen(),
+        );
 
       case AppRoutes.vendorSupportedBrands:
         final args = settings.arguments as Map<String, dynamic>?;
@@ -160,8 +200,11 @@ class AppRouter {
             }
           }
         }
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'الماركات المدعومة',
+          guardDescription: 'سجّل الدخول كتاجر لتعديل الماركات المدعومة.',
+          child: BlocProvider(
             create: (_) => CategoryCubit()..loadInitialData(),
             child: VendorSupportedBrandsScreen(initialBrandIds: initial),
           ),
@@ -176,21 +219,33 @@ class AppRouter {
             ),
           );
         }
-        return MaterialPageRoute(
-          builder: (_) => VendorLocationEditScreen(profile: profile),
+        return _protectedRoute(
+          settings,
+          guardTitle: 'موقع المتجر',
+          guardDescription: 'سجّل الدخول كتاجر لتعديل موقع متجرك.',
+          child: VendorLocationEditScreen(profile: profile),
         );
 
       case AppRoutes.profile:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'الملف الشخصي',
+          guardDescription:
+              'سجّل الدخول لعرض ملفك الشخصي وإعدادات حسابك.',
+          guardIcon: Icons.person_outline,
+          child: BlocProvider(
             create: (_) => UserProfileCubit()..fetchCurrentUserProfile(),
             child: const UserProfileScreen(),
           ),
         );
 
       case AppRoutes.notifications:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'الإشعارات',
+          guardDescription: 'سجّل الدخول لعرض إشعاراتك.',
+          guardIcon: Icons.notifications_outlined,
+          child: BlocProvider(
             create: (_) => NotificationsCubit(),
             child: const NotificationsScreen(),
           ),
@@ -202,8 +257,11 @@ class AppRouter {
         final highlightId = rawSr is int
             ? rawSr
             : int.tryParse(rawSr?.toString() ?? '');
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'طلبات العملاء',
+          guardDescription: 'سجّل الدخول كتاجر لعرض الطلبات الواردة.',
+          child: BlocProvider(
             create: (_) => VendorRequestsCubit(),
             child: VendorIncomingRequestsScreen(
               initialHighlightSearchRequestId: highlightId,
@@ -212,8 +270,12 @@ class AppRouter {
         );
 
       case AppRoutes.createAd:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'إضافة إعلان',
+          guardDescription: 'سجّل الدخول لنشر إعلاناتك.',
+          guardIcon: Icons.add_circle_outline,
+          child: BlocProvider(
             create: (_) => CategoryCubit(),
             child: const CreateAdScreen(),
           ),
@@ -221,8 +283,11 @@ class AppRouter {
 
       case AppRoutes.createAdPhotos:
         final formArgs = settings.arguments as Map<String, dynamic>?;
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'إضافة إعلان',
+          guardDescription: 'سجّل الدخول لنشر إعلاناتك.',
+          child: BlocProvider(
             create: (_) => CreateAdCubit(),
             child: CreateAdPhotosScreen(formData: formArgs),
           ),
@@ -237,8 +302,11 @@ class AppRouter {
             ),
           );
         }
-        return MaterialPageRoute(
-          builder: (_) => MultiBlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'تعديل الإعلان',
+          guardDescription: 'سجّل الدخول لتعديل إعلاناتك.',
+          child: MultiBlocProvider(
             providers: [
               BlocProvider(create: (_) => CategoryCubit()),
               BlocProvider(create: (_) => CreateAdCubit()),
@@ -279,8 +347,12 @@ class AppRouter {
         } else if (rawCreatedAt is String && rawCreatedAt.isNotEmpty) {
           createdAt = DateTime.tryParse(rawCreatedAt);
         }
-        return MaterialPageRoute(
-          builder: (_) => OrdersScreen(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'طلباتي',
+          guardDescription: 'سجّل الدخول لعرض سجل طلباتك الشخصية.',
+          guardIcon: Icons.shopping_bag_outlined,
+          child: OrdersScreen(
             orderId: orderId,
             orderTitle: orderTitle,
             createdAt: createdAt,
@@ -288,16 +360,22 @@ class AppRouter {
         );
 
       case AppRoutes.permissions:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'الصلاحيات',
+          guardDescription: 'سجّل الدخول للوصول إلى إدارة الصلاحيات.',
+          child: BlocProvider(
             create: (_) => PermissionsCubit(),
             child: const PermissionsScreen(),
           ),
         );
 
       case AppRoutes.mySearchRequests:
-        return MaterialPageRoute(
-          builder: (_) => BlocProvider(
+        return _protectedRoute(
+          settings,
+          guardTitle: 'طلبات البحث',
+          guardDescription: 'سجّل الدخول لعرض طلبات البحث الخاصة بك.',
+          child: BlocProvider(
             create: (_) => SearchRequestsCubit()..getMySearchRequests(),
             child: const MySearchRequestsScreen(),
           ),

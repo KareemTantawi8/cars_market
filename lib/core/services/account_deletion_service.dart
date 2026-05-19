@@ -108,10 +108,9 @@ class AccountDeletionService {
     _isDeleting = true;
     _showLoadingOverlay();
 
-    var serverDeleted = false;
     try {
       try {
-        serverDeleted = await _authRepository.deleteAccount();
+        await _authRepository.deleteAccount();
       } catch (e) {
         if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,14 +150,10 @@ class AccountDeletionService {
         final messengerContext = rootNavigatorKey.currentContext;
         if (messengerContext == null) return;
         ScaffoldMessenger.of(messengerContext).showSnackBar(
-          SnackBar(
-            content: Text(
-              serverDeleted
-                  ? 'تم حذف حسابك بنجاح'
-                  : 'تم تسجيل خروجك وحذف بيانات التطبيق المحلية',
-            ),
+          const SnackBar(
+            content: Text('تم حذف حسابك بنجاح'),
             backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 4),
+            duration: Duration(seconds: 4),
           ),
         );
       });

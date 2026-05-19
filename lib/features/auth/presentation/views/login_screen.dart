@@ -9,6 +9,7 @@ import '../../../../core/navigation/root_navigator.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/controllers/user_type_controller.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
+import '../../../../shared/widgets/auth/guest_browse_button.dart';
 import '../../../../shared/widgets/common/custom_toast.dart';
 import '../../../../core/utils/extensions.dart';
 import '../cubit/login_cubit.dart';
@@ -26,6 +27,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  bool get _returnToCaller {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    return args is Map && args['returnToCaller'] == true;
+  }
 
   @override
   void dispose() {
@@ -57,6 +63,11 @@ class _LoginScreenState extends State<LoginScreen> {
             );
             Future.delayed(const Duration(milliseconds: 500), () {
               UserTypeController().resetInMemory();
+              if (!context.mounted) return;
+              if (_returnToCaller) {
+                Navigator.pop(context, true);
+                return;
+              }
               final navigator = rootNavigatorKey.currentState;
               if (navigator == null) return;
               final route = state.response.user.type ==
@@ -140,7 +151,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         // Header
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 32, 24, 36),
+                          padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
                           child: Column(
                             children: [
                               // App icon – rounded rectangle (not circle)
@@ -225,6 +236,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 textAlign: TextAlign.center,
                               ),
+                              if (!_returnToCaller) ...[
+                                const SizedBox(height: 20),
+                                GuestBrowseButton(
+                                  compact: true,
+                                  isLoading: isLoading,
+                                  onPressed: isLoading
+                                      ? null
+                                      : () {
+                                          rootNavigatorKey.currentState
+                                              ?.pushNamedAndRemoveUntil(
+                                            AppRoutes.home,
+                                            (_) => false,
+                                          );
+                                        },
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -396,38 +423,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                           : () => _handleLogin(context),
                                       isLoading: isLoading,
                                     ),
-                                    const SizedBox(height: 28),
 
-                                    // Divider with text
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Divider(
-                                            color: AppColors.inputBorder
-                                                .withOpacity(0.6),
-                                          ),
-                                        ),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                          ),
-                                          child: Text(
-                                            'أو',
-                                            style: AppTextStyles.caption
-                                                .copyWith(
-                                                  color: context.textSecondary,
-                                                ),
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: Divider(
-                                            color: AppColors.inputBorder
-                                                .withOpacity(0.6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 20),
+                                    const SizedBox(height: 24),
 
                                     // Register link
                                     Center(

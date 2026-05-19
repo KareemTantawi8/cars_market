@@ -39,6 +39,8 @@ class ApiEndpoints {
   static const String profileAddress = '$basePath/profile/address';
   // PUT /api/v1/profile/brands - Update vendor supported brands (body: { category_ids: [1, 2] }). Vendors only.
   static const String profileBrands = '$basePath/profile/brands';
+  // DELETE /api/v1/profile - Permanently delete current user account (customer or vendor)
+  static const String deleteProfile = '$basePath/profile';
 
   // Vendor
   // GET /api/v1/vendors
@@ -137,8 +139,6 @@ class ApiEndpoints {
   static String revokeToken(int tokenId) => '$basePath/auth/tokens/$tokenId';
   // POST /api/v1/auth/logout-all - Logout from all devices
   static const String logoutAll = '$basePath/auth/logout-all';
-  // DELETE /api/v1/user/account - Permanently delete current user account
-  static const String deleteAccount = '$basePath/user/account';
 
   // Categories - Brands, Models, Years (public)
   // GET /api/v1/categories/brands - List all brands (response: { data: [{ id, name, slug, meta }] })

@@ -8,4 +8,7 @@ class AuthSession {
     final token = StorageService.getAuthToken();
     return token != null && token.isNotEmpty;
   }
+
+  /// True when the user is browsing without a stored auth token.
+  static bool get isGuest => !isLoggedIn;
 }

@@ -7,8 +7,6 @@ import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/push_notification_service.dart';
-import '../../../../core/utils/extensions.dart';
-import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -152,7 +150,8 @@ class _SplashScreenState extends State<SplashScreen>
         PushNotificationService.instance.consumePendingInitialMessage();
       });
     } else {
-      context.navigateToAndRemoveUntil(const LoginScreen());
+      // Guests land on login first; they can browse via "تصفح بدون تسجيل" on LoginScreen.
+      Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (r) => false);
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/auth/auth_guard.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/buttons/primary_button.dart';
@@ -535,13 +536,13 @@ class _SearchResultsScreenState extends State<SearchResultsScreen> {
                 );
               }),
               _buildNavItem(Icons.shopping_cart, 'طلباتي', 1, () {
-                Navigator.pushNamed(context, AppRoutes.orders);
+                AuthGuard.pushProtected(context, AppRoutes.orders);
               }),
               _buildNavItem(Icons.chat_bubble, 'المحادثات', 2, () {
-                Navigator.pushNamed(context, AppRoutes.chatList);
+                AuthGuard.pushProtected(context, AppRoutes.chatList);
               }),
               _buildNavItem(Icons.person, 'حسابي', 3, () {
-                Navigator.pushNamed(context, AppRoutes.profile);
+                AuthGuard.pushProtected(context, AppRoutes.profile);
               }),
             ],
           ),

@@ -7,7 +7,10 @@ import '../../../../core/utils/extensions.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/constants.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/auth/auth_guard.dart';
+import '../../../../core/navigation/root_navigator.dart';
 import '../../../../core/services/storage_service.dart';
+import '../../../../core/utils/auth_session.dart';
 import '../../../../shared/widgets/common/rating_stars.dart';
 import '../../../../shared/widgets/common/online_indicator.dart';
 import '../../data/models/public_ad_details_model.dart';
@@ -926,6 +929,15 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
   }
 
   Future<void> _launchPhone(String? phone) async {
+    if (AuthSession.isGuest) {
+      final authenticated = await AuthGuard.requireAuth(
+        context,
+        title: 'تسجيل الدخول للاتصال',
+        message: 'سجّل الدخول للتواصل مع صاحب الإعلان.',
+      );
+      if (!authenticated || !mounted) return;
+    }
+
     final uri = phone != null && phone.isNotEmpty
         ? Uri.parse('tel:$phone')
         : Uri.parse('tel:+201000000000');
@@ -934,7 +946,33 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
     }
   }
 
+  void _pushChatRoom({required int chatId, required PublicAdDetailsModel ad}) {
+    final args = {
+      'chatId': chatId.toString(),
+      'chatName': ad.sellerName,
+      'vendorName': ad.sellerName,
+      'peerPhone': ad.sellerPhone,
+      'peerAvatarUrl': ad.sellerAvatarUrl,
+      'peerVendorId': ad.sellerVendorRecordId,
+    };
+    final navigator = rootNavigatorKey.currentState;
+    if (navigator != null) {
+      navigator.pushNamed(AppRoutes.chatRoom, arguments: args);
+    } else {
+      Navigator.pushNamed(context, AppRoutes.chatRoom, arguments: args);
+    }
+  }
+
   Future<void> _openChat(PublicAdDetailsModel ad) async {
+    if (AuthSession.isGuest) {
+      final authenticated = await AuthGuard.requireAuth(
+        context,
+        title: 'تسجيل الدخول للمحادثة',
+        message: 'سجّل الدخول لبدء محادثة مع صاحب الإعلان.',
+      );
+      if (!authenticated || !mounted) return;
+    }
+
     final adId = int.tryParse(ad.id);
     if (adId == null || adId <= 0) {
       if (mounted) CustomToast.showError(context, 'تعذّر تحديد الإعلان');
@@ -965,17 +1003,9 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       chatId ??= await repo.findChatIdForAd(adId);
       if (!mounted) return;
       if (chatId != null) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.chatRoom,
-          arguments: {
-            'chatId': chatId.toString(),
-            'chatName': ad.sellerName,
-            'vendorName': ad.sellerName,
-            'peerPhone': ad.sellerPhone,
-            'peerAvatarUrl': ad.sellerAvatarUrl,
-            'peerVendorId': ad.sellerVendorRecordId,
-          },
+        _pushChatRoom(
+          chatId: chatId,
+          ad: ad,
         );
       } else {
         CustomToast.showError(
@@ -996,18 +1026,7 @@ class _AdDetailsScreenState extends State<AdDetailsScreen> {
       fallbackChatId ??= await repo.findChatIdForAd(adId);
       if (!mounted) return;
       if (fallbackChatId != null) {
-        Navigator.pushNamed(
-          context,
-          AppRoutes.chatRoom,
-          arguments: {
-            'chatId': fallbackChatId.toString(),
-            'chatName': ad.sellerName,
-            'vendorName': ad.sellerName,
-            'peerPhone': ad.sellerPhone,
-            'peerAvatarUrl': ad.sellerAvatarUrl,
-            'peerVendorId': ad.sellerVendorRecordId,
-          },
-        );
+        _pushChatRoom(chatId: fallbackChatId, ad: ad);
         return;
       }
       if (mounted) {

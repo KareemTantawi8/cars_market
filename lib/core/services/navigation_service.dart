@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../features/auth/data/repositories/auth_repository.dart';
 import '../controllers/user_type_controller.dart';
+import '../navigation/root_navigator.dart';
 import '../routes/app_routes.dart';
 import '../services/storage_service.dart';
 import '../utils/constants.dart';
@@ -66,11 +67,18 @@ class NavigationService {
     } catch (_) {}
     await SessionService.clearLocalSession();
 
-    if (!context.mounted) return;
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.login,
-      (_) => false,
-    );
+    final navigator = rootNavigatorKey.currentState;
+    if (navigator != null) {
+      await navigator.pushNamedAndRemoveUntil(
+        AppRoutes.login,
+        (_) => false,
+      );
+    } else if (context.mounted) {
+      await Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.login,
+        (_) => false,
+      );
+    }
   }
 }

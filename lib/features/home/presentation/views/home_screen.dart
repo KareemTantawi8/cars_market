@@ -20,7 +20,11 @@ import '../../../../core/services/realtime_service.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../core/services/in_app_notification_service.dart';
 import '../../../../core/utils/constants.dart';
+import '../../../../core/utils/auth_session.dart';
+import '../../../../core/auth/auth_guard.dart';
 import '../../../../core/utils/governorate_filter.dart';
+import '../../../profile/presentation/views/guest_profile_screen.dart';
+import '../../../../shared/widgets/auth/auth_guard_page.dart';
 
 /// Home Screen (User)
 class HomeScreen extends StatefulWidget {
@@ -60,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _bindCustomerRealtime() {
+    if (!AuthSession.isLoggedIn) return;
     if (StorageService.getUserType() == AppConstants.userTypeVendor) return;
     RealtimeService.instance.onCustomerSearchAccepted =
         _onSearchRequestAccepted;
@@ -93,8 +98,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleSearch() {
+    if (AuthSession.isGuest &&
+        StorageService.getUserType() == AppConstants.userTypeVendor) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'هذه الميزة للعملاء فقط. يرجى تسجيل الدخول بحساب عميل.',
+          ),
+          backgroundColor: AppColors.warning,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     // Vendors are not allowed to create search requests.
-    if (StorageService.getUserType() == AppConstants.userTypeVendor) {
+    if (AuthSession.isLoggedIn &&
+        StorageService.getUserType() == AppConstants.userTypeVendor) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -400,12 +420,21 @@ class _HomeScreenState extends State<HomeScreen> {
               context.read<SearchCubit>().clearSearch();
             } else if (state is SearchError) {
               final msg = state.message.toLowerCase();
-              final displayMessage =
-                  msg.contains('unauthorized') ||
-                          msg.contains('unauthenticated') ||
-                          msg.contains('forbidden')
-                      ? 'غير مصرح لك بإرسال الطلبات. يرجى التأكد من نوع حسابك أو تسجيل الخروج وإعادة الدخول.'
-                      : state.message;
+              final needsAuth = msg.contains('unauthorized') ||
+                  msg.contains('unauthenticated') ||
+                  msg.contains('forbidden');
+              if (needsAuth && AuthSession.isGuest) {
+                AuthGuard.requireAuth(
+                  context,
+                  title: 'تسجيل الدخول لإرسال الطلب',
+                  message:
+                      'لإرسال طلب بحث والتواصل مع التجار، سجّل الدخول أو أنشئ حساباً.',
+                );
+                return;
+              }
+              final displayMessage = needsAuth
+                  ? 'غير مصرح لك بإرسال الطلبات. يرجى التأكد من نوع حسابك أو تسجيل الخروج وإعادة الدخول.'
+                  : state.message;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(displayMessage),
@@ -455,9 +484,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 isEmbeddedInShell: true,
                 onBackToHome: () => setState(() => _currentNavIndex = 0),
               ),
-              const MyAdsScreen(),
-              const ChatListScreen(loadOnInit: false),
-              const UserProfileScreen(isEmbeddedInTab: true),
+              const AuthGuardPage(
+                title: 'إعلاناتي',
+                description: 'سجّل الدخول لعرض وإدارة إعلاناتك المنشورة.',
+                icon: Icons.sell_outlined,
+                child: MyAdsScreen(),
+              ),
+              const AuthGuardPage(
+                title: 'المحادثات',
+                description: 'سجّل الدخول لعرض محادثاتك مع التجار.',
+                icon: Icons.chat_bubble_outline,
+                child: ChatListScreen(loadOnInit: false),
+              ),
+              AuthSession.isLoggedIn
+                  ? const UserProfileScreen(isEmbeddedInTab: true)
+                  : const GuestProfileScreen(),
             ],
           ),
           bottomNavigationBar: CustomBottomNavBar(
@@ -526,7 +567,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          NotificationBell(iconColor: context.textPrimary),
+          _GuestAwareNotificationBell(iconColor: context.textPrimary),
           // Title
           Text("سوق قطع غيار متكامل", style: AppTextStyles.headingMedium),
           // Car Icon
@@ -872,6 +913,28 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Notifications are account-based; guests get a login prompt instead of an error screen.
+class _GuestAwareNotificationBell extends StatelessWidget {
+  final Color iconColor;
+
+  const _GuestAwareNotificationBell({required this.iconColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationBell(
+      iconColor: iconColor,
+      onBeforeOpen: () async {
+        if (AuthSession.isLoggedIn) return true;
+        return AuthGuard.requireAuth(
+          context,
+          title: 'تسجيل الدخول للإشعارات',
+          message: 'الإشعارات مرتبطة بحسابك. سجّل الدخول للمتابعة.',
+        );
+      },
     );
   }
 }

@@ -35,16 +35,8 @@ class ApiClient {
         // Remove Authorization header for public/unauthenticated endpoints
         // Sending invalid/mock token causes 500 on register/login, 401 on governorates/brands
         final path = options.path;
-        final isPublicEndpoint = path.contains('/auth/login') ||
-            path.contains('/auth/register') ||
-            path.contains('/auth/register-vendor') ||
-            path.contains('/auth/forgot-password') ||
-            path.contains('/auth/verify-otp') ||
-            path.contains('/auth/reset-password') ||
-            (path.contains('governorates') && !path.contains('admin')) ||
-            path.contains('categories/brands') ||
-            path.contains('categories/models') ||
-            path.contains('categories/tree');
+        final method = options.method.toUpperCase();
+        final isPublicEndpoint = _isPublicEndpoint(path, method);
         if (isPublicEndpoint) {
           options.headers.remove('Authorization');
           _log('🔓 No Authorization for public endpoint: $path');
@@ -113,6 +105,54 @@ class ApiClient {
   void updateBaseUrl() {
     _dio.options.baseUrl = AppConstants.baseUrl;
     _log('🔄 Base URL updated to: ${AppConstants.baseUrl}');
+  }
+
+  /// Endpoints that work without authentication (guest browsing).
+  static bool _isPublicEndpoint(String path, String method) {
+    if (path.contains('/auth/login') ||
+        path.contains('/auth/register') ||
+        path.contains('/auth/register-vendor') ||
+        path.contains('/auth/forgot-password') ||
+        path.contains('/auth/verify-otp') ||
+        path.contains('/auth/reset-password')) {
+      return true;
+    }
+
+    if (path.contains('governorates') && !path.contains('admin')) {
+      return true;
+    }
+    if (path.contains('categories/brands') ||
+        path.contains('categories/models') ||
+        path.contains('categories/tree')) {
+      return true;
+    }
+
+    // Browse published ads and vendor profiles without login.
+    if (method == 'GET') {
+      if (path == '/ads' || RegExp(r'^/ads/\d+$').hasMatch(path)) {
+        return true;
+      }
+      if (path.contains('/vendors/') && path.contains('/profile')) {
+        return true;
+      }
+      if (path.contains('/users/') && path.contains('/profile')) {
+        return true;
+      }
+      if (path.contains('/plans')) {
+        return true;
+      }
+    }
+
+    // Create spare-part search requests as guest (App Store 5.1.1(v)).
+    if (method == 'POST' &&
+        path.contains('/search-requests') &&
+        !path.contains('/accept') &&
+        !path.contains('/reject') &&
+        !path.contains('/rate')) {
+      return true;
+    }
+
+    return false;
   }
 
   /// Log helper (only prints in debug mode)

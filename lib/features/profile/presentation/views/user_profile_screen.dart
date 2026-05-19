@@ -24,6 +24,7 @@ import '../../../ads/data/models/ad_model.dart';
 import '../../../ads/presentation/cubit/my_ads_cubit.dart';
 import '../../../my_ads/presentation/views/my_ads_screen.dart';
 import '../../../../shared/widgets/buttons/delete_account_button.dart';
+import '../../../../shared/widgets/common/support_link_tile.dart';
 
 class UserProfileScreen extends StatelessWidget {
   final bool isEmbeddedInTab;
@@ -190,7 +191,7 @@ class _ProfileContent extends StatelessWidget {
                     ],
 
                     const SizedBox(height: 12),
-                    _SupportTile(),
+                    const SupportLinkTile(),
 
                     const SizedBox(height: 28),
 
@@ -1497,28 +1498,6 @@ class _SettingTile extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Support link (matches App Store Connect Support URL)
-// ─────────────────────────────────────────────────────────────────────────────
-class _SupportTile extends StatelessWidget {
-  Future<void> _open(BuildContext context) async {
-    final uri = Uri.parse(AppConstants.supportUrl);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _SettingTile(
-      icon: Icons.support_agent_outlined,
-      title: 'الدعم والمساعدة',
-      subtitle: AppConstants.supportUrl,
-      onTap: () => _open(context),
     );
   }
 }
